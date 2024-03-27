@@ -2,10 +2,10 @@ package com.example.ajouevent.service;
 
 import java.util.Optional;
 
+import com.example.ajouevent.domain.Member;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.example.ajouevent.domain.User;
 import com.example.ajouevent.dto.LoginResponse;
 import com.example.ajouevent.dto.RegisterRequest;
 import com.example.ajouevent.dto.UserDTO;
@@ -27,7 +27,7 @@ public class UserService {
 		String password = registerRequest.getPassword();
 		String name = registerRequest.getName();
 
-		User user = User.builder()
+		Member user = Member.builder()
 			.password(registerRequest.getPassword())
 			.email(registerRequest.getEmail())
 			.build();
@@ -43,7 +43,7 @@ public class UserService {
 		String password = loginRequest.getPassword();
 
 		// 이메일로 사용자 조회
-		Optional<User> user = userRepository.findByEmail(email);
+		Optional<Member> user = userRepository.findByEmail(email);
 
 
 		if (user == null) {

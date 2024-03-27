@@ -18,9 +18,10 @@ bin/
 !**/src/test/**/bin/
 
 ### Firebase ###
-**/src/main/resources/application.properties
+**/src/main/resources/application-*.yml
 **/src/main/resources/firebase/*.json
-/src/main/resources/application.properties
+/src/main/resources/application-*.yml
+
 
 ### IntelliJ IDEA ###
 application.properties
