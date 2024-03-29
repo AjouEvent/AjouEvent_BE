@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import com.example.ajouevent.dto.ResponseDTO;
 import com.example.ajouevent.dto.UserDTO.LoginRequest;
 import com.example.ajouevent.dao.FCMTokenDao;
-import com.example.ajouevent.domain.User;
 import com.example.ajouevent.repository.UserRepository;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
