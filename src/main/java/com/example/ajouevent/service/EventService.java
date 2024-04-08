@@ -26,4 +26,7 @@ public class EventService {
 		fcmService.sendEventNotification(email);
 	}
 
+	public void createEvent(MultipartFile image, PostEventDto postEventDto) {
+
+	}
 }

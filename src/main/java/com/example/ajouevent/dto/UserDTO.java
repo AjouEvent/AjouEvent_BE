@@ -22,13 +22,20 @@ public class UserDTO {
 
 	@Getter
 	@NoArgsConstructor(access = AccessLevel.PROTECTED)
+	@Builder
 	public static class UserInfoDto {
 
+		private Long memberId;
 		private String email;
+		private String password;
+		private String role;
 
 		@Builder
-		public UserInfoDto(String email) {
+		public UserInfoDto(Long memberId, String email, String password, String role) {
+			this.memberId = memberId;
 			this.email = email;
+			this.password = password;
+			this.role = role;
 		}
 
 	}
