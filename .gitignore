@@ -30,6 +30,8 @@ bin/
 
 ### IntelliJ IDEA ###
 application.properties
+application.yml
+application-dev.yml
 
 .idea
 *.iws
