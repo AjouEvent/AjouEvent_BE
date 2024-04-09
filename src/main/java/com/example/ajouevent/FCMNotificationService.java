@@ -7,10 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import com.example.ajouevent.dto.ResponseDTO;
-import com.example.ajouevent.dto.UserDTO.LoginRequest;
+import com.example.ajouevent.dto.MemberDTO.LoginRequest;
 import com.example.ajouevent.dao.FCMTokenDao;
-import com.example.ajouevent.domain.User;
-import com.example.ajouevent.repository.UserRepository;
+import com.example.ajouevent.repository.MemberRepository;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;

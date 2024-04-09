@@ -5,6 +5,11 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
+.DS_Store
+._.DS_Store
+**/.DS_Store
+**/._.DS_Store
+
 ### STS ###
 .apt_generated
 .classpath
@@ -18,12 +23,15 @@ bin/
 !**/src/test/**/bin/
 
 ### Firebase ###
-**/src/main/resources/application.properties
+**/src/main/resources/application-*.yml
 **/src/main/resources/firebase/*.json
-/src/main/resources/application.properties
+/src/main/resources/application-*.yml
+
 
 ### IntelliJ IDEA ###
 application.properties
+application.yml
+application-dev.yml
 
 .idea
 *.iws

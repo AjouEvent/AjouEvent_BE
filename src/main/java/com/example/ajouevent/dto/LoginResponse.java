@@ -11,13 +11,13 @@ public class LoginResponse {
 
 	private String id;
 	private String email;
-	private String userName;
+	private String MemberName;
 	private LocalDateTime createdAt;
 
-	public LoginResponse(String id, String email, String userName, LocalDateTime createdAt) {
+	public LoginResponse(String id, String email, String MemberName, LocalDateTime createdAt) {
 		this.id = id;
 		this.email = email;
-		this.userName = userName;
+		this.MemberName = MemberName;
 		this.createdAt = createdAt;
 	}
 }
