@@ -36,7 +36,7 @@ public class ClubEvent {
     private String major;
 
     @Column
-    private Boolean type;
+    private Type type;
 
     @OneToMany(mappedBy = "clubEvent", fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.REMOVE}, orphanRemoval = true)
     @ToString.Exclude
