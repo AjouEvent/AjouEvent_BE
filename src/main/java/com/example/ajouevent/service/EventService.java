@@ -74,4 +74,42 @@ public class EventService {
 		alarmRepository.save(alarm);
 	}
 
+	@Transactional
+	public void postEvent(PostEventDTO postEventDto, List<MultipartFile> images) {
+
+		List<String> postImages = new ArrayList<>(); // 이미지 URL을 저장할 리스트 생성
+
+		for (MultipartFile image : images) { // 매개변수로 받은 이미지들을 하나씩 처리
+			try {
+				String imageUrl = s3Upload.uploadFiles(image, "images"); // 이미지 업로드
+				log.info("S3에 올라간 이미지: " + imageUrl); // 로그에 업로드된 이미지 URL 출력
+				postImages.add(imageUrl); // 업로드된 이미지 URL을 리스트에 추가
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
+		ClubEvent clubEvent = ClubEvent.builder()
+			.title(postEventDto.getTitle())
+			.content(postEventDto.getContent())
+			.writer(postEventDto.getWriter())
+			.subject(postEventDto.getSubject())
+			.type(postEventDto.getType())
+			.clubEventImageList(new ArrayList<>())
+			.build();
+
+		// 각 업로드된 이미지의 URL을 사용하여 ClubEventImage를 생성하고, ClubEvent와 연관시킵니다.
+		for (String postImage : postImages) {
+			log.info("S3에 올라간 이미지: " + postImage);
+			ClubEventImage clubEventImage = ClubEventImage.builder()
+				.url(postImage)
+				.clubEvent(clubEvent)
+				.build();
+			clubEvent.getClubEventImageList().add(clubEventImage);
+		}
+
+
+		eventRepository.save(clubEvent);
+
+	}
 }

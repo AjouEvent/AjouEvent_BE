@@ -32,6 +32,9 @@ public class Alarm {
     private String content;
 
     @Column
+    private String url;
+
+    @Column
     private String writer;
 
     @Column
@@ -39,6 +42,9 @@ public class Alarm {
 
     @Column
     private String subject;
+
+    @Column
+    private String target;
 
     @OneToMany(mappedBy = "alarm", fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.REMOVE}, orphanRemoval = true)
     @ToString.Exclude
