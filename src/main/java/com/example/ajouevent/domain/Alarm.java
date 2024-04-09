@@ -2,9 +2,10 @@ package com.example.ajouevent.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.checkerframework.checker.units.qual.C;
+
 import org.joda.time.DateTime;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -17,6 +18,9 @@ public class Alarm {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long alarmId;
+
+    @Column
+    private LocalDateTime alarmDateTime;
 
     @Column
     private String date;
