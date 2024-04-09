@@ -2,7 +2,7 @@ package com.example.ajouevent.dao;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
-import com.example.ajouevent.dto.UserDTO.LoginRequest;
+import com.example.ajouevent.dto.MemberDTO.LoginRequest;
 import lombok.RequiredArgsConstructor;
 
 @Repository

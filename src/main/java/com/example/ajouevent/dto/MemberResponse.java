@@ -3,15 +3,15 @@ package com.example.ajouevent.dto;
 import lombok.Getter;
 
 @Getter
-public class UserResponse {
+public class MemberResponse {
 
 	private final String id;
-	private final String userName;
+	private final String MemberName;
 	private final String email;
 
-	public UserResponse(String id, String userName, String email) {
+	public MemberResponse(String id, String MemberName, String email) {
 		this.id = id;
-		this.userName = userName;
+		this.MemberName = MemberName;
 		this.email = email;
 	}
 }
