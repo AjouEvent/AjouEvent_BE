@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-public class UserDTO {
+public class MemberDTO {
 
 	@Getter
 	@Builder
@@ -23,15 +23,14 @@ public class UserDTO {
 	@Getter
 	@NoArgsConstructor(access = AccessLevel.PROTECTED)
 	@Builder
-	public static class UserInfoDto {
-
+	public static class MemberInfoDto {
 		private Long memberId;
 		private String email;
 		private String password;
 		private String role;
 
 		@Builder
-		public UserInfoDto(Long memberId, String email, String password, String role) {
+		public MemberInfoDto(Long memberId, String email, String password, String role) {
 			this.memberId = memberId;
 			this.email = email;
 			this.password = password;

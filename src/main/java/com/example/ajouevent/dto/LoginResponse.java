@@ -10,12 +10,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class LoginResponse {
 
+	private Long id;
 	private String grantType;
 	private String accessToken;
 	private String refreshToken;
 
 	@Builder
-	public LoginResponse(String grantType, String accessToken, String refreshToken) {
+	public LoginResponse(Long id, String grantType, String accessToken, String refreshToken) {
+		this.id = id;
 		this.grantType = grantType;
 		this.accessToken = accessToken;
 		this.refreshToken = refreshToken;

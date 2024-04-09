@@ -5,6 +5,11 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
+.DS_Store
+._.DS_Store
+**/.DS_Store
+**/._.DS_Store
+
 ### STS ###
 .apt_generated
 .classpath
@@ -25,6 +30,8 @@ bin/
 
 ### IntelliJ IDEA ###
 application.properties
+application.yml
+application-dev.yml
 
 .idea
 *.iws

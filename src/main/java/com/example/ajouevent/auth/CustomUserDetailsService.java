@@ -1,8 +1,8 @@
 package com.example.ajouevent.auth;
 
 import com.example.ajouevent.domain.Member;
-import com.example.ajouevent.dto.UserDTO;
-import com.example.ajouevent.repository.UserRepository;
+import com.example.ajouevent.dto.MemberDTO;
+import com.example.ajouevent.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -15,14 +15,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
-    private final UserRepository userRepository;
+    private final MemberRepository memberRepository;
 
     @Override
     public UserDetails loadUserByUsername(String id) throws UsernameNotFoundException {
-        Member member = userRepository.findById(Long.parseLong(id))
+        Member member = memberRepository.findById(Long.parseLong(id))
                 .orElseThrow(() -> new UsernameNotFoundException("해당하는 유저가 없습니다."));
 
-        UserDTO.UserInfoDto dto = UserDTO.UserInfoDto.builder()
+        MemberDTO.MemberInfoDto dto = MemberDTO.MemberInfoDto.builder()
                 .memberId(member.getId())
                 .email(member.getEmail())
                 .role(member.getRole())
