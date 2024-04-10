@@ -25,14 +25,20 @@ public class Member {
 	@Column
 	private String phone;
 
+	@Column
+	private String role;
+
 	@OneToMany(mappedBy = "member", fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.REMOVE}, orphanRemoval = true)
 	@ToString.Exclude
 	private List<Alarm> alarmList;
 
 	@Builder
-	public Member(Long id, String email, String password) {
+	public Member(Long id, String email, String password, String major, String phone) {
 		this.id = id;
 		this.email = email;
 		this.password = password;
+		this.major = major;
+		this.phone = phone;
+		this.role = "USER";
 	}
 }

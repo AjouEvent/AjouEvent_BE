@@ -2,6 +2,7 @@ package com.example.ajouevent.dto;
 
 import java.time.LocalDateTime;
 
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -9,15 +10,16 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class LoginResponse {
 
-	private String id;
-	private String email;
-	private String MemberName;
-	private LocalDateTime createdAt;
+	private Long id;
+	private String grantType;
+	private String accessToken;
+	private String refreshToken;
 
-	public LoginResponse(String id, String email, String MemberName, LocalDateTime createdAt) {
+	@Builder
+	public LoginResponse(Long id, String grantType, String accessToken, String refreshToken) {
 		this.id = id;
-		this.email = email;
-		this.MemberName = MemberName;
-		this.createdAt = createdAt;
+		this.grantType = grantType;
+		this.accessToken = accessToken;
+		this.refreshToken = refreshToken;
 	}
 }
