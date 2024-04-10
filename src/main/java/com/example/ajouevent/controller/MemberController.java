@@ -4,6 +4,7 @@ import com.example.ajouevent.dto.*;
 import com.example.ajouevent.dto.ReissueTokenDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import com.example.ajouevent.dto.RegisterRequest;
 import com.example.ajouevent.dto.MemberDTO;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.security.Principal;
 
 @RestController
 @RequiredArgsConstructor
@@ -39,5 +41,11 @@ public class MemberController {
 	public ResponseEntity<LoginResponse>  reissueAccessToken(@RequestBody ReissueTokenDto refreshToken) {
 		LoginResponse token = memberService.reissueAccessToken(refreshToken);
 		return ResponseEntity.status(HttpStatus.OK).body(token);
+	}
+
+	@PostMapping("/test")
+	public String test(Principal principal) {
+		System.out.println(principal.getName());
+		return "success";
 	}
 }
