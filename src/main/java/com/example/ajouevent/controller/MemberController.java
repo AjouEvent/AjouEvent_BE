@@ -2,6 +2,8 @@ package com.example.ajouevent.controller;
 
 import com.example.ajouevent.dto.*;
 import com.example.ajouevent.dto.ReissueTokenDto;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -43,6 +45,7 @@ public class MemberController {
 		return ResponseEntity.status(HttpStatus.OK).body(token);
 	}
 
+	@SecurityRequirement(name = "access-token")
 	@PostMapping("/test")
 	public String test(Principal principal) {
 		System.out.println(principal.getName());

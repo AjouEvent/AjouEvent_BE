@@ -3,6 +3,7 @@ package com.example.ajouevent.controller;
 import java.io.IOException;
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +30,7 @@ public class EventController {
 	// }
 
 	// 알림 등록
+	@SecurityRequirement(name = "access-token")
 	@PostMapping("/notification")
 	public ResponseEntity<ResponseDTO> postNotification(@RequestBody PostNotificationDTO postNotificationDTO) {
 		eventService.createNotification(postNotificationDTO);
@@ -40,6 +42,7 @@ public class EventController {
 	}
 
 	// 게시글 생성
+	@SecurityRequirement(name = "access-token")
 	@PostMapping("/new")
 	public ResponseEntity<ResponseDTO> postEvent(@RequestPart(value = "data") PostEventDTO postEventDto, @RequestPart(value = "image", required = false)
 	List<MultipartFile> images) throws IOException {
@@ -51,6 +54,7 @@ public class EventController {
 		);
 	}
 
+	@SecurityRequirement(name = "access-token")
 	@GetMapping("/test")
 	public String testGetMethod() {
 		return "get";

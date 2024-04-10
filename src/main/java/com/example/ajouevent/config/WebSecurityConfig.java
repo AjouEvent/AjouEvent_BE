@@ -28,7 +28,8 @@ public class WebSecurityConfig {
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
 
     private static final String[] AUTH_WHITELIST = {
-            "swagger-ui/**", "/users/register", "/users/login", "/users/reissueToken"  // 여기에 포함되지 않은 모든 요청은 인증 필요
+            "swagger-ui/**", "/users/register", "/users/login", "/users/reissueToken",  // 여기에 포함되지 않은 모든 요청은 인증 필요
+            "/send/registeration-token", "/set", "/get/{key}"
     };
 
     @Bean
