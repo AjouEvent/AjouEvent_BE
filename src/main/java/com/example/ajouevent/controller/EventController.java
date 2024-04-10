@@ -1,6 +1,7 @@
 package com.example.ajouevent.controller;
 
 import java.io.IOException;
+import java.security.Principal;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -28,10 +29,10 @@ public class EventController {
 	// 	eventService.sendEventNotification();
 	// }
 
-	// 알림 등록
+	// 알림 등록 - 동아리, 학생회 이벤트 + 공지사항 크롤링
 	@PostMapping("/notification")
-	public ResponseEntity<ResponseDTO> postNotification(@RequestBody PostNotificationDTO postNotificationDTO) {
-		eventService.createNotification(postNotificationDTO);
+	public ResponseEntity<ResponseDTO> postNotification(@RequestBody PostNotificationDTO postNotificationDTO, Principal principal) {
+		eventService.createNotification(postNotificationDTO, principal);
 		return ResponseEntity.ok().body(ResponseDTO.builder()
 			.successStatus(HttpStatus.OK)
 			.successContent(postNotificationDTO.getAlarmDateTime() +" 에 알림 전송을 합니다.")

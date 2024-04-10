@@ -1,6 +1,7 @@
 package com.example.ajouevent.service;
 
 import java.io.IOException;
+import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,9 +59,8 @@ public class EventService {
 	}
 
 	@Transactional
-	public void createNotification(PostNotificationDTO postNotificationDTO) {
-		String email = "test1@example.com";
-
+	public void createNotification(PostNotificationDTO postNotificationDTO, Principal principal) {
+		String email = principal.getName();
 		Member member = memberRepository.findByEmail(email).orElseThrow(() -> new IllegalArgumentException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + email));
 
 		Alarm alarm = Alarm.builder()
