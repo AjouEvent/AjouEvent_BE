@@ -1,5 +1,11 @@
 package com.example.ajouevent.service;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -7,11 +13,21 @@ import org.springframework.stereotype.Service;
 import com.example.ajouevent.dao.FCMTokenDao;
 import com.example.ajouevent.domain.Alarm;
 import com.example.ajouevent.domain.AlarmImage;
+import com.example.ajouevent.domain.Token;
+import com.example.ajouevent.domain.Topic;
+import com.example.ajouevent.domain.TopicToken;
+import com.example.ajouevent.dto.LoginResponse;
+import com.example.ajouevent.dto.NoticeDTO;
 import com.example.ajouevent.dto.ResponseDTO;
 import com.example.ajouevent.dto.MemberDTO;
+import com.example.ajouevent.dto.WebhookResponse;
+import com.example.ajouevent.repository.TokenRepository;
+import com.example.ajouevent.repository.TopicRepository;
+import com.example.ajouevent.repository.TopicTokenRepository;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
+import com.google.firebase.messaging.TopicManagementResponse;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -67,7 +83,7 @@ public class FCMService {
 
 		send(message);
 
-		log.info("알림 전송 완료");
+		log.info(email+ "에게 알림 전송 완료");
 
 		ResponseEntity.ok().body(ResponseDTO.builder()
 			.successStatus(HttpStatus.OK)

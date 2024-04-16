@@ -16,6 +16,8 @@ import com.example.ajouevent.domain.Alarm;
 import com.example.ajouevent.domain.ClubEvent;
 import com.example.ajouevent.domain.ClubEventImage;
 import com.example.ajouevent.domain.Member;
+import com.example.ajouevent.dto.EventResponseDTO;
+import com.example.ajouevent.dto.NoticeDTO;
 import com.example.ajouevent.dto.PostEventDTO;
 import com.example.ajouevent.dto.PostNotificationDTO;
 import com.example.ajouevent.repository.AlarmRepository;
@@ -35,14 +37,14 @@ public class EventService {
 	private final EventRepository eventRepository;
 	private final S3Upload s3Upload;
 
+	// 행사, 동아리, 학생회 이벤트와 같은 알림 등록용 메서드
+	// Controller의 호출없이 주기적으로 계속 실행
 	@Scheduled(fixedRate = 10000)
 	@Transactional
 	public void sendEventNotification() {
 		LocalDateTime now = LocalDateTime.now();
 		int nowHour = now.getHour();
 		int nowMinute = now.getMinute();
-		log.info("현재 시간:" + now);
-		log.info("현재 시간(시간, 분): " + nowHour + "시" + nowMinute + "분");
 
 
 		// 1. 현재 시간에 해당하는 알림을 다 찾음
