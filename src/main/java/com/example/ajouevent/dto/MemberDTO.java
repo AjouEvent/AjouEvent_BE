@@ -16,7 +16,7 @@ public class MemberDTO {
 
 		private String email;
 		private String password;
-		private String token;
+		private String fcmToken;
 
 	}
 
