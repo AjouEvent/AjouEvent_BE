@@ -55,6 +55,46 @@ public class EventService {
 				fcmService.sendEventNotification(alarm.getMember().getEmail(), alarm);
 			}
 		}
+	}
+
+
+	// 크롤링한 공지사항 DB에 저장
+	@Transactional
+	public void postNotice(NoticeDTO noticeDTO) {
+
+		// -> payload에서 parsing에서 바로 가져올 수 있으면 좋음
+
+		ClubEvent clubEvent = ClubEvent.builder()
+			.title(noticeDTO.getTitle())
+			.content(noticeDTO.getContent())
+			.clubEventImageList(new ArrayList<>())
+			.build();
+
+		// 각 업로드된 이미지의 URL을 사용하여 ClubEventImage를 생성하고, ClubEvent와 연관시킵니다.
+
+		// 기본 default 이미지는 학교 로고
+		String image = "https://ajou-event-bucket.s3.ap-northeast-2.amazonaws.com/static/1e7b1dc2-ae1b-4254-ba38-d1a0e7cfa00c.20240307_170436.jpg";
+
+		if (noticeDTO.getImages() == null || noticeDTO.getImages().isEmpty()) {
+			log.info("images 리스트가 비어있습니다.");
+			// images 리스트가 null 이거나 비어있을 경우, 기본 이미지 리스트를 생성하고 설정
+			List<String> defaultImages = new ArrayList<>();
+			defaultImages.add(image);
+			noticeDTO.setImages(defaultImages);
+		}
+
+		// 이미지 URL을 첫 번째 이미지로 설정
+		image = noticeDTO.getImages().get(0);
+
+		log.info("공지사항에서 크롤링한 이미지: " + image);
+
+		ClubEventImage clubEventImage = ClubEventImage.builder()
+			.clubEvent(clubEvent)
+			.build();
+
+		clubEvent.getClubEventImageList().add(clubEventImage);
+
+		eventRepository.save(clubEvent);
 
 	}
 

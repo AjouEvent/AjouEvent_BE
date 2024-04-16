@@ -13,7 +13,7 @@ public class FCMTokenDao {
 
 	public void saveToken(LoginRequest loginRequest) {
 		tokenRedisTemplate.opsForValue()
-			.set(loginRequest.getEmail(), loginRequest.getToken());
+			.set(loginRequest.getEmail(), loginRequest.getFcmToken());
 	}
 
 	public String getToken(String email) {
