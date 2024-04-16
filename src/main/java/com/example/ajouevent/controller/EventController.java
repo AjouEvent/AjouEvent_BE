@@ -14,20 +14,14 @@ import com.example.ajouevent.dto.PostEventDTO;
 import com.example.ajouevent.dto.PostNotificationDTO;
 import com.example.ajouevent.dto.ResponseDTO;
 import com.example.ajouevent.service.EventService;
-
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/event")
+@RequestMapping("/api/event")
 public class EventController {
 
 	private final EventService eventService;
-
-	// @PostMapping("/send")
-	// public void startEventTime(@RequestBody MemberDTO.LoginRequest loginRequest){
-	// 	eventService.sendEventNotification();
-	// }
 
 	// 알림 등록 - 동아리, 학생회 이벤트 + 공지사항 크롤링
 	@PostMapping("/notification")
