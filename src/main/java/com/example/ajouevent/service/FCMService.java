@@ -62,7 +62,7 @@ public class FCMService {
 				.setBody(body)
 				.setImage(imageUrl)
 				.build())
-			.putData("click_action", url)
+			.putData("click_action", url) // 동아리, 학생회 이벤트는 post한 이벤트 상세 페이지로 redirection "https://ajou-event.shop/event/{eventId}
 			.build();
 
 		send(message);
