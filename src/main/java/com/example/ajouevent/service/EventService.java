@@ -112,4 +112,17 @@ public class EventService {
 		eventRepository.save(clubEvent);
 
 	}
+
+	@Transactional
+	public List<EventResponseDTO> getEventList() {
+		List<ClubEvent> clubEventEntities = eventRepository.findAll();
+		List<EventResponseDTO> eventResponseDTOList = new ArrayList<>();
+
+		for (ClubEvent clubEvent : clubEventEntities) {
+			EventResponseDTO eventResponseDTO = EventResponseDTO.toDto(clubEvent);
+			eventResponseDTOList.add(eventResponseDTO);
+		}
+
+		return eventResponseDTOList;
+	}
 }

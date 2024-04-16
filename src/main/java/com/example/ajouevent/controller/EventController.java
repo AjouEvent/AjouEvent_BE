@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.example.ajouevent.dto.MemberDTO;
+import com.example.ajouevent.dto.EventResponseDTO;
 import com.example.ajouevent.dto.PostEventDTO;
 import com.example.ajouevent.dto.PostNotificationDTO;
 import com.example.ajouevent.dto.ResponseDTO;
@@ -52,13 +52,19 @@ public class EventController {
 		);
 	}
 
+	// @GetMapping("/{eventId}")
+	// public EventResponseDto detail(@PathVariable("eventId") Long eventId) {
+	// 	return eventService.getEvent(eventId);
+	// }
+
+	// 전체 글 보기 페이지(홈) -> 일단 테스트용으로 올린거 전부
+	@GetMapping("/all")
+	public List<EventResponseDTO> getEventList() {
+		return eventService.getEventList();
+	}
+
 	@GetMapping("/test")
 	public String testGetMethod() {
 		return "get";
 	}
-
-//	@PostMapping("/new")
-//	public void createEvent(@RequestPart MultipartFile image, @RequestPart PostEventDto postEventDto){
-//
-//	}
 }
