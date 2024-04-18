@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.scheduling.annotation.Scheduled;
@@ -16,10 +17,11 @@ import com.example.ajouevent.domain.Alarm;
 import com.example.ajouevent.domain.ClubEvent;
 import com.example.ajouevent.domain.ClubEventImage;
 import com.example.ajouevent.domain.Member;
-import com.example.ajouevent.dto.EventResponseDTO;
-import com.example.ajouevent.dto.NoticeDTO;
-import com.example.ajouevent.dto.PostEventDTO;
-import com.example.ajouevent.dto.PostNotificationDTO;
+import com.example.ajouevent.domain.Type;
+import com.example.ajouevent.dto.EventResponseDto;
+import com.example.ajouevent.dto.NoticeDto;
+import com.example.ajouevent.dto.PostEventDto;
+import com.example.ajouevent.dto.PostNotificationDto;
 import com.example.ajouevent.repository.AlarmRepository;
 import com.example.ajouevent.repository.EventRepository;
 import com.example.ajouevent.repository.MemberRepository;
@@ -62,46 +64,69 @@ public class EventService {
 
 	// 크롤링한 공지사항 DB에 저장
 	@Transactional
-	public void postNotice(NoticeDTO noticeDTO) {
+	public void postNotice(NoticeDto noticeDto) {
+		Type type3 = Type.valueOf(noticeDto.getEnglishTopic().toUpperCase());
+		log.info("저장하는 타입 : " + type3.getEnglishTopic());
 
-		// -> payload에서 parsing에서 바로 가져올 수 있으면 좋음
+
+		// log.info("저장하는 타입1 : " + stringType);
+		// log.info("저장하는 타입2 : " + Type.valueOf(noticeDto.getEnglishTopic()));
+		// log.info("저장하는 타입3 : " + Type.AJOUNORMAL.getEnglishTopic());
 
 		ClubEvent clubEvent = ClubEvent.builder()
-			.title(noticeDTO.getTitle())
-			.content(noticeDTO.getContent())
-			.clubEventImageList(new ArrayList<>())
+			.title(noticeDto.getTitle())
+			.content(noticeDto.getContent())
+			.url(noticeDto.getUrl())
+			.type(type3)
 			.build();
 
-		// 각 업로드된 이미지의 URL을 사용하여 ClubEventImage를 생성하고, ClubEvent와 연관시킵니다.
+		log.info("크롤링한 공지사항 원래 url" + noticeDto.getUrl());
+
 
 		// 기본 default 이미지는 학교 로고
 		String image = "https://ajou-event-bucket.s3.ap-northeast-2.amazonaws.com/static/1e7b1dc2-ae1b-4254-ba38-d1a0e7cfa00c.20240307_170436.jpg";
 
-		if (noticeDTO.getImages() == null || noticeDTO.getImages().isEmpty()) {
+		if (noticeDto.getImages() == null || noticeDto.getImages().isEmpty()) {
 			log.info("images 리스트가 비어있습니다.");
 			// images 리스트가 null 이거나 비어있을 경우, 기본 이미지 리스트를 생성하고 설정
 			List<String> defaultImages = new ArrayList<>();
 			defaultImages.add(image);
-			noticeDTO.setImages(defaultImages);
+			noticeDto.setImages(defaultImages);
 		}
 
+		// -> payload에서 parsing에서 바로 가져올 수 있으면 좋음
+		List<ClubEventImage> clubEventImageList = new ArrayList<>();
+		for (String imageUrl : noticeDto.getImages()) {
+			ClubEventImage clubEventImage = ClubEventImage.builder()
+				.url(imageUrl)
+				.clubEvent(clubEvent)
+				.build();
+			clubEventImageList.add(clubEventImage);
+		}
+
+		clubEvent.setClubEventImageList(clubEventImageList);
+
+
+		// 각 업로드된 이미지의 URL을 사용하여 ClubEventImage를 생성하고, ClubEvent와 연관시킵니다.
+
+
 		// 이미지 URL을 첫 번째 이미지로 설정
-		image = noticeDTO.getImages().get(0);
+		image = String.valueOf(noticeDto.getImages().get(0));
 
 		log.info("공지사항에서 크롤링한 이미지: " + image);
 
-		ClubEventImage clubEventImage = ClubEventImage.builder()
-			.clubEvent(clubEvent)
-			.build();
-
-		clubEvent.getClubEventImageList().add(clubEventImage);
+		// ClubEventImage clubEventImage = ClubEventImage.builder()
+		// 	.clubEvent(clubEvent)
+		// 	.build();
+		//
+		// clubEvent.getClubEventImageList().add(clubEventImage);
 
 		eventRepository.save(clubEvent);
 
 	}
 
 	@Transactional
-	public void createNotification(PostNotificationDTO postNotificationDTO, Principal principal) {
+	public void createNotification(PostNotificationDto postNotificationDTO, Principal principal) {
 		String email = principal.getName();
 		Member member = memberRepository.findByEmail(email).orElseThrow(() -> new IllegalArgumentException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + email));
 
@@ -117,7 +142,7 @@ public class EventService {
 	}
 
 	@Transactional
-	public void postEvent(PostEventDTO postEventDto, List<MultipartFile> images) {
+	public void postEvent(PostEventDto postEventDto, List<MultipartFile> images) {
 
 		List<String> postImages = new ArrayList<>(); // 이미지 URL을 저장할 리스트 생성
 
@@ -150,15 +175,14 @@ public class EventService {
 			clubEvent.getClubEventImageList().add(clubEventImage);
 		}
 
-
 		eventRepository.save(clubEvent);
 
 	}
 
 	@Transactional
-	public List<EventResponseDTO> getEventList() {
+	public List<EventResponseDto> getEventList() {
 		List<ClubEvent> clubEventEntities = eventRepository.findAll();
-		List<EventResponseDTO> eventResponseDTOList = new ArrayList<>();
+		List<EventResponseDto> eventResponseDtoList = new ArrayList<>();
 
 		for (ClubEvent clubEvent : clubEventEntities) {
 			EventResponseDto eventResponseDTO = EventResponseDto.toDto(clubEvent);
@@ -190,6 +214,6 @@ public class EventService {
 			eventResponseDtoList.add(eventResponseDTO);
 		}
 
-		return eventResponseDTOList;
+		return eventResponseDtoList;
 	}
 }
