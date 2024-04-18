@@ -34,53 +34,44 @@ public class TopicService {
 	public void subscribeToTopic(TopicRequest topicRequest) {
 		String topicName = topicRequest.getTopic();
 		List<Token> tokens = topicRequest.getTokens();
-		try {
-			Optional<Topic> optionalTopic = topicRepository.findByName(topicName);
-			Topic topic;
-			if (optionalTopic.isPresent()) {
-				topic = optionalTopic.get();
-			} else {
-				topic = Topic.builder()
-					.name(topicName)
-					.build();
-			}
-
-			List<TopicToken> topicTokens = new ArrayList<>();
-			for (Token token : tokens) {
-				Token existingToken = tokenRepository.findByValue(token.getValue()); // 데이터베이스에서 토큰 값으로 조회
-				if (existingToken != null) {
-					// 이미 존재하는 토큰인 경우 기존 토큰을 사용
-					topicTokens.add(TopicToken.builder()
-						.topic(topic)
-						.token(existingToken)
-						.build());
-				} else {
-					// 존재하지 않는 경우 새로운 토큰을 저장
-					Token savedToken = tokenRepository.save(token);
-					topicTokens.add(TopicToken.builder()
-						.topic(topic)
-						.token(savedToken)
-						.build());
-				}
-			}
-
-			topicRepository.save(topic);
-			topicTokenRepository.saveAll(topicTokens);
-
-			List<String> tokenValues = tokens.stream()
-				.map(Token::getValue)
-				.collect(Collectors.toList());
-
-			// fcmService.subscribeToTopic();
-
-			TopicManagementResponse response = FirebaseMessaging.getInstance().subscribeToTopicAsync(tokenValues, topicName).get();
-			System.out.println("Subscribed to topic: " + topicName);
-			System.out.println(response.getSuccessCount() + " tokens were subscribed successfully");
-		} catch (InterruptedException | ExecutionException e) {
-			e.printStackTrace();
-			// 구독에 실패한 경우에 대한 처리
+		Optional<Topic> optionalTopic = topicRepository.findByDepartment(topicName);
+		Topic topic;
+		if (optionalTopic.isPresent()) {
+			topic = optionalTopic.get();
+		} else {
+			topic = Topic.builder()
+				.department(topicName)
+				.build();
 		}
-	}
+		topicRepository.save(topic);
 
+		List<TopicToken> topicTokens = new ArrayList<>();
+		for (Token token : tokens) {
+			Token existingToken = tokenRepository.findByValue(token.getValue()); // 데이터베이스에서 토큰 값으로 조회
+			if (existingToken != null) {
+				// 이미 존재하는 토큰인 경우 기존 토큰을 사용
+				topicTokens.add(TopicToken.builder()
+					.topic(topic)
+					.token(existingToken)
+					.build());
+			} else {
+				// 존재하지 않는 경우 새로운 토큰을 저장
+				Token savedToken = tokenRepository.save(token);
+				topicTokens.add(TopicToken.builder()
+					.topic(topic)
+					.token(savedToken)
+					.build());
+			}
+		}
+
+		topicTokenRepository.saveAll(topicTokens);
+
+		List<String> tokenValues = tokens.stream()
+			.map(Token::getValue)
+			.collect(Collectors.toList());
+
+		fcmService.subscribeToTopic(topicName, tokenValues);
+
+	}
 
 }
