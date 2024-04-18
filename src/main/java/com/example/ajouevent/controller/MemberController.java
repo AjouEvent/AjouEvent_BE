@@ -4,10 +4,9 @@ import com.example.ajouevent.dto.*;
 import com.example.ajouevent.dto.ReissueTokenDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import com.example.ajouevent.dto.RegisterRequest;
-import com.example.ajouevent.dto.MemberDTO;
+import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.service.FCMService;
 import com.example.ajouevent.service.MemberService;
 
@@ -19,7 +18,7 @@ import java.security.Principal;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/users")
+@RequestMapping("/users")
 @Slf4j
 public class MemberController {
 
@@ -32,7 +31,7 @@ public class MemberController {
 	}
 
 	@PostMapping("/login")
-	public ResponseEntity<LoginResponse> login(@RequestBody MemberDTO.LoginRequest loginRequest){
+	public ResponseEntity<LoginResponse> login(@RequestBody MemberDto.LoginRequest loginRequest){
 		fcmService.saveToken(loginRequest);
 		return memberService.login(loginRequest);
 	}
