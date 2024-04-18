@@ -57,6 +57,11 @@ public class EventController {
 		return eventService.getEventList();
 	}
 
+	@GetMapping("/type/{type}")
+	public List<EventResponseDto> getEventTypeList(@PathVariable String type) {
+		return eventService.getEventTypeList(type);
+	}
+
 	@GetMapping("/test")
 	public String testGetMethod() {
 		return "get";

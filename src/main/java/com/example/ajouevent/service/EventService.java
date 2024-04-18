@@ -161,8 +161,33 @@ public class EventService {
 		List<EventResponseDTO> eventResponseDTOList = new ArrayList<>();
 
 		for (ClubEvent clubEvent : clubEventEntities) {
-			EventResponseDTO eventResponseDTO = EventResponseDTO.toDto(clubEvent);
-			eventResponseDTOList.add(eventResponseDTO);
+			EventResponseDto eventResponseDTO = EventResponseDto.toDto(clubEvent);
+			eventResponseDtoList.add(eventResponseDTO);
+		}
+
+		return eventResponseDtoList;
+	}
+
+	@Transactional
+	public List<EventResponseDto> getEventTypeList(String type) {
+		// 대소문자를 구분하지 않고 입력 받기 위해 입력된 문자열을 대문자로 변환합니다.
+
+		// 입력된 문자열이 유효한 Type인지 확인하고, 유효한 경우 해당 Type으로 변환합니다.
+		Type eventType;
+		try {
+			eventType = Type.valueOf(type);
+		} catch (IllegalArgumentException e) {
+			// 유효하지 않은 Type이 입력된 경우, 빈 리스트를 반환합니다.
+			return Collections.emptyList();
+		}
+
+		// 유효한 Type에 해당하는 ClubEvent 리스트를 가져옵니다.
+		List<ClubEvent> clubEventEntities = eventRepository.findByType(eventType);
+		List<EventResponseDto> eventResponseDtoList = new ArrayList<>();
+
+		for (ClubEvent clubEvent : clubEventEntities) {
+			EventResponseDto eventResponseDTO = EventResponseDto.toDto(clubEvent);
+			eventResponseDtoList.add(eventResponseDTO);
 		}
 
 		return eventResponseDTOList;
