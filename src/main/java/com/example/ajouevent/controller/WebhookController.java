@@ -1,15 +1,12 @@
 package com.example.ajouevent.controller;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
-import com.example.ajouevent.dto.NoticeDTO;
-import com.example.ajouevent.dto.ResponseDTO;
+import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.WebhookResponse;
 import com.example.ajouevent.service.EventService;
 import com.example.ajouevent.service.FCMService;
