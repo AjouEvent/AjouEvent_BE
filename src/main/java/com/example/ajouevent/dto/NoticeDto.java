@@ -3,7 +3,7 @@ package com.example.ajouevent.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.example.ajouevent.domain.Type;
+import com.example.ajouevent.domain.ClubEventImage;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
@@ -13,7 +13,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-public class NoticeDTO {
+public class NoticeDto {
 
 	@NotNull(message = "제목은 Null 일 수 없습니다!")
 	private String title;

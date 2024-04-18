@@ -1,6 +1,6 @@
 package com.example.ajouevent.auth;
 
-import com.example.ajouevent.dto.MemberDTO;
+import com.example.ajouevent.dto.MemberDto;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 @Getter
 @RequiredArgsConstructor
 public class CustomUserDetails implements UserDetails {
-    private final MemberDTO.MemberInfoDto member;
+    private final MemberDto.MemberInfoDto member;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

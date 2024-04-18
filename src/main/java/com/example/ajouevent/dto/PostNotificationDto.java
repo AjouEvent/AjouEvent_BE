@@ -12,7 +12,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-public class PostNotificationDTO {
+public class PostNotificationDto {
 
 	@NotNull(message = "제목은 Null 일 수 없습니다!")
 	private String title;

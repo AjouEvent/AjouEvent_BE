@@ -1,28 +1,19 @@
 package com.example.ajouevent.service;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-
-import static org.mockito.Mockito.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.ajouevent.domain.Alarm;
 import com.example.ajouevent.domain.Member;
-import com.example.ajouevent.domain.Type;
-import com.example.ajouevent.dto.PostNotificationDTO;
 import com.example.ajouevent.repository.AlarmRepository;
 import com.example.ajouevent.repository.MemberRepository;
-import com.example.ajouevent.service.EventService;
 
 @SpringBootTest
 public class EventServiceTest {

@@ -1,18 +1,14 @@
 package com.example.ajouevent;
 
-import java.util.Optional;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import com.example.ajouevent.dto.ResponseDTO;
-import com.example.ajouevent.dto.MemberDTO.LoginRequest;
+import com.example.ajouevent.dto.ResponseDto;
+import com.example.ajouevent.dto.MemberDto.LoginRequest;
 import com.example.ajouevent.dao.FCMTokenDao;
-import com.example.ajouevent.repository.MemberRepository;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
-import com.google.firebase.messaging.Notification;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,9 +18,9 @@ public class FCMNotificationService {
 
 	private final FCMTokenDao fcmTokenDao;
 
-	public ResponseEntity<ResponseDTO> sendEventNotification(String email) {
+	public ResponseEntity<ResponseDto> sendEventNotification(String email) {
 		if (!hasKey(email)) {
-			return ResponseEntity.ok().body(ResponseDTO.builder()
+			return ResponseEntity.ok().body(ResponseDto.builder()
 				.successStatus(HttpStatus.OK)
 				.successContent("해당 유저가 존재하지 않습니다")
 				.Data(email)
@@ -40,7 +36,7 @@ public class FCMNotificationService {
 			.build();
 		send(message);
 
-		return ResponseEntity.ok().body(ResponseDTO.builder()
+		return ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
 			.successContent("푸쉬 알림 성공")
 			.Data(token)

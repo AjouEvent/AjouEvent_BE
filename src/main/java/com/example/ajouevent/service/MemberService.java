@@ -50,7 +50,7 @@ public class MemberService {
 	}
 
 	@Transactional
-	public ResponseEntity<LoginResponse> login(MemberDTO.LoginRequest loginRequest) {
+	public ResponseEntity<LoginResponse> login(MemberDto.LoginRequest loginRequest) {
 		String email = loginRequest.getEmail();
 		String password = loginRequest.getPassword();
 		Optional<Member> optionalMember = memberRepository.findByEmail(email);
@@ -64,7 +64,7 @@ public class MemberService {
 			throw new BadCredentialsException("비밀번호가 일치하지 않습니다.");
 		}
 
-		MemberDTO.MemberInfoDto memberInfoDto = MemberDTO.MemberInfoDto.builder()
+		MemberDto.MemberInfoDto memberInfoDto = MemberDto.MemberInfoDto.builder()
 				.memberId(member.getId())
 				.email(member.getEmail())
 				.password(member.getPassword())
@@ -94,7 +94,7 @@ public class MemberService {
 
 		Member member = memberRepository.findById(memberId).orElseThrow();
 
-			MemberDTO.MemberInfoDto memberInfoDto = MemberDTO.MemberInfoDto.builder()
+			MemberDto.MemberInfoDto memberInfoDto = MemberDto.MemberInfoDto.builder()
 				.memberId(member.getId())
 				.email(member.getEmail())
 				.password(member.getPassword())

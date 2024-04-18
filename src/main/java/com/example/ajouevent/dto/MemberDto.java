@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-public class MemberDTO {
+public class MemberDto {
 
 	@Getter
 	@Builder
