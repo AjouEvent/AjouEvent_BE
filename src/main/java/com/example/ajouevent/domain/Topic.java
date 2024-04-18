@@ -26,7 +26,7 @@ public class Topic {
 	private Long id;
 
 	@Column(unique = true)
-	private String name;
+	private String department;
 
 	@OneToMany(mappedBy = "topic")
 	private List<TopicToken> topicTokens;
