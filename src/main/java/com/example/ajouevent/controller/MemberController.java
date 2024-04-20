@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import com.example.ajouevent.dto.RegisterRequest;
 import com.example.ajouevent.dto.MemberDTO;
@@ -51,4 +52,5 @@ public class MemberController {
 		System.out.println(principal.getName());
 		return "success";
 	}
+
 }
