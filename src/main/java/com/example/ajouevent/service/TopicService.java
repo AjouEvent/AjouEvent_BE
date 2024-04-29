@@ -1,5 +1,6 @@
 package com.example.ajouevent.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -95,7 +96,7 @@ public class TopicService {
 			Token token = Token.builder()
 				.value(loginRequest.getFcmToken())
 				.member(member)
-				.expirationDate(LocalDateTime.now().plusMonths(1))
+				.expirationDate(LocalDate.now().plusMonths(2))
 				.build();
 			log.info("DB에 저장하는 token : " + token.getValue());
 			tokenRepository.save(token);

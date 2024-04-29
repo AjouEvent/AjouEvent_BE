@@ -1,6 +1,6 @@
 package com.example.ajouevent.repository;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,7 +18,7 @@ public interface TokenRepository extends JpaRepository<Token, Long> {
 
 	void deleteByMember(Member m);
 
-	List<Token> findByExpirationDate(LocalDateTime now);
+	List<Token> findByExpirationDate(LocalDate now);
 
 	List<Token> findByMember(Member m);
 }

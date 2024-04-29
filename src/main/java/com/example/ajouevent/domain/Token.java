@@ -1,6 +1,6 @@
 package com.example.ajouevent.domain;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 
 import jakarta.persistence.Column;
@@ -16,9 +16,11 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -31,7 +33,7 @@ public class Token {
 	private String value;
 
 	@Column(nullable = false)
-	private LocalDateTime expirationDate;
+	private LocalDate expirationDate;
 
 	@OneToMany(mappedBy = "token")
 	private List<TopicToken> topicTokens;
