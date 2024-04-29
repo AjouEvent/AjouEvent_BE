@@ -9,6 +9,7 @@ import com.example.ajouevent.dto.RegisterRequest;
 import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.service.FCMService;
 import com.example.ajouevent.service.MemberService;
+import com.example.ajouevent.service.TopicService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,7 @@ public class MemberController {
 
 	private final FCMService fcmService;
 	private final MemberService memberService;
+	private final TopicService topicService;
 
 	@PostMapping("/register")
 	public String register(@RequestBody RegisterRequest request) throws IOException {
@@ -32,7 +34,9 @@ public class MemberController {
 
 	@PostMapping("/login")
 	public ResponseEntity<LoginResponse> login(@RequestBody MemberDto.LoginRequest loginRequest){
-		fcmService.saveToken(loginRequest);
+		log.info("/login api 호출");
+
+		topicService.saveFCMToken(loginRequest);
 		return memberService.login(loginRequest);
 	}
 
