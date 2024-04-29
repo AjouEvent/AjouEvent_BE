@@ -65,8 +65,8 @@ public class EventService {
 	// 크롤링한 공지사항 DB에 저장
 	@Transactional
 	public void postNotice(NoticeDto noticeDto) {
-		Type type3 = Type.valueOf(noticeDto.getEnglishTopic().toUpperCase());
-		log.info("저장하는 타입 : " + type3.getEnglishTopic());
+		Type type = Type.valueOf(noticeDto.getEnglishTopic().toUpperCase());
+		log.info("저장하는 타입 : " + type.getEnglishTopic());
 
 
 		// log.info("저장하는 타입1 : " + stringType);
@@ -77,7 +77,7 @@ public class EventService {
 			.title(noticeDto.getTitle())
 			.content(noticeDto.getContent())
 			.url(noticeDto.getUrl())
-			.type(type3)
+			.type(type)
 			.build();
 
 		log.info("크롤링한 공지사항 원래 url" + noticeDto.getUrl());
@@ -130,12 +130,16 @@ public class EventService {
 		String email = principal.getName();
 		Member member = memberRepository.findByEmail(email).orElseThrow(() -> new IllegalArgumentException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + email));
 
+		Type type = Type.valueOf(postNotificationDTO.getType().getEnglishTopic().toUpperCase());
+		log.info("저장하는 타입 : " + type.getEnglishTopic());
+
 		Alarm alarm = Alarm.builder()
 			.title(postNotificationDTO.getTitle())
 			.content(postNotificationDTO.getContent())
 			.writer(postNotificationDTO.getWriter())
 			.alarmDateTime(postNotificationDTO.getAlarmDateTime())
 			.subject(postNotificationDTO.getSubject())
+			.type(type)
 			.member(member).build();
 
 		alarmRepository.save(alarm);

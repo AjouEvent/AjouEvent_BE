@@ -4,9 +4,12 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.example.ajouevent.domain.Alarm;
+import com.example.ajouevent.domain.AlarmImage;
+
 @Getter
 @Builder
-public class AlarmDTO {
+public class AlarmDto {
 	private LocalDateTime alarmDateTime;
 	private String date;
 	private String title;
