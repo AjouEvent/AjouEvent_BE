@@ -1,4 +1,4 @@
-package com.example.ajouevent.domain;
+package com.example.ajouevent.dto;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -33,20 +33,6 @@ public class AlarmDto {
 			.subject(subject)
 			.target(target)
 			.alarmImageList(alarmImageList)
-			.build();
-	}
-
-	public Alarm toEntity2(List<AlarmImage> alarmImageList2) {
-		return Alarm.builder()
-			.alarmDateTime(alarmDateTime)
-			.date(date)
-			.title(title)
-			.content(content)
-			.url(url)
-			.writer(writer)
-			.subject(subject)
-			.target(target)
-			.alarmImageList(alarmImageList2)
 			.build();
 	}
 
