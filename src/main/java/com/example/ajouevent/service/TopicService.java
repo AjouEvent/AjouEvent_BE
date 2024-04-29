@@ -122,11 +122,15 @@ public class TopicService {
 		}
 	}
 
+
+
+	// 매일 00:00(자정)에 트리거됩니다(0 0 0 * * ?). 따라서 하루에 한 번 작업이 실행됩니다.
 	// 매일 자정에 실행되는 스케줄링 작업
-	@Scheduled(cron = "0 * * * * ?")
+	@Scheduled(cron = "0 0 0 * * ?")
 	@Transactional
 	public void unsubscribeExpiredTokens() {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDate now = LocalDate.now();
+		log.info("오늘의 날짜 : " + now);
 		List<Token> tokens = tokenRepository.findByExpirationDate(now);
 
 
