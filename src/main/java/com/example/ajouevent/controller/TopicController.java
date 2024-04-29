@@ -42,4 +42,14 @@ public class TopicController {
 			.build()
 		);
 	}
+
+	@DeleteMapping("/subscriptions/reset")
+	public ResponseEntity<ResponseDto> resetSubscriptions() {
+		topicService.resetAllSubscriptions();
+		return ResponseEntity.ok().body(ResponseDto.builder()
+			.successStatus(HttpStatus.OK)
+			.successContent("모든 topic 구독을 초기화합니다.")
+			.build()
+		);
+	}
 }
