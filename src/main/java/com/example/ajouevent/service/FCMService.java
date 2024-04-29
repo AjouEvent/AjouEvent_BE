@@ -1,22 +1,33 @@
 package com.example.ajouevent.service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import com.example.ajouevent.dao.FCMTokenDao;
 import com.example.ajouevent.domain.Alarm;
 import com.example.ajouevent.domain.AlarmImage;
 import com.example.ajouevent.domain.ClubEventImage;
+import com.example.ajouevent.domain.Member;
 import com.example.ajouevent.domain.Token;
+import com.example.ajouevent.domain.Topic;
+import com.example.ajouevent.domain.TopicMember;
+import com.example.ajouevent.domain.TopicToken;
 import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.dto.WebhookResponse;
+import com.example.ajouevent.repository.MemberRepository;
+import com.example.ajouevent.repository.TokenRepository;
+import com.example.ajouevent.repository.TopicMemberRepository;
+import com.example.ajouevent.repository.TopicTokenRepository;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
@@ -30,18 +41,17 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class FCMService {
 
-	private final FCMTokenDao fcmTokenDao;
+	private final TokenRepository tokenRepository;
+	private final MemberRepository memberRepository;
+	private final TopicTokenRepository topicTokenRepository;
+	private final TopicMemberRepository topicMemberRepository;
 
 	public void sendEventNotification(String email, Alarm alarm) {
-		if (!hasKey(email)) {
-			ResponseEntity.ok().body(ResponseDto.builder()
-				.successStatus(HttpStatus.OK)
-				.successContent("해당 유저가 존재하지 않습니다")
-				.Data(email)
-				.build()
-			);
-			log.info("알림 전송 실패");
-			return;
+		Member member = memberRepository.findByEmail(email)
+			.orElseThrow(() -> new NoSuchElementException("해당 유저가 존재하지 않습니다"));
+
+		if (member.getTokens().isEmpty()) {
+			log.info("알림 전송 실패: 토큰이 없습니다.");
 		}
 
 		String title = alarm.getSubject(); // ex) 아주대학교 소프트웨어학과 공지사항
@@ -60,25 +70,30 @@ public class FCMService {
 			imageUrl = firstImage.getUrl();
 		}
 
-		String token = getToken(email);
-		Message message = Message.builder()
-			.setToken(token)
-			.setNotification(Notification.builder()
-				.setTitle(title)
-				.setBody(body)
-				.setImage(imageUrl)
-				.build())
-			.putData("click_action", url) // 동아리, 학생회 이벤트는 post한 이벤트 상세 페이지로 redirection "https://ajou-event.shop/event/{eventId}
-			.build();
 
-		send(message);
+		List<Token> tokens = member.getTokens();
+
+		for (Token token : tokens) {
+			Message message = Message.builder()
+				.setToken(token.getValue())
+				.setNotification(Notification.builder()
+					.setTitle(title)
+					.setBody(body)
+					.setImage(imageUrl)
+					.build())
+				.putData("click_action", url) // 동아리, 학생회 이벤트는 post한 이벤트 상세 페이지로 redirection "https://ajou-event.shop/event/{eventId}
+				.build();
+
+			send(message);
+		}
+
 
 		log.info(email+ "에게 알림 전송 완료");
 
 		ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
 			.successContent("푸쉬 알림 성공")
-			.Data(token)
+			.Data(tokens)
 			.build()
 		);
 	}
@@ -184,29 +199,57 @@ public class FCMService {
 		}
 	}
 
-	public void saveClientId(MemberDto.LoginRequest loginRequest) {
-		// String clientId = loginRequest.getToken();
-
-		fcmTokenDao.saveToken(loginRequest); // -> 레포지토리나 redis에 유저 Id 값과 함께 저장
-	}
-
 	public void send(Message message) {
 		FirebaseMessaging.getInstance().sendAsync(message);
 	}
 
-	public void saveToken(MemberDto.LoginRequest loginRequest) {
-		fcmTokenDao.saveToken(loginRequest);
-	}
+	// public void saveFCMToken(MemberDto.LoginRequest loginRequest) {
+	// 	log.info("saveFCMToken 메서드 호출");
+	// 	Member member = memberRepository.findByEmail(loginRequest.getEmail()).orElseThrow(NoSuchElementException::new);
+	//
+	// 	// Check if the token already exists
+	// 	Optional<Token> existingToken = tokenRepository.findByValueAndMember(loginRequest.getFcmToken(), member);
+	// 	if (existingToken.isPresent()) {
+	// 		log.info("이미 존재하는 토큰: " + existingToken.get().getValue());
+	// 	} else {
+	// 		// Only create and save a new token if it does not exist
+	// 		Token token = Token.builder()
+	// 			.value(loginRequest.getFcmToken())
+	// 			.member(member)
+	// 			.build();
+	// 		log.info("DB에 저장하는 token : " + token.getValue());
+	// 		tokenRepository.save(token);
+	//
+	// 		// 사용자가 구독 중인 모든 토픽을 가져옴
+	// 		List<TopicMember> topicMembers = topicMemberRepository.findByMember(member);
+	// 		List<Topic> subscribedTopics = topicMembers.stream()
+	// 			.map(TopicMember::getTopic)
+	// 			.distinct()
+	// 			.collect(Collectors.toList());
+	//
+	// 		// 새 토큰을 기존에 구독된 모든 토픽과 매핑하여 TopicToken 생성 및 저장
+	// 		List<TopicToken> newSubscriptions = subscribedTopics.stream()
+	// 			.map(topic -> new TopicToken(topic, token))
+	// 			.collect(Collectors.toList());
+	// 		topicTokenRepository.saveAll(newSubscriptions);
+	//
+	// 		// 각 토픽에 대해 새 토큰 구독 처리
+	// 		for (Topic topic : subscribedTopics) {
+	// 			subscribeToTopic(topic.getDepartment(), Collections.singletonList(token.getValue()));
+	// 			log.info("새 토큰으로 " + topic.getDepartment() + " 토픽을 다시 구독합니다.");
+	// 		}
+	// 	}
+	// }
 
-	public void deleteToken(String email) {
-		fcmTokenDao.deleteToken(email);
-	}
-
-	private boolean hasKey(String email) {
-		return fcmTokenDao.hasKey(email);
-	}
-
-	private String getToken(String email) {
-		return fcmTokenDao.getToken(email);
-	}
+	// public void deleteToken(String email) {
+	// 	topicTokenRepository.deleteToken(email);
+	// }
+	//
+	// private boolean hasKey(String email) {
+	// 	return fcmTokenDao.hasKey(email);
+	// }
+	//
+	// private String getToken(String email) {
+	// 	return fcmTokenDao.getToken(email);
+	// }
 }
