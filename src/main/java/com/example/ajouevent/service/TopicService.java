@@ -31,45 +31,43 @@ public class TopicService {
 	private final TopicTokenRepository topicTokenRepository;
 	private final FCMService fcmService;
 
+	@Transactional
 	public void subscribeToTopic(TopicRequest topicRequest) {
 		String topicName = topicRequest.getTopic();
-		List<Token> tokens = topicRequest.getTokens();
-		Optional<Topic> optionalTopic = topicRepository.findByDepartment(topicName);
-		Topic topic;
-		if (optionalTopic.isPresent()) {
-			topic = optionalTopic.get();
-		} else {
-			topic = Topic.builder()
-				.department(topicName)
-				.build();
-		}
-		topicRepository.save(topic);
 
-		List<TopicToken> topicTokens = new ArrayList<>();
-		for (Token token : tokens) {
-			Token existingToken = tokenRepository.findByValue(token.getValue()); // 데이터베이스에서 토큰 값으로 조회
-			if (existingToken != null) {
-				// 이미 존재하는 토큰인 경우 기존 토큰을 사용
-				topicTokens.add(TopicToken.builder()
-					.topic(topic)
-					.token(existingToken)
-					.build());
-			} else {
-				// 존재하지 않는 경우 새로운 토큰을 저장
-				Token savedToken = tokenRepository.save(token);
-				topicTokens.add(TopicToken.builder()
-					.topic(topic)
-					.token(savedToken)
-					.build());
-			}
-		}
+		// 토픽 가져오기 또는 에러처리
+		Topic topic = topicRepository.findByDepartment(topicName)
+			.orElseThrow(() -> new NoSuchElementException("해당 토픽을 찾을 수 없습니다: " + topicName));
 
+		// 사용자 정보는 스프링시큐리티 컨텍스트에서 가져옴
+		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+		log.info("멤버 이메일 : " + memberEmail);
+
+		// 현재 사용자의 토큰 목록 가져오기
+		List<Token> memberTokens = tokenRepository.findByMemberEmail(memberEmail);
+
+		// 현재 사용자 정보 가져오기
+		Member member = memberRepository.findByEmail(memberEmail)
+			.orElseThrow(() -> new NoSuchElementException("해당 이메일의 멤버를 찾을 수 없습니다: " + memberEmail));
+
+		// TopicMember 생성 후 Repository에 저장
+		TopicMember topicMember = TopicMember.builder()
+			.topic(topic)
+			.member(member)
+			.build();
+		topicMemberRepository.save(topicMember);
+
+
+		// 토픽과 토큰을 매핑하여 저장 -> 사용자가 가지고 있는 토큰들이 topic을 구독
+		List<TopicToken> topicTokens = memberTokens.stream()
+			.map(token -> new TopicToken(topic, token))
+			.collect(Collectors.toList());
 		topicTokenRepository.saveAll(topicTokens);
 
-		List<String> tokenValues = tokens.stream()
+		// FCM 서비스를 사용하여 토픽에 대한 구독 진행
+		List<String> tokenValues = memberTokens.stream()
 			.map(Token::getValue)
 			.collect(Collectors.toList());
-
 		fcmService.subscribeToTopic(topicName, tokenValues);
 
 	}

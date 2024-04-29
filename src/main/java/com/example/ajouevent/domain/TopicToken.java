@@ -29,4 +29,9 @@ public class TopicToken {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "token_id")
 	private Token token;
+
+	public TopicToken(Topic topic, Token token) {
+		this.topic = topic;
+		this.token = token;
+	}
 }
