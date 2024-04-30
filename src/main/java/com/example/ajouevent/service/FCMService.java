@@ -103,6 +103,7 @@ public class FCMService {
 		log.info("크롤링한 공지사항 date: " + noticeDto.getDate());
 		log.info("크롤링한 공지사항 title: " + noticeDto.getTitle());
 		log.info("크롤링한 공지사항 englishTopic: " + noticeDto.getEnglishTopic());
+		log.info("크롤링한 공지사항 url: " + noticeDto.getUrl());
 
 
 		// 알람에서 꺼낼지 vs payload에서 꺼낼지
