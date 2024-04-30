@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-public class MemberDTO {
+public class MemberDto {
 
 	@Getter
 	@Builder
@@ -16,7 +16,7 @@ public class MemberDTO {
 
 		private String email;
 		private String password;
-		private String token;
+		private String fcmToken;
 
 	}
 

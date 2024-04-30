@@ -11,7 +11,7 @@ import lombok.Setter;
 @Setter
 @Builder
 @AllArgsConstructor
-public class ResponseDTO {
+public class ResponseDto {
 
 	private HttpStatus successStatus;
 	private String successContent;

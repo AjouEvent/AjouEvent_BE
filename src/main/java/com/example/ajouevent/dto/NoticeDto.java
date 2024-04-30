@@ -1,8 +1,9 @@
 package com.example.ajouevent.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
-import com.example.ajouevent.domain.Type;
+import com.example.ajouevent.domain.ClubEventImage;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
@@ -12,22 +13,26 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-public class PostNotificationDTO {
+public class NoticeDto {
 
 	@NotNull(message = "제목은 Null 일 수 없습니다!")
 	private String title;
 
 	private String content;
 
-	private String writer;
+	private String category;
 
-	private String subject;
+	private String department;
 
-	private String major;
+	private String englishTopic;
 
-	private LocalDateTime alarmDateTime;
+	private String koreanTopic;
 
-	@NotNull(message = "type은 Null일 수 없습니다")
-	private Type type;
+	private String url;
+
+	private List<String> images;
+
+	private LocalDateTime date;
+
 
 }

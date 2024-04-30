@@ -1,7 +1,7 @@
 package com.example.ajouevent.auth;
 
 import com.example.ajouevent.domain.Member;
-import com.example.ajouevent.dto.MemberDTO;
+import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,7 +22,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         Member member = memberRepository.findById(Long.parseLong(id))
                 .orElseThrow(() -> new UsernameNotFoundException("해당하는 유저가 없습니다."));
 
-        MemberDTO.MemberInfoDto dto = MemberDTO.MemberInfoDto.builder()
+        MemberDto.MemberInfoDto dto = MemberDto.MemberInfoDto.builder()
                 .memberId(member.getId())
                 .email(member.getEmail())
                 .role(member.getRole())

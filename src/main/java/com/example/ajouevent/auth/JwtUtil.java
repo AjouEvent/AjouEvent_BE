@@ -1,6 +1,6 @@
 package com.example.ajouevent.auth;
 
-import com.example.ajouevent.dto.MemberDTO;
+import com.example.ajouevent.dto.MemberDto;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -39,7 +39,7 @@ public class JwtUtil {
     }
 
     // access 토큰 생성
-    public String createAccessToken(MemberDTO.MemberInfoDto member) {
+    public String createAccessToken(MemberDto.MemberInfoDto member) {
         Claims claims = Jwts.claims().setSubject(String.valueOf(member.getMemberId()));
         claims.put("memberId", member.getMemberId());
         claims.put("email", member.getEmail());
@@ -59,7 +59,7 @@ public class JwtUtil {
 
 
     // refresh token 생성
-    public String createRefreshToken(MemberDTO.MemberInfoDto member) {
+    public String createRefreshToken(MemberDto.MemberInfoDto member) {
         Claims claims = Jwts.claims().setSubject(String.valueOf(member.getMemberId())); // Include user ID claim
         claims.put("memberId", member.getMemberId());
 

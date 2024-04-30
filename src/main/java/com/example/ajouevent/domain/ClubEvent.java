@@ -33,9 +33,13 @@ public class ClubEvent {
     private String subject;
 
     @Column
-    private String major;
+    private String url;
 
     @Column
+    private String major;
+
+    @Column(length = 50000)
+    @Enumerated(value = EnumType.STRING)
     private Type type;
 
     @OneToMany(mappedBy = "clubEvent", fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.REMOVE}, orphanRemoval = true)

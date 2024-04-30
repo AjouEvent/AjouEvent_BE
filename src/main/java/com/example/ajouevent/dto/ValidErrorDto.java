@@ -9,7 +9,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-public class ValidErrorDTO {
+public class ValidErrorDto {
 	private String errorCode;
 	private List<String> errorContent;
 }

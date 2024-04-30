@@ -32,6 +32,10 @@ public class Member {
 	@Column
 	private String role;
 
+	@OneToMany(mappedBy = "member", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST,
+		CascadeType.REMOVE}, orphanRemoval = true)
+	private List<Token> tokens;
+
 	@OneToMany(mappedBy = "member", fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.REMOVE}, orphanRemoval = true)
 	@ToString.Exclude
 	private List<Alarm> alarmList;

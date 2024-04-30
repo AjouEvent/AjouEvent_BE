@@ -46,6 +46,10 @@ public class Alarm {
     @Column
     private String target;
 
+    @Column(length = 50000)
+    @Enumerated(value = EnumType.STRING)
+    private Type type;
+
     @OneToMany(mappedBy = "alarm", fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.REMOVE}, orphanRemoval = true)
     @ToString.Exclude
     private List<AlarmImage> alarmImageList;

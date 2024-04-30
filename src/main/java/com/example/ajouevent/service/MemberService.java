@@ -1,10 +1,13 @@
 package com.example.ajouevent.service;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import com.example.ajouevent.auth.JwtUtil;
 import com.example.ajouevent.domain.Member;
+import com.example.ajouevent.domain.Token;
 import com.example.ajouevent.dto.*;
 import jakarta.validation.ValidationException;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.ajouevent.repository.MemberRepository;
+import com.example.ajouevent.repository.TokenRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class MemberService {
 	private final MemberRepository memberRepository;
+	private final TokenRepository tokenRepository;
 	private final PasswordEncoder encoder;
 	private final JwtUtil jwtUtil;
 	private final BCryptPasswordEncoder BCryptEncoder;
@@ -51,7 +56,7 @@ public class MemberService {
 	}
 
 	@Transactional
-	public ResponseEntity<LoginResponse> login(MemberDTO.LoginRequest loginRequest) {
+	public ResponseEntity<LoginResponse> login(MemberDto.LoginRequest loginRequest) {
 		String email = loginRequest.getEmail();
 		String password = loginRequest.getPassword();
 		Optional<Member> optionalMember = memberRepository.findByEmail(email);
@@ -65,7 +70,7 @@ public class MemberService {
 			throw new BadCredentialsException("비밀번호가 일치하지 않습니다.");
 		}
 
-		MemberDTO.MemberInfoDto memberInfoDto = MemberDTO.MemberInfoDto.builder()
+		MemberDto.MemberInfoDto memberInfoDto = MemberDto.MemberInfoDto.builder()
 				.memberId(member.getId())
 				.email(member.getEmail())
 				.password(member.getPassword())
@@ -74,6 +79,19 @@ public class MemberService {
 
 		String accessToken = jwtUtil.createAccessToken(memberInfoDto);
 		String refreshToken = jwtUtil.createRefreshToken(memberInfoDto);
+
+
+		// member = memberRepository.findByEmail(loginRequest.getEmail()).orElseThrow(NoSuchElementException::new);
+
+
+		// 로그인을 하고 토큰이 이미 존재한다면, token의 만료 기간을 현재 날짜에서 2달 늘려줌
+		Optional<Token> existingToken = tokenRepository.findByValueAndMember(loginRequest.getFcmToken(), member);
+		if (existingToken.isPresent()) {
+			Token token = existingToken.get();
+			log.info("이미 존재하는 토큰: " + existingToken.get().getValue());
+			token.setExpirationDate(LocalDate.now().plusMonths(2));
+			tokenRepository.save(token);
+		}
 
 		LoginResponse loginResponse = LoginResponse.builder()
 				.id(member.getId())
@@ -97,7 +115,7 @@ public class MemberService {
 
 		Member member = memberRepository.findById(memberId).orElseThrow();
 
-			MemberDTO.MemberInfoDto memberInfoDto = MemberDTO.MemberInfoDto.builder()
+			MemberDto.MemberInfoDto memberInfoDto = MemberDto.MemberInfoDto.builder()
 				.memberId(member.getId())
 				.email(member.getEmail())
 				.password(member.getPassword())

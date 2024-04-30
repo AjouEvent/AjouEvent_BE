@@ -1,7 +1,7 @@
 package com.example.ajouevent.auth;
 
 import com.example.ajouevent.domain.Member;
-import com.example.ajouevent.dto.MemberDTO;
+import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.repository.MemberRepository;
 import com.google.gson.JsonObject;
 import jakarta.servlet.ServletException;
@@ -48,18 +48,18 @@ public class MyAuthenticationSuccessHandler extends SimpleUrlAuthenticationSucce
             // 회원이 존재하면 jwt token 발행을 시작한다.
             Member member = memberRepository.findByEmail(email).orElseThrow();
 
-            MemberDTO.MemberInfoDto dto = MemberDTO.MemberInfoDto.builder().memberId(member.getId()).email(email).role(role).build();
-            String accessToken = jwtUtil.createAccessToken(dto);
-            String refreshToken = jwtUtil.createRefreshToken(dto);
-            log.info(String.valueOf(dto));
+            MemberDto.MemberInfoDto Dto = MemberDto.MemberInfoDto.builder().memberId(member.getId()).email(email).role(role).build();
+            String accessToken = jwtUtil.createAccessToken(Dto);
+            String refreshToken = jwtUtil.createRefreshToken(Dto);
+            log.info(String.valueOf(Dto));
 
             response.setContentType("application/json");
             response.setCharacterEncoding("UTF-8");
             JsonObject jsonResponse = new JsonObject();
             jsonResponse.addProperty("accessToken", accessToken);
             jsonResponse.addProperty("refreshToken", refreshToken);
-            jsonResponse.addProperty("id", dto.getMemberId());
-            jsonResponse.addProperty("email", dto.getEmail());
+            jsonResponse.addProperty("id", Dto.getMemberId());
+            jsonResponse.addProperty("email", Dto.getEmail());
             PrintWriter out = response.getWriter();
             out.print(jsonResponse.toString());
             out.flush();
