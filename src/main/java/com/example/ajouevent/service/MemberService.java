@@ -46,6 +46,7 @@ public class MemberService {
 				.email(registerRequest.getEmail())
 				.major(registerRequest.getMajor())
 				.phone(registerRequest.getPhone())
+				.name(registerRequest.getName())
 				.password(password)
 				.build();
 
@@ -97,6 +98,8 @@ public class MemberService {
 				.grantType("Authorization")
 				.accessToken(accessToken)
 				.refreshToken(refreshToken)
+				.name(member.getName())
+				.major(member.getMajor())
 				.build();
 
 		return ResponseEntity.ok().body(loginResponse);

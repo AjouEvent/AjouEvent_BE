@@ -14,12 +14,16 @@ public class LoginResponse {
 	private String grantType;
 	private String accessToken;
 	private String refreshToken;
+	private String name;
+	private String major;
 
 	@Builder
-	public LoginResponse(Long id, String grantType, String accessToken, String refreshToken) {
+	public LoginResponse(Long id, String grantType, String accessToken, String refreshToken, String name, String major) {
 		this.id = id;
 		this.grantType = grantType;
 		this.accessToken = accessToken;
 		this.refreshToken = refreshToken;
+		this.name = name;
+		this.major = major;
 	}
 }

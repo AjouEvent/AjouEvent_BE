@@ -17,6 +17,10 @@ public class Member {
 	@Column(nullable = false, unique = true)
 	private String email;
 
+	@Column
+	private String name;
+
+	@Column
 	private String password;
 
 	@Column
@@ -37,9 +41,10 @@ public class Member {
 	private List<Alarm> alarmList;
 
 	@Builder
-	public Member(Long id, String email, String password, String major, String phone) {
+	public Member(Long id, String email, String name, String password, String major, String phone) {
 		this.id = id;
 		this.email = email;
+		this.name = name;
 		this.password = password;
 		this.major = major;
 		this.phone = phone;
