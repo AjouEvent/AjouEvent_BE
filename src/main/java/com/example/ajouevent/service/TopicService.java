@@ -8,6 +8,8 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,7 @@ import com.example.ajouevent.domain.Topic;
 import com.example.ajouevent.domain.TopicMember;
 import com.example.ajouevent.domain.TopicToken;
 import com.example.ajouevent.dto.MemberDto;
+import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.TopicRequest;
 import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.TokenRepository;
@@ -170,4 +173,25 @@ public class TopicService {
 			throw new RuntimeException();
 		}
 	}
+
+	@Transactional
+	public List<String> getSubscribedTopics() {
+		log.info("getSubscribedTopics 입장");
+		// 스프링 시큐리티 컨텍스트에서 현재 사용자의 이메일 가져오기
+		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+		log.info("가져온 이메일 : " + memberEmail);
+		// 이메일을 기반으로 회원 정보 조회
+		Member member = memberRepository.findByEmail(memberEmail)
+			.orElseThrow(() -> new NoSuchElementException("해당 이메일을 가진 사용자가 없습니다."));
+
+		// 회원이 구독하는 토픽 목록 조회
+		List<TopicMember> topicMembers = topicMemberRepository.findByMember(member);
+		// TopicMember 목록에서 토픽의 이름만 추출하여 반환
+		return topicMembers.stream()
+			.map(topicMember -> topicMember.getTopic().getDepartment())
+			.collect(Collectors.toList());
+	}
+
+
+
 }
