@@ -30,7 +30,7 @@ public class Token {
 	private Long id;
 
 	@Column(unique = true)
-	private String value;
+	private String tokenValue;
 
 	@Column(nullable = false)
 	private LocalDate expirationDate;

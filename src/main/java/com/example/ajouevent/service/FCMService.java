@@ -75,7 +75,7 @@ public class FCMService {
 
 		for (Token token : tokens) {
 			Message message = Message.builder()
-				.setToken(token.getValue())
+				.setToken(token.getTokenValue())
 				.setNotification(Notification.builder()
 					.setTitle(title)
 					.setBody(body)
