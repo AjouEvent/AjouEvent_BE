@@ -46,6 +46,17 @@ public class EventController {
 		);
 	}
 
+	// 게시글 삭제
+	@DeleteMapping("/{eventId}")
+	public ResponseEntity<ResponseDto> deleteEvent(@PathVariable Long eventId) {
+		eventService.deleteEvent(eventId);
+		return ResponseEntity.ok().body(ResponseDto.builder()
+			.successStatus(HttpStatus.OK)
+			.successContent("게시글이 삭제 되었습니다.")
+			.build()
+		);
+	}
+
 	// @GetMapping("/{eventId}")
 	// public EventResponseDto detail(@PathVariable("eventId") Long eventId) {
 	// 	return eventService.getEvent(eventId);

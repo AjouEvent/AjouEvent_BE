@@ -196,6 +196,12 @@ public class EventService {
 		return eventResponseDtoList;
 	}
 
+	// 게시글 삭제
+	@Transactional
+	public void deleteEvent(Long eventId) {
+		eventRepository.deleteById(eventId);
+	}
+
 	@Transactional
 	public List<EventResponseDto> getEventTypeList(String type) {
 		// 대소문자를 구분하지 않고 입력 받기 위해 입력된 문자열을 대문자로 변환합니다.
