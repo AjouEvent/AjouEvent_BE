@@ -13,7 +13,10 @@ import com.example.ajouevent.dto.EventResponseDto;
 import com.example.ajouevent.dto.PostEventDto;
 import com.example.ajouevent.dto.PostNotificationDto;
 import com.example.ajouevent.dto.ResponseDto;
+import com.example.ajouevent.dto.UpdateEventRequest;
 import com.example.ajouevent.service.EventService;
+
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -45,6 +48,30 @@ public class EventController {
 			.build()
 		);
 	}
+
+	// 게시글 수정 - 데이터
+	@PatchMapping("/{eventId}/data")
+	public ResponseEntity<ResponseDto> updateEventData(@PathVariable("eventId") Long eventId,
+		@RequestBody UpdateEventRequest request) {
+		eventService.updateEventData(eventId, request);
+		return ResponseEntity.ok().body(ResponseDto.builder()
+			.successStatus(HttpStatus.OK)
+			.successContent("게시글 데이터가 수정되었습니다.")
+			.build()
+		);
+	}
+
+	// 게시글 수정 - 이미지
+	@PatchMapping("/{eventId}/images")
+	public ResponseEntity<ResponseDto> updateEventImages(@PathVariable("eventId") Long eventId,
+		@RequestPart("image") List<MultipartFile> images) throws IOException {
+		eventService.updateEventImages(eventId, images);
+		return ResponseEntity.ok().body(ResponseDto.builder()
+			.successStatus(HttpStatus.OK)
+			.successContent("게시글 이미지가 수정되었습니다.")
+			.build());
+	}
+
 
 	// 게시글 삭제
 	@DeleteMapping("/{eventId}")

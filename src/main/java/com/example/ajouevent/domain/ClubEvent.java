@@ -2,10 +2,11 @@ package com.example.ajouevent.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.joda.time.DateTime;
 
 import java.time.LocalDateTime;
 import java.util.List;
+
+import com.example.ajouevent.dto.UpdateEventRequest;
 
 @Entity
 @Getter

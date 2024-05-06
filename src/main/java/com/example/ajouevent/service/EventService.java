@@ -22,6 +22,7 @@ import com.example.ajouevent.dto.EventResponseDto;
 import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.PostEventDto;
 import com.example.ajouevent.dto.PostNotificationDto;
+import com.example.ajouevent.dto.UpdateEventRequest;
 import com.example.ajouevent.repository.AlarmRepository;
 import com.example.ajouevent.repository.EventRepository;
 import com.example.ajouevent.repository.MemberRepository;
@@ -194,6 +195,43 @@ public class EventService {
 		}
 
 		return eventResponseDtoList;
+	}
+
+	// 게시글 수정 - 데이터
+	@Transactional
+	public void updateEventData(Long eventId, UpdateEventRequest request) {
+		ClubEvent clubEvent = eventRepository.findById(eventId)
+			.orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + eventId));
+		clubEvent.updateEvent(request);
+
+		eventRepository.save(clubEvent);
+	}
+
+	// 게시글 수정 - 이미지
+	@Transactional
+	public void updateEventImages(Long eventId, List<MultipartFile> images) throws IOException {
+		ClubEvent clubEvent = eventRepository.findById(eventId)
+			.orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + eventId));
+
+		// Process and update images if there are any
+		List<ClubEventImage> updatedImages = new ArrayList<>();
+		if (images != null && !images.isEmpty()) {
+			for (MultipartFile image : images) {
+				String imageUrl = s3Upload.uploadFiles(image, "images");
+				ClubEventImage clubEventImage = ClubEventImage.builder()
+					.url(imageUrl)
+					.clubEvent(clubEvent)
+					.build();
+				updatedImages.add(clubEventImage);
+			}
+			// Remove old images and add updated ones
+			clubEvent.getClubEventImageList().clear();
+			clubEvent.getClubEventImageList().addAll(updatedImages);
+		}
+
+		// Save the updated event
+		eventRepository.save(clubEvent);
+		log.info("Updated event with ID: " + eventId);
 	}
 
 	// 게시글 삭제
