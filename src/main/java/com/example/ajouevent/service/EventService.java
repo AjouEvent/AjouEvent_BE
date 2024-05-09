@@ -234,7 +234,7 @@ public class EventService {
 			}
 		}
 
-		return eventResponseDtoList;
+		eventRepository.save(clubEvent);
 	}
 
 
