@@ -208,7 +208,7 @@ public class TopicService {
 
 		// FCM 서비스를 사용하여 토픽에 대한 구독 취소 진행
 		List<String> tokenValues = memberTokens.stream()
-			.map(Token::getValue)
+			.map(Token::getTokenValue)
 			.collect(Collectors.toList());
 		log.info(topicName + " 구독이 취소 되었습니다.");
 		fcmService.unsubscribeFromTopic(topicName, tokenValues);
@@ -229,11 +229,11 @@ public class TopicService {
 		} else {
 			// Only create and save a new token if it does not exist
 			Token token = Token.builder()
-				.value(loginRequest.getFcmToken())
+				.tokenValue(loginRequest.getFcmToken())
 				.member(member)
 				.expirationDate(LocalDate.now().plusMonths(2))
 				.build();
-			log.info("DB에 저장하는 token : " + token.getValue());
+			log.info("DB에 저장하는 token : " + token.getTokenValue());
 			tokenRepository.save(token);
 
 			// 사용자가 구독 중인 모든 토픽을 가져옴
@@ -251,7 +251,7 @@ public class TopicService {
 
 			// 각 토픽에 대해 새 토큰 구독 처리
 			for (Topic topic : subscribedTopics) {
-				fcmService.subscribeToTopic(topic.getDepartment(), Collections.singletonList(token.getValue()));
+				fcmService.subscribeToTopic(topic.getDepartment(), Collections.singletonList(token.getTokenValue()));
 				log.info("새 토큰으로 " + topic.getDepartment() + " 토픽을 다시 구독합니다.");
 			}
 		}
