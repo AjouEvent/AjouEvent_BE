@@ -60,6 +60,8 @@ public class MyAuthenticationSuccessHandler extends SimpleUrlAuthenticationSucce
             jsonResponse.addProperty("refreshToken", refreshToken);
             jsonResponse.addProperty("id", Dto.getMemberId());
             jsonResponse.addProperty("email", Dto.getEmail());
+            jsonResponse.addProperty("name", member.getName());
+            jsonResponse.addProperty("major", member.getMajor());
             PrintWriter out = response.getWriter();
             out.print(jsonResponse.toString());
             out.flush();
