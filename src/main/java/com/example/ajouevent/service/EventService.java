@@ -56,7 +56,7 @@ public class EventService {
 
 	// 행사, 동아리, 학생회 이벤트와 같은 알림 등록용 메서드
 	// Controller의 호출없이 주기적으로 계속 실행
-	@Scheduled(fixedRate = 10000)
+	@Scheduled(fixedRate = 60000)
 	@Transactional
 	public void sendEventNotification() {
 		LocalDateTime now = LocalDateTime.now();
