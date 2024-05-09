@@ -54,4 +54,5 @@ public class MemberController {
 		MemberGetDto memberGetDtoList = memberService.getMemberInfo(principal);
 		return ResponseEntity.status(HttpStatus.OK).body(memberGetDtoList);
 	}
+
 }
