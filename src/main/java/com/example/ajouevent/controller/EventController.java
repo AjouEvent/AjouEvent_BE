@@ -1,9 +1,11 @@
 package com.example.ajouevent.controller;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.security.Principal;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -61,9 +63,9 @@ public class EventController {
 	public List<EventResponseDto> getEventTypeList(@PathVariable String type) {
 		return eventService.getEventTypeList(type);
 	}
-
 	@GetMapping("/test")
-	public String testGetMethod() {
-		return "get";
-	}
+	public void testGetMethod() throws GeneralSecurityException, IOException {
+        eventService.GoogleAPIClient();
+    }
+
 }
