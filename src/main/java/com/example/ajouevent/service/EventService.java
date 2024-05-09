@@ -197,14 +197,161 @@ public class EventService {
 		return eventResponseDtoList;
 	}
 
-	// 게시글 수정 - 데이터
+
+	// // 게시글 수정 - 데이터
+	// @Transactional
+	// public void updateEventData(Long eventId, UpdateEventRequest request) {
+	//
+	// 	// 수정할 게시글 조회
+	// 	ClubEvent clubEvent = eventRepository.findById(eventId)
+	// 		.orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + eventId));
+	//
+	// 	// 게시글 내용 수정
+	// 	clubEvent.updateEvent(request);
+	//
+	// 	// 이미지 목록 불러 오기
+	// 	List<ClubEventImage> existingImages = clubEvent.getClubEventImageList();
+	//
+	// 	List<String> existingUrls = existingImages.stream()
+	// 		.map(ClubEventImage::getUrl)
+	// 		.collect(Collectors.toList());
+	//
+	// 	existingUrls.forEach(url -> log.info(" 기존 이미지 URL 리스트 : {}", url));
+	//
+	// 	// 새로운 이미지 URL 리스트
+	// 	List<String> newUrls = request.getImageUrls();
+	//
+	// 	// 삭제할 이미지 엔티티 목록 생성
+	// 	List<ClubEventImage> toDeleteImages = existingImages.stream()
+	// 		.filter(image -> !newUrls.contains(image.getUrl()))
+	// 		.collect(Collectors.toList());
+	//
+	// 	// S3에서 삭제 및 데이터베이스에서 삭제
+	// 	toDeleteImages.forEach(image -> {
+	// 		try {
+	// 			String splitStr = ".com/";
+	// 			String fileName = image.getUrl().substring(image.getUrl().lastIndexOf(splitStr) + splitStr.length());
+	// 			fileService.deleteFile(fileName);
+	// 			log.info("Deleting image from S3 with fileName: {}", fileName);
+	// 		} catch (IOException e) {
+	// 			log.error("Failed to delete image from S3: {}", image.getUrl(), e);
+	// 		}
+	// 	});
+	//
+	// 	// 삭제할 이미지 URL 리스트 생성
+	// 	List<String> toDeleteUrls = existingUrls.stream()
+	// 		.filter(url -> !newUrls.contains(url))
+	// 		.collect(Collectors.toList());
+	//
+	// 	toDeleteImages.forEach(image -> log.info("디비에서 삭제하는 이미지 url" + image.getUrl()) );
+	// 	// 데이터베이스에서 삭제
+	//
+	// 	clubEventImageRepository.deleteClubEventImagesByUrls(toDeleteUrls);
+	// 	clubEventImageRepository.flush();
+	// 	log.info("Deleted {} images from database", toDeleteImages.size());
+	//
+	// 	// 추가할 이미지 URL 찾기
+	// 	List<String> toAddUrls = newUrls.stream()
+	// 		.filter(url -> !existingUrls.contains(url))
+	// 		.collect(Collectors.toList());
+	//
+	// 	// S3에 새롭게 추가될 이미지를 ClubEventImage 엔티티로 생성하고 저장
+	// 	toAddUrls.forEach(url -> {
+	// 		ClubEventImage newImage = ClubEventImage.builder()
+	// 			.url(url)
+	// 			.clubEvent(clubEvent)
+	// 			.build();
+	// 		// clubEvent.getClubEventImageList().add(newImage);
+	// 		clubEventImageRepository.save(newImage);
+	// 		log.info("새로 추가하는 이미지 URL : {}", url);
+	// 	});
+	//
+	// 	newUrls.forEach(url -> log.info(" 새로운 이미지 URL 리스트 : {}", url));
+	//
+	// 	eventRepository.save(clubEvent);
+	// }
+
+
+	// 게시글 수정 - 데이터 -> 성능 개선
 	@Transactional
 	public void updateEventData(Long eventId, UpdateEventRequest request) {
+		// 수정할 게시글 조회
 		ClubEvent clubEvent = eventRepository.findById(eventId)
 			.orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + eventId));
+
+		// 게시글 내용 수정
 		clubEvent.updateEvent(request);
 
-		eventRepository.save(clubEvent);
+		// 이미지 목록 불러 오기
+		List<ClubEventImage> existingImages = clubEvent.getClubEventImageList();
+		Set<String> existingUrls = existingImages.stream()
+			.map(ClubEventImage::getUrl)
+			.collect(Collectors.toSet());
+
+		// 새로운 이미지 URL 리스트
+		Set<String> newUrls = new HashSet<>(request.getImageUrls());
+
+		// 변경 필요한 작업 식별
+		List<ClubEventImage> toDeleteImages = new ArrayList<>();
+		List<String> toAddUrls = new ArrayList<>();
+
+		// 식별 과정 최적화
+		existingImages.forEach(image -> {
+			if (!newUrls.contains(image.getUrl())) {
+				toDeleteImages.add(image);
+			}
+		});
+
+		newUrls.forEach(url -> {
+			if (!existingUrls.contains(url)) {
+				toAddUrls.add(url);
+			}
+		});
+
+		// S3에서 이미지 삭제 및 데이터베이스 삭제 - 비동기 실행
+		deleteImagesAsync(toDeleteImages);
+
+		// 새 이미지 추가
+		List<ClubEventImage> addedImages = toAddUrls.stream()
+			.map(url -> ClubEventImage.builder()
+				.url(url)
+				.clubEvent(clubEvent)
+				.build())
+			.collect(Collectors.toList());
+
+		clubEventImageRepository.saveAll(addedImages);
+
+		// 로깅
+		logChanges(existingUrls, newUrls);
+	}
+
+	// 비동기 삭제 처리
+	@Async
+	public void deleteImagesAsync(List<ClubEventImage> images) {
+		List<String> urlsToDelete = images.stream().map(ClubEventImage::getUrl).collect(Collectors.toList());
+		images.forEach(image -> {
+			try {
+				String fileName = extractFileName(image.getUrl());
+				fileService.deleteFile(fileName);
+				log.info("Deleting image from S3 with fileName: {}", fileName);
+			} catch (IOException e) {
+				log.error("Failed to delete image from S3: {}", image.getUrl(), e);
+			}
+		});
+		clubEventImageRepository.deleteClubEventImagesByUrls(urlsToDelete);
+		clubEventImageRepository.flush();
+	}
+
+	// 파일명 추출
+	private String extractFileName(String url) {
+		String splitStr = ".com/";
+		return url.substring(url.lastIndexOf(splitStr) + splitStr.length());
+	}
+
+	// 변경 로깅
+	private void logChanges(Set<String> existingUrls, Set<String> newUrls) {
+		existingUrls.forEach(url -> log.info("Existing image URL: {}", url));
+		newUrls.forEach(url -> log.info("New image URL: {}", url));
 	}
 
 	// 게시글 수정 - 이미지
