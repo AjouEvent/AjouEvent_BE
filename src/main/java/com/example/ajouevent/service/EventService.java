@@ -91,6 +91,7 @@ public class EventService {
 		ClubEvent clubEvent = ClubEvent.builder()
 			.title(noticeDto.getTitle())
 			.content(noticeDto.getContent())
+			.date(LocalDateTime.now())
 			.url(noticeDto.getUrl())
 			.type(type)
 			.build();
