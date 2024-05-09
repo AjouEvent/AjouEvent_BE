@@ -5,25 +5,37 @@ import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.stream.Collectors;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.ajouevent.FileService;
 import com.example.ajouevent.S3Upload;
 import com.example.ajouevent.domain.Alarm;
 import com.example.ajouevent.domain.ClubEvent;
 import com.example.ajouevent.domain.ClubEventImage;
 import com.example.ajouevent.domain.Member;
 import com.example.ajouevent.domain.Type;
+import com.example.ajouevent.dto.EventDetailResponseDto;
 import com.example.ajouevent.dto.EventResponseDto;
 import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.PostEventDto;
 import com.example.ajouevent.dto.PostNotificationDto;
 import com.example.ajouevent.dto.UpdateEventRequest;
 import com.example.ajouevent.repository.AlarmRepository;
+import com.example.ajouevent.repository.ClubEventImageRepository;
 import com.example.ajouevent.repository.EventRepository;
 import com.example.ajouevent.repository.MemberRepository;
 
@@ -38,7 +50,9 @@ public class EventService {
 	private final AlarmRepository alarmRepository;
 	private final MemberRepository memberRepository;
 	private final EventRepository eventRepository;
+	private final ClubEventImageRepository clubEventImageRepository;
 	private final S3Upload s3Upload;
+	private final FileService fileService;
 
 	// 행사, 동아리, 학생회 이벤트와 같은 알림 등록용 메서드
 	// Controller의 호출없이 주기적으로 계속 실행
@@ -146,24 +160,34 @@ public class EventService {
 		alarmRepository.save(alarm);
 	}
 
+	// 게시글 생성 - S3 스프링부트에서 변환
 	@Transactional
-	public void postEvent(PostEventDto postEventDto, List<MultipartFile> images) {
+	public void newEvent(PostEventDto postEventDto, List<MultipartFile> images) {
 
 		List<String> postImages = new ArrayList<>(); // 이미지 URL을 저장할 리스트 생성
 
-		for (MultipartFile image : images) { // 매개변수로 받은 이미지들을 하나씩 처리
-			try {
-				String imageUrl = s3Upload.uploadFiles(image, "images"); // 이미지 업로드
-				log.info("S3에 올라간 이미지: " + imageUrl); // 로그에 업로드된 이미지 URL 출력
-				postImages.add(imageUrl); // 업로드된 이미지 URL을 리스트에 추가
-			} catch (IOException e) {
-				e.printStackTrace();
+		// String presignedUrl = fileService.getS3(); // s3 presigned url 사용
+
+		// images 리스트가 null이 아닌 경우에만 반복 처리
+		if (images != null) {
+			for (MultipartFile image : images) { // 매개변수로 받은 이미지들을 하나씩 처리
+				try {
+					String imageUrl = s3Upload.uploadFiles(image, "images"); // 이미지 업로드
+					log.info("S3에 올라간 이미지: " + imageUrl); // 로그에 업로드된 이미지 URL 출력
+					postImages.add(imageUrl); // 업로드된 이미지 URL을 리스트에 추가
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
+		} else {
+			log.info("제공된 이미지가 없습니다.");
 		}
 
 		ClubEvent clubEvent = ClubEvent.builder()
 			.title(postEventDto.getTitle())
 			.content(postEventDto.getContent())
+			.url(postEventDto.getUrl())
+			.date(LocalDateTime.now())
 			.writer(postEventDto.getWriter())
 			.subject(postEventDto.getSubject())
 			.type(postEventDto.getType())
@@ -184,14 +208,30 @@ public class EventService {
 
 	}
 
+	// 게시글 생성 - S3 프론트에서 변환
 	@Transactional
-	public List<EventResponseDto> getEventList() {
-		List<ClubEvent> clubEventEntities = eventRepository.findAll();
-		List<EventResponseDto> eventResponseDtoList = new ArrayList<>();
+	public void postEvent(PostEventDto postEventDto) {
 
-		for (ClubEvent clubEvent : clubEventEntities) {
-			EventResponseDto eventResponseDTO = EventResponseDto.toDto(clubEvent);
-			eventResponseDtoList.add(eventResponseDTO);
+		ClubEvent clubEvent = ClubEvent.builder()
+			.title(postEventDto.getTitle())
+			.content(postEventDto.getContent())
+			.url(postEventDto.getUrl())
+			.date(LocalDateTime.now())
+			.writer(postEventDto.getWriter())
+			.subject(postEventDto.getSubject())
+			.type(postEventDto.getType())
+			.clubEventImageList(new ArrayList<>())
+			.build();
+
+		// 프론트엔드에서 받은 이미지 URL 리스트를 처리
+		if (postEventDto.getImageUrls() != null) {
+			for (String imageUrl : postEventDto.getImageUrls()) {
+				ClubEventImage clubEventImage = ClubEventImage.builder()
+					.url(imageUrl)
+					.clubEvent(clubEvent)
+					.build();
+				clubEvent.getClubEventImageList().add(clubEventImage);
+			}
 		}
 
 		return eventResponseDtoList;

@@ -41,11 +41,22 @@ public class EventController {
 		);
 	}
 
-	// 게시글 생성
+	// 게시글 생성 - S3 스프링부트에서 변환
 	@PostMapping("/new")
-	public ResponseEntity<ResponseDto> postEvent(@RequestPart(value = "data") PostEventDto postEventDto, @RequestPart(value = "image", required = false)
-	List<MultipartFile> images) throws IOException {
-		eventService.postEvent(postEventDto, images);
+	public ResponseEntity<ResponseDto> newEvent(@Valid @RequestPart(value = "data") PostEventDto postEventDto,
+		@RequestPart(value = "image", required = false) List<MultipartFile> images) throws IOException {
+		eventService.newEvent(postEventDto, images);
+		return ResponseEntity.ok().body(ResponseDto.builder()
+			.successStatus(HttpStatus.OK)
+			.successContent("게시글이 성공적으로 업로드되었습니다.")
+			.build()
+		);
+	}
+
+	// 게시글 생성 - S3 프론트에서 변환
+	@PostMapping("/post")
+	public ResponseEntity<ResponseDto> postEvent(@Valid @RequestBody PostEventDto postEventDto) throws IOException {
+		eventService.postEvent(postEventDto);
 		return ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
 			.successContent("게시글이 성공적으로 업로드되었습니다.")
