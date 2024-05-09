@@ -4,6 +4,7 @@ import com.example.ajouevent.dto.*;
 import com.example.ajouevent.dto.ReissueTokenDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import com.example.ajouevent.dto.RegisterRequest;
 import com.example.ajouevent.dto.MemberDto;
@@ -16,10 +17,11 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.security.Principal;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/users")
+@RequestMapping("/api/users")
 @Slf4j
 public class MemberController {
 
@@ -46,9 +48,10 @@ public class MemberController {
 		return ResponseEntity.status(HttpStatus.OK).body(token);
 	}
 
-	@PostMapping("/test")
-	public String test(Principal principal) {
-		log.info("이메일 정보" + principal.getName());
-		return "success";
+	@PreAuthorize("isAuthenticated()")
+	@GetMapping("")
+	public ResponseEntity<MemberGetDto> getMemberInfo(Principal principal) {
+		MemberGetDto memberGetDtoList = memberService.getMemberInfo(principal);
+		return ResponseEntity.status(HttpStatus.OK).body(memberGetDtoList);
 	}
 }

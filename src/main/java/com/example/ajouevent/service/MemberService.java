@@ -1,7 +1,9 @@
 package com.example.ajouevent.service;
 
 import java.io.IOException;
+import java.security.Principal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -129,6 +131,17 @@ public class MemberService {
 				.grantType("Authorization")
 				.accessToken(accessToken)
 				.refreshToken(token)
+				.build();
+	}
+
+	public MemberGetDto getMemberInfo(Principal principal) {
+		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow();
+
+		return MemberGetDto.builder()
+				.name(member.getName())
+				.email(member.getEmail())
+				.major(member.getMajor())
+				.phone(member.getPhone())
 				.build();
 	}
 }
