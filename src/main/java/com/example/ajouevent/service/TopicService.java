@@ -125,8 +125,6 @@ public class TopicService {
 		}
 	}
 
-
-
 	// 매일 00:00(자정)에 트리거됩니다(0 0 0 * * ?). 따라서 하루에 한 번 작업이 실행됩니다.
 	// 매일 자정에 실행되는 스케줄링 작업
 	@Scheduled(cron = "0 0 0 * * ?")
@@ -134,18 +132,26 @@ public class TopicService {
 	public void unsubscribeExpiredTokens() {
 		LocalDate now = LocalDate.now();
 		log.info("오늘의 날짜 : " + now);
-		List<Token> tokens = tokenRepository.findByExpirationDate(now);
 
+		// 만료된 토큰을 가져옵니다.
+		List<Token> expiredTokens = tokenRepository.findByExpirationDate(now);
 
-		for (Token token : tokens) {
-			List<TopicToken> topicTokens = topicTokenRepository.findByToken(token);
+		// 만료된 토큰과 관련된 모든 TopicToken을 찾음
+		List<TopicToken> topicTokens = topicTokenRepository.findByTokenIn(expiredTokens);
 
-			for (TopicToken topicToken : topicTokens) {
-				fcmService.unsubscribeFromTopic(topicToken.getTopic().getDepartment(), tokens);
-			}
-		}
+		// 만료된 토큰의 값들을 추출
+		List<String> tokenValues = expiredTokens.stream()
+			.map(Token::getTokenValue)
+			.collect(Collectors.toList());
 
-		tokenRepository.deleteAll(tokens);
+		// 각 TopicToken에 대해 구독 해지
+		topicTokens.forEach(topicToken -> {
+			fcmService.unsubscribeFromTopic(topicToken.getTopic().getDepartment(), tokenValues);
+		});
+
+		// 만료된 토큰 삭제
+		topicTokenRepository.deleteAll(topicTokens); // TopicTokenRepository에서 먼저 삭제하고 TokenRepository에서 삭제
+		tokenRepository.deleteAll(expiredTokens);
 
 		// 쿼리로 조회
 		// @Query("SELECT tt FROM TopicToken tt JOIN FETCH tt.token t WHERE t.expirationDate < :now")
