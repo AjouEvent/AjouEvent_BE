@@ -4,11 +4,15 @@ import java.io.IOException;
 import java.security.Principal;
 import java.util.List;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.ajouevent.dto.EventDetailResponseDto;
 import com.example.ajouevent.dto.EventResponseDto;
 import com.example.ajouevent.dto.PostEventDto;
 import com.example.ajouevent.dto.PostNotificationDto;
@@ -91,13 +95,15 @@ public class EventController {
 
 	// 전체 글 보기 페이지(홈) -> 일단 테스트용으로 올린거 전부
 	@GetMapping("/all")
-	public List<EventResponseDto> getEventList() {
-		return eventService.getEventList();
+	public Slice<EventResponseDto> getEventList(Pageable pageable) {
+		return eventService.getEventList(pageable);
 	}
 
-	@GetMapping("/type/{type}")
-	public List<EventResponseDto> getEventTypeList(@PathVariable String type) {
-		return eventService.getEventTypeList(type);
+
+	// type별로 글 보기
+	@GetMapping("/{type}")
+	public Slice<EventResponseDto> getEventTypeList(@PathVariable String type, @PageableDefault(size = 10) Pageable pageable) {
+		return eventService.getEventTypeList(type, pageable);
 	}
 
 	@GetMapping("/test")

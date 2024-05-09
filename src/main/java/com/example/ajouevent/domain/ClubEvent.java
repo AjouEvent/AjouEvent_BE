@@ -6,6 +6,8 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.hibernate.annotations.BatchSize;
+
 import com.example.ajouevent.dto.UpdateEventRequest;
 
 @Entity
@@ -44,6 +46,7 @@ public class ClubEvent {
     @Enumerated(value = EnumType.STRING)
     private Type type;
 
+    @BatchSize(size=100) //
     @OneToMany(mappedBy = "clubEvent", fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.REMOVE}, orphanRemoval = true)
     @ToString.Exclude
     private List<ClubEventImage> clubEventImageList;

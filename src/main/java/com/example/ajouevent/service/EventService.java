@@ -240,27 +240,43 @@ public class EventService {
 		eventRepository.deleteById(eventId);
 	}
 
-	@Transactional
-	public List<EventResponseDto> getEventTypeList(String type) {
-		// 대소문자를 구분하지 않고 입력 받기 위해 입력된 문자열을 대문자로 변환합니다.
 
-		// 입력된 문자열이 유효한 Type인지 확인하고, 유효한 경우 해당 Type으로 변환합니다.
+	// 글 전체 조회 (동아리, 학생회, 공지사항, 기타)
+	@Transactional
+	public Slice<EventResponseDto> getEventList(Pageable pageable) {
+		Slice<ClubEvent> clubEventSlice = eventRepository.findAll(pageable);
+
+		List<EventResponseDto> eventResponseDtoList = clubEventSlice.getContent().stream()
+			.map(EventResponseDto::toDto)
+			.collect(Collectors.toList());
+
+		return new SliceImpl<>(eventResponseDtoList, pageable, clubEventSlice.hasNext());
+
+	}
+
+
+	@Transactional
+	public Slice<EventResponseDto> getEventTypeList(String type, Pageable pageable) {
+		// 대소문자를 구분하지 않고 입력 받기 위해 입력된 문자열을 대문자로 변환합니다.
 		Type eventType;
 		try {
-			eventType = Type.valueOf(type);
+			eventType = Type.valueOf(type.toUpperCase());
 		} catch (IllegalArgumentException e) {
 			// 유효하지 않은 Type이 입력된 경우, 빈 리스트를 반환합니다.
-			return Collections.emptyList();
+			return new SliceImpl<>(Collections.emptyList());
 		}
 
-		// 유효한 Type에 해당하는 ClubEvent 리스트를 가져옵니다.
-		List<ClubEvent> clubEventEntities = eventRepository.findByType(eventType);
-		List<EventResponseDto> eventResponseDtoList = new ArrayList<>();
+		// Spring Data JPA의 Slice를 사용하여 페이지로 나눠서 결과를 조회합니다.
+		Slice<ClubEvent> clubEventSlice = eventRepository.findByType(eventType, pageable);
 
-		for (ClubEvent clubEvent : clubEventEntities) {
-			EventResponseDto eventResponseDTO = EventResponseDto.toDto(clubEvent);
-			eventResponseDtoList.add(eventResponseDTO);
-		}
+		// ClubEvent를 EventResponseDto로 변환합니다.
+		List<EventResponseDto> eventResponseDtoList = clubEventSlice.getContent().stream()
+			.map(EventResponseDto::toDto)
+			.collect(Collectors.toList());
+
+		// 결과를 Slice로 감싸서 반환합니다.
+		return new SliceImpl<>(eventResponseDtoList, pageable, clubEventSlice.hasNext());
+	}
 
 		return eventResponseDtoList;
 	}
