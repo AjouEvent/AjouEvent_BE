@@ -292,24 +292,29 @@ public class TopicService {
 
 	@Transactional
 	public void resetAllSubscriptions() {
+
+		// 스프링시큐리티 컨텍스트에서 유저 email 정보를 가져옴
 		String email = SecurityContextHolder.getContext().getAuthentication().getName();
-		Optional<Member> memberOptional = memberRepository.findByEmail(email);
 
+		// Member 객체를 가져온 뒤
+		Member member = memberRepository.findByEmail(email)
+			.orElseThrow(() -> new NoSuchElementException("Member not found id : " + 1));
 
-		if (memberOptional.isPresent()) {
-			Member member = memberOptional.get();
-			List<TopicMember> topicMembers = topicMemberRepository.findByMember(member);
-			List<Token> tokens = tokenRepository.findByMember(member);
+		// Member가 구독하고 있는 Topic과 Member가 가지고 있는 토큰을 가져옴
+		List<TopicMember> topicMembers = topicMemberRepository.findByMember(member);
+		List<Token> tokens = tokenRepository.findByMember(member);
 
-			topicMembers.forEach(topicMember -> {
-				fcmService.unsubscribeFromTopic(topicMember.getTopic().getDepartment(), tokens);
-				topicTokenRepository.deleteByTopic(topicMember.getTopic());
-				topicMemberRepository.delete(topicMember);
-			});
-		} else {
-			// 멤버가 존재하지 않을 경우의 처리
-			throw new RuntimeException();
-		}
+		List<String> tokenValues = tokens.stream()
+			.map(Token::getTokenValue)
+			.toList();
+
+		// FcmService를 호출해서 Member가 가지고 있는 Token과 Member가 구독하고 있는 Topic을 1대1로 매핑하여 구독 취소
+		// TopicMemberRepository, TopicTokenRepository에서도 삭제
+		topicMembers.forEach(topicMember -> {
+			fcmService.unsubscribeFromTopic(topicMember.getTopic().getDepartment(), tokenValues);
+			topicTokenRepository.deleteByTopic(topicMember.getTopic());
+			topicMemberRepository.delete(topicMember);
+		});
 	}
 
 	@Transactional
