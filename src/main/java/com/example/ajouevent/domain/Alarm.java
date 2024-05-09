@@ -3,8 +3,6 @@ package com.example.ajouevent.domain;
 import jakarta.persistence.*;
 import lombok.*;
 
-import org.joda.time.DateTime;
-
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -38,7 +36,7 @@ public class Alarm {
     private String writer;
 
     @Column
-    private DateTime eventDate;
+    private LocalDateTime eventDate;
 
     @Column
     private String subject;

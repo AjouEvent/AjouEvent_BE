@@ -43,16 +43,16 @@ public class FCMTokenDao {
 		Member member = memberRepository.findByEmail(loginRequest.getEmail()).orElseThrow(NoSuchElementException::new);
 
 		// Check if the token already exists
-		Optional<Token> existingToken = tokenRepository.findByValueAndMember(loginRequest.getFcmToken(), member);
+		Optional<Token> existingToken = tokenRepository.findByTokenValueAndMember(loginRequest.getFcmToken(), member);
 		if (existingToken.isPresent()) {
-			log.info("이미 존재하는 토큰: " + existingToken.get().getValue());
+			log.info("이미 존재하는 토큰: " + existingToken.get().getTokenValue());
 		} else {
 			// Only create and save a new token if it does not exist
 			Token token = Token.builder()
-				.value(loginRequest.getFcmToken())
+				.tokenValue(loginRequest.getFcmToken())
 				.member(member)
 				.build();
-			log.info("DB에 저장하는 token : " + token.getValue());
+			log.info("DB에 저장하는 token : " + token.getTokenValue());
 			tokenRepository.save(token);
 
 			// tokenRepo에 저장하고 기존 멤버가 구독하고 있는 토픽 불러서 topic 다시 구독

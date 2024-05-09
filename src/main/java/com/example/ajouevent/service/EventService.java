@@ -7,8 +7,40 @@ import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.stream.Collectors;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.ResourceUtils;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.example.ajouevent.FileService;
+import com.example.ajouevent.S3Upload;
+import com.example.ajouevent.domain.Alarm;
+import com.example.ajouevent.domain.ClubEvent;
+import com.example.ajouevent.domain.ClubEventImage;
+import com.example.ajouevent.domain.Member;
+import com.example.ajouevent.domain.Type;
+import com.example.ajouevent.dto.EventDetailResponseDto;
+import com.example.ajouevent.dto.EventResponseDto;
+import com.example.ajouevent.dto.NoticeDto;
+import com.example.ajouevent.dto.PostEventDto;
+import com.example.ajouevent.dto.PostNotificationDto;
+import com.example.ajouevent.dto.UpdateEventRequest;
+import com.example.ajouevent.repository.AlarmRepository;
+import com.example.ajouevent.repository.ClubEventImageRepository;
+import com.example.ajouevent.repository.EventRepository;
+import com.example.ajouevent.repository.MemberRepository;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.javanet.NetHttpTransport;
@@ -20,26 +52,6 @@ import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.EventDateTime;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.ResourceUtils;
-import org.springframework.web.multipart.MultipartFile;
-
-import com.example.ajouevent.S3Upload;
-import com.example.ajouevent.domain.Alarm;
-import com.example.ajouevent.domain.ClubEvent;
-import com.example.ajouevent.domain.ClubEventImage;
-import com.example.ajouevent.domain.Member;
-import com.example.ajouevent.domain.Type;
-import com.example.ajouevent.dto.EventResponseDto;
-import com.example.ajouevent.dto.NoticeDto;
-import com.example.ajouevent.dto.PostEventDto;
-import com.example.ajouevent.dto.PostNotificationDto;
-import com.example.ajouevent.repository.AlarmRepository;
-import com.example.ajouevent.repository.EventRepository;
-import com.example.ajouevent.repository.MemberRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,11 +64,13 @@ public class EventService {
 	private final AlarmRepository alarmRepository;
 	private final MemberRepository memberRepository;
 	private final EventRepository eventRepository;
+	private final ClubEventImageRepository clubEventImageRepository;
 	private final S3Upload s3Upload;
+	private final FileService fileService;
 
 	// 행사, 동아리, 학생회 이벤트와 같은 알림 등록용 메서드
 	// Controller의 호출없이 주기적으로 계속 실행
-	@Scheduled(fixedRate = 10000)
+	@Scheduled(fixedRate = 60000)
 	@Transactional
 	public void sendEventNotification() {
 		LocalDateTime now = LocalDateTime.now();
@@ -91,6 +105,7 @@ public class EventService {
 		ClubEvent clubEvent = ClubEvent.builder()
 			.title(noticeDto.getTitle())
 			.content(noticeDto.getContent())
+			.date(LocalDateTime.now())
 			.url(noticeDto.getUrl())
 			.type(type)
 			.build();
@@ -160,24 +175,34 @@ public class EventService {
 		alarmRepository.save(alarm);
 	}
 
+	// 게시글 생성 - S3 스프링부트에서 변환
 	@Transactional
-	public void postEvent(PostEventDto postEventDto, List<MultipartFile> images) {
+	public void newEvent(PostEventDto postEventDto, List<MultipartFile> images) {
 
 		List<String> postImages = new ArrayList<>(); // 이미지 URL을 저장할 리스트 생성
 
-		for (MultipartFile image : images) { // 매개변수로 받은 이미지들을 하나씩 처리
-			try {
-				String imageUrl = s3Upload.uploadFiles(image, "images"); // 이미지 업로드
-				log.info("S3에 올라간 이미지: " + imageUrl); // 로그에 업로드된 이미지 URL 출력
-				postImages.add(imageUrl); // 업로드된 이미지 URL을 리스트에 추가
-			} catch (IOException e) {
-				e.printStackTrace();
+		// String presignedUrl = fileService.getS3(); // s3 presigned url 사용
+
+		// images 리스트가 null이 아닌 경우에만 반복 처리
+		if (images != null) {
+			for (MultipartFile image : images) { // 매개변수로 받은 이미지들을 하나씩 처리
+				try {
+					String imageUrl = s3Upload.uploadFiles(image, "images"); // 이미지 업로드
+					log.info("S3에 올라간 이미지: " + imageUrl); // 로그에 업로드된 이미지 URL 출력
+					postImages.add(imageUrl); // 업로드된 이미지 URL을 리스트에 추가
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
+		} else {
+			log.info("제공된 이미지가 없습니다.");
 		}
 
 		ClubEvent clubEvent = ClubEvent.builder()
 			.title(postEventDto.getTitle())
 			.content(postEventDto.getContent())
+			.url(postEventDto.getUrl())
+			.date(LocalDateTime.now())
 			.writer(postEventDto.getWriter())
 			.subject(postEventDto.getSubject())
 			.type(postEventDto.getType())
@@ -198,42 +223,270 @@ public class EventService {
 
 	}
 
+	// 게시글 생성 - S3 프론트에서 변환
 	@Transactional
-	public List<EventResponseDto> getEventList() {
-		List<ClubEvent> clubEventEntities = eventRepository.findAll();
-		List<EventResponseDto> eventResponseDtoList = new ArrayList<>();
+	public void postEvent(PostEventDto postEventDto) {
 
-		for (ClubEvent clubEvent : clubEventEntities) {
-			EventResponseDto eventResponseDTO = EventResponseDto.toDto(clubEvent);
-			eventResponseDtoList.add(eventResponseDTO);
+		ClubEvent clubEvent = ClubEvent.builder()
+			.title(postEventDto.getTitle())
+			.content(postEventDto.getContent())
+			.url(postEventDto.getUrl())
+			.date(LocalDateTime.now())
+			.writer(postEventDto.getWriter())
+			.subject(postEventDto.getSubject())
+			.type(postEventDto.getType())
+			.clubEventImageList(new ArrayList<>())
+			.build();
+
+		// 프론트엔드에서 받은 이미지 URL 리스트를 처리
+		if (postEventDto.getImageUrls() != null) {
+			for (String imageUrl : postEventDto.getImageUrls()) {
+				ClubEventImage clubEventImage = ClubEventImage.builder()
+					.url(imageUrl)
+					.clubEvent(clubEvent)
+					.build();
+				clubEvent.getClubEventImageList().add(clubEventImage);
+			}
 		}
 
-		return eventResponseDtoList;
+		eventRepository.save(clubEvent);
 	}
 
-	@Transactional
-	public List<EventResponseDto> getEventTypeList(String type) {
-		// 대소문자를 구분하지 않고 입력 받기 위해 입력된 문자열을 대문자로 변환합니다.
 
-		// 입력된 문자열이 유효한 Type인지 확인하고, 유효한 경우 해당 Type으로 변환합니다.
+	// // 게시글 수정 - 데이터
+	// @Transactional
+	// public void updateEventData(Long eventId, UpdateEventRequest request) {
+	//
+	// 	// 수정할 게시글 조회
+	// 	ClubEvent clubEvent = eventRepository.findById(eventId)
+	// 		.orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + eventId));
+	//
+	// 	// 게시글 내용 수정
+	// 	clubEvent.updateEvent(request);
+	//
+	// 	// 이미지 목록 불러 오기
+	// 	List<ClubEventImage> existingImages = clubEvent.getClubEventImageList();
+	//
+	// 	List<String> existingUrls = existingImages.stream()
+	// 		.map(ClubEventImage::getUrl)
+	// 		.collect(Collectors.toList());
+	//
+	// 	existingUrls.forEach(url -> log.info(" 기존 이미지 URL 리스트 : {}", url));
+	//
+	// 	// 새로운 이미지 URL 리스트
+	// 	List<String> newUrls = request.getImageUrls();
+	//
+	// 	// 삭제할 이미지 엔티티 목록 생성
+	// 	List<ClubEventImage> toDeleteImages = existingImages.stream()
+	// 		.filter(image -> !newUrls.contains(image.getUrl()))
+	// 		.collect(Collectors.toList());
+	//
+	// 	// S3에서 삭제 및 데이터베이스에서 삭제
+	// 	toDeleteImages.forEach(image -> {
+	// 		try {
+	// 			String splitStr = ".com/";
+	// 			String fileName = image.getUrl().substring(image.getUrl().lastIndexOf(splitStr) + splitStr.length());
+	// 			fileService.deleteFile(fileName);
+	// 			log.info("Deleting image from S3 with fileName: {}", fileName);
+	// 		} catch (IOException e) {
+	// 			log.error("Failed to delete image from S3: {}", image.getUrl(), e);
+	// 		}
+	// 	});
+	//
+	// 	// 삭제할 이미지 URL 리스트 생성
+	// 	List<String> toDeleteUrls = existingUrls.stream()
+	// 		.filter(url -> !newUrls.contains(url))
+	// 		.collect(Collectors.toList());
+	//
+	// 	toDeleteImages.forEach(image -> log.info("디비에서 삭제하는 이미지 url" + image.getUrl()) );
+	// 	// 데이터베이스에서 삭제
+	//
+	// 	clubEventImageRepository.deleteClubEventImagesByUrls(toDeleteUrls);
+	// 	clubEventImageRepository.flush();
+	// 	log.info("Deleted {} images from database", toDeleteImages.size());
+	//
+	// 	// 추가할 이미지 URL 찾기
+	// 	List<String> toAddUrls = newUrls.stream()
+	// 		.filter(url -> !existingUrls.contains(url))
+	// 		.collect(Collectors.toList());
+	//
+	// 	// S3에 새롭게 추가될 이미지를 ClubEventImage 엔티티로 생성하고 저장
+	// 	toAddUrls.forEach(url -> {
+	// 		ClubEventImage newImage = ClubEventImage.builder()
+	// 			.url(url)
+	// 			.clubEvent(clubEvent)
+	// 			.build();
+	// 		// clubEvent.getClubEventImageList().add(newImage);
+	// 		clubEventImageRepository.save(newImage);
+	// 		log.info("새로 추가하는 이미지 URL : {}", url);
+	// 	});
+	//
+	// 	newUrls.forEach(url -> log.info(" 새로운 이미지 URL 리스트 : {}", url));
+	//
+	// 	eventRepository.save(clubEvent);
+	// }
+
+
+	// 게시글 수정 - 데이터 -> 성능 개선
+	@Transactional
+	public void updateEventData(Long eventId, UpdateEventRequest request) {
+		// 수정할 게시글 조회
+		ClubEvent clubEvent = eventRepository.findById(eventId)
+			.orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + eventId));
+
+		// 게시글 내용 수정
+		clubEvent.updateEvent(request);
+
+		// 이미지 목록 불러 오기
+		List<ClubEventImage> existingImages = clubEvent.getClubEventImageList();
+		Set<String> existingUrls = existingImages.stream()
+			.map(ClubEventImage::getUrl)
+			.collect(Collectors.toSet());
+
+		// 새로운 이미지 URL 리스트
+		Set<String> newUrls = new HashSet<>(request.getImageUrls());
+
+		// 변경 필요한 작업 식별
+		List<ClubEventImage> toDeleteImages = new ArrayList<>();
+		List<String> toAddUrls = new ArrayList<>();
+
+		// 식별 과정 최적화
+		existingImages.forEach(image -> {
+			if (!newUrls.contains(image.getUrl())) {
+				toDeleteImages.add(image);
+			}
+		});
+
+		newUrls.forEach(url -> {
+			if (!existingUrls.contains(url)) {
+				toAddUrls.add(url);
+			}
+		});
+
+		// S3에서 이미지 삭제 및 데이터베이스 삭제 - 비동기 실행
+		deleteImagesAsync(toDeleteImages);
+
+		// 새 이미지 추가
+		List<ClubEventImage> addedImages = toAddUrls.stream()
+			.map(url -> ClubEventImage.builder()
+				.url(url)
+				.clubEvent(clubEvent)
+				.build())
+			.collect(Collectors.toList());
+
+		clubEventImageRepository.saveAll(addedImages);
+
+		// 로깅
+		logChanges(existingUrls, newUrls);
+	}
+
+	// 비동기 삭제 처리
+	@Async
+	public void deleteImagesAsync(List<ClubEventImage> images) {
+		List<String> urlsToDelete = images.stream().map(ClubEventImage::getUrl).collect(Collectors.toList());
+		images.forEach(image -> {
+			try {
+				String fileName = extractFileName(image.getUrl());
+				fileService.deleteFile(fileName);
+				log.info("Deleting image from S3 with fileName: {}", fileName);
+			} catch (IOException e) {
+				log.error("Failed to delete image from S3: {}", image.getUrl(), e);
+			}
+		});
+		clubEventImageRepository.deleteClubEventImagesByUrls(urlsToDelete);
+		clubEventImageRepository.flush();
+	}
+
+	// 파일명 추출
+	private String extractFileName(String url) {
+		String splitStr = ".com/";
+		return url.substring(url.lastIndexOf(splitStr) + splitStr.length());
+	}
+
+	// 변경 로깅
+	private void logChanges(Set<String> existingUrls, Set<String> newUrls) {
+		existingUrls.forEach(url -> log.info("Existing image URL: {}", url));
+		newUrls.forEach(url -> log.info("New image URL: {}", url));
+	}
+
+	// 게시글 수정 - 이미지
+	@Transactional
+	public void updateEventImages(Long eventId, List<MultipartFile> images) throws IOException {
+		ClubEvent clubEvent = eventRepository.findById(eventId)
+			.orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + eventId));
+
+		// Process and update images if there are any
+		List<ClubEventImage> updatedImages = new ArrayList<>();
+		if (images != null && !images.isEmpty()) {
+			for (MultipartFile image : images) {
+				String imageUrl = s3Upload.uploadFiles(image, "images");
+				ClubEventImage clubEventImage = ClubEventImage.builder()
+					.url(imageUrl)
+					.clubEvent(clubEvent)
+					.build();
+				updatedImages.add(clubEventImage);
+			}
+			// Remove old images and add updated ones
+			clubEvent.getClubEventImageList().clear();
+			clubEvent.getClubEventImageList().addAll(updatedImages);
+		}
+
+		// Save the updated event
+		eventRepository.save(clubEvent);
+		log.info("Updated event with ID: " + eventId);
+	}
+
+	// 게시글 삭제
+	@Transactional
+	public void deleteEvent(Long eventId) {
+		eventRepository.deleteById(eventId);
+	}
+
+
+	// 글 전체 조회 (동아리, 학생회, 공지사항, 기타)
+	@Transactional
+	public Slice<EventResponseDto> getEventList(Pageable pageable) {
+		Slice<ClubEvent> clubEventSlice = eventRepository.findAll(pageable);
+
+		List<EventResponseDto> eventResponseDtoList = clubEventSlice.getContent().stream()
+			.map(EventResponseDto::toDto)
+			.collect(Collectors.toList());
+
+		return new SliceImpl<>(eventResponseDtoList, pageable, clubEventSlice.hasNext());
+
+	}
+
+
+	@Transactional
+	public Slice<EventResponseDto> getEventTypeList(String type, Pageable pageable) {
+		// 대소문자를 구분하지 않고 입력 받기 위해 입력된 문자열을 대문자로 변환합니다.
 		Type eventType;
 		try {
-			eventType = Type.valueOf(type);
+			eventType = Type.valueOf(type.toUpperCase());
 		} catch (IllegalArgumentException e) {
 			// 유효하지 않은 Type이 입력된 경우, 빈 리스트를 반환합니다.
-			return Collections.emptyList();
+			return new SliceImpl<>(Collections.emptyList());
 		}
 
-		// 유효한 Type에 해당하는 ClubEvent 리스트를 가져옵니다.
-		List<ClubEvent> clubEventEntities = eventRepository.findByType(eventType);
-		List<EventResponseDto> eventResponseDtoList = new ArrayList<>();
+		// Spring Data JPA의 Slice를 사용하여 페이지로 나눠서 결과를 조회합니다.
+		Slice<ClubEvent> clubEventSlice = eventRepository.findByType(eventType, pageable);
 
-		for (ClubEvent clubEvent : clubEventEntities) {
-			EventResponseDto eventResponseDTO = EventResponseDto.toDto(clubEvent);
-			eventResponseDtoList.add(eventResponseDTO);
-		}
+		// ClubEvent를 EventResponseDto로 변환합니다.
+		List<EventResponseDto> eventResponseDtoList = clubEventSlice.getContent().stream()
+			.map(EventResponseDto::toDto)
+			.collect(Collectors.toList());
 
-		return eventResponseDtoList;
+		// 결과를 Slice로 감싸서 반환합니다.
+		return new SliceImpl<>(eventResponseDtoList, pageable, clubEventSlice.hasNext());
+	}
+
+	// 게시글 상세 조회
+	@Transactional
+	public EventDetailResponseDto getEventDetail(Long eventId) {
+		ClubEvent clubEvent = eventRepository.findById(eventId)
+			.orElseThrow(() -> new NoSuchElementException("Event not found with id: " + eventId));
+
+		return EventDetailResponseDto.toDto(clubEvent);
 	}
 
 	public void GoogleAPIClient() throws IOException, GeneralSecurityException {
@@ -256,18 +509,18 @@ public class EventService {
 		 * 캘린더 일정 생성
 		 */
 		Event event = new Event()
-				.setSummary("test") // 일정 이름
-				.setDescription("teststst"); // 일정 설명
+			.setSummary("test") // 일정 이름
+			.setDescription("teststst"); // 일정 설명
 
 		DateTime startDateTime = new DateTime("2024-05-18T09:00:00-07:00");
 		EventDateTime start = new EventDateTime()
-				.setDateTime(startDateTime)
-				.setTimeZone("Asia/Seoul");
+			.setDateTime(startDateTime)
+			.setTimeZone("Asia/Seoul");
 		event.setStart(start);
 		DateTime endDateTime = new DateTime("2024-05-19T09:00:00-07:00");
 		EventDateTime end = new EventDateTime()
-				.setDateTime(endDateTime)
-				.setTimeZone("Asia/Seoul");
+			.setDateTime(endDateTime)
+			.setTimeZone("Asia/Seoul");
 		event.setEnd(end);
 
 

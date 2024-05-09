@@ -27,7 +27,7 @@ public class TopicController {
 
 	@PostMapping("/subscribe")
 	public ResponseEntity<ResponseDto> subscribeToTopic(@RequestBody TopicRequest topicRequest) {
-		topicService.subscribeToTopic(topicRequest);
+		topicService.subscribeToTopics(topicRequest);
 		return ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
 			.successContent(topicRequest.getTopic() +" 토픽을 구독합니다.")
@@ -37,10 +37,10 @@ public class TopicController {
 
 	@PostMapping("/unsubscribe")
 	public ResponseEntity<ResponseDto> unsubscribeFromTopic(@RequestBody TopicRequest topicRequest) {
-		String topic = topicRequest.getTopic();
+		topicService.unsubscribeFromTopics(topicRequest);
 		return ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
-			.successContent(topic +" 토픽을 구독 취소합니다.")
+			.successContent(topicRequest.getTopic() +" 토픽을 구독 취소합니다.")
 			.build()
 		);
 	}
@@ -60,7 +60,7 @@ public class TopicController {
 		// 현재 사용자가 구독하고 있는 토픽 리스트 가져오기
 		List<String> topics = topicService.getSubscribedTopics();
 
-		// 결과가 비어있는 경우 처리
+		// 결과가 비어 있는 경우 처리
 		if (topics.isEmpty()) {
 			return ResponseEntity.ok().body(ResponseDto.builder()
 				.successStatus(HttpStatus.OK)

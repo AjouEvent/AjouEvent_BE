@@ -9,7 +9,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-public class EventResponseDto {
+public class EventResponseDto { // 게시글 상세 조회시에 나오는 이벤트 정보
 	private String title;
 	private String imgUrl;
 	private Long eventId;

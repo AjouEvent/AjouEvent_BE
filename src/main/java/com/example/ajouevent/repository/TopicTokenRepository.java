@@ -13,4 +13,9 @@ import com.example.ajouevent.domain.TopicToken;
 public interface TopicTokenRepository extends JpaRepository<TopicToken, Long> {
 	void deleteByTopic(Topic topic);
 	List<TopicToken> findByToken(Token token);
+
+	// 토큰 리스트를 기반으로 TopicToken 객체들을 조회
+	List<TopicToken> findByTokenIn(List<Token> tokens);
+
+
 }
