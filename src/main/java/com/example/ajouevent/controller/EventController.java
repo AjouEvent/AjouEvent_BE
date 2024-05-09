@@ -79,7 +79,7 @@ public class EventController {
 
 	// 게시글 삭제
 	@DeleteMapping("/{eventId}")
-	public ResponseEntity<ResponseDto> deleteEvent(@PathVariable Long eventId) {
+	public ResponseEntity<ResponseDto> deleteEvent(@PathVariable("eventId") Long eventId) {
 		eventService.deleteEvent(eventId);
 		return ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
