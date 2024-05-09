@@ -88,10 +88,11 @@ public class EventController {
 		);
 	}
 
-	// @GetMapping("/{eventId}")
-	// public EventResponseDto detail(@PathVariable("eventId") Long eventId) {
-	// 	return eventService.getEvent(eventId);
-	// }
+	// 게시글 상세 조회
+	@GetMapping("/{eventId}")
+	public EventDetailResponseDto detail(@PathVariable("eventId") Long eventId) {
+		return eventService.getEventDetail(eventId);
+	}
 
 	// 전체 글 보기 페이지(홈) -> 일단 테스트용으로 올린거 전부
 	@GetMapping("/all")

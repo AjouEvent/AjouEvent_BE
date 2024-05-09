@@ -278,6 +278,12 @@ public class EventService {
 		return new SliceImpl<>(eventResponseDtoList, pageable, clubEventSlice.hasNext());
 	}
 
-		return eventResponseDtoList;
+	// 게시글 상세 조회
+	@Transactional
+	public EventDetailResponseDto getEventDetail(Long eventId) {
+		ClubEvent clubEvent = eventRepository.findById(eventId)
+			.orElseThrow(() -> new NoSuchElementException("Event not found with id: " + eventId));
+
+		return EventDetailResponseDto.toDto(clubEvent);
 	}
 }
