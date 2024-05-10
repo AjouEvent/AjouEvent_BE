@@ -1,7 +1,9 @@
 package com.example.ajouevent.service;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.security.GeneralSecurityException;
 import java.security.Principal;
 import java.time.LocalDateTime;
@@ -9,11 +11,18 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
+import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
+import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
+import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.DateTime;
+import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.CalendarScopes;
 import com.google.api.services.calendar.model.Event;
@@ -53,6 +62,7 @@ public class EventService {
 	private final MemberRepository memberRepository;
 	private final EventRepository eventRepository;
 	private final S3Upload s3Upload;
+
 
 	// 행사, 동아리, 학생회 이벤트와 같은 알림 등록용 메서드
 	// Controller의 호출없이 주기적으로 계속 실행
@@ -236,44 +246,4 @@ public class EventService {
 		return eventResponseDtoList;
 	}
 
-	public void GoogleAPIClient() throws IOException, GeneralSecurityException {
-		/*
-		 * 서비스 계정 인증
-		 */
-		String keyFileName = "credentials.json";
-		InputStream keyFile = ResourceUtils.getURL("classpath:" + keyFileName).openStream();
-		GoogleCredentials credential = GoogleCredentials.fromStream(keyFile).createScoped(List.of(CalendarScopes.CALENDAR)).createDelegated("calendarmanager@ajouevent.iam.gserviceaccount.com");
-
-		NetHttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
-
-		HttpRequestInitializer requestInitializer = new HttpCredentialsAdapter(credential);
-
-		Calendar service = new Calendar.Builder(transport, GsonFactory.getDefaultInstance(), requestInitializer).setApplicationName("ajoevent").build();
-
-		String calendarId = "jk2310400@ajou.ac.kr";
-
-		/*
-		 * 캘린더 일정 생성
-		 */
-		Event event = new Event()
-				.setSummary("test") // 일정 이름
-				.setDescription("teststst"); // 일정 설명
-
-		DateTime startDateTime = new DateTime("2024-05-18T09:00:00-07:00");
-		EventDateTime start = new EventDateTime()
-				.setDateTime(startDateTime)
-				.setTimeZone("Asia/Seoul");
-		event.setStart(start);
-		DateTime endDateTime = new DateTime("2024-05-19T09:00:00-07:00");
-		EventDateTime end = new EventDateTime()
-				.setDateTime(endDateTime)
-				.setTimeZone("Asia/Seoul");
-		event.setEnd(end);
-
-
-		//이벤트 실행
-		event = service.events().insert(calendarId, event).execute();
-		System.out.printf("Event created: %s\n", event.getHtmlLink());
-
-	}
 }

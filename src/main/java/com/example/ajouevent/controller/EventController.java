@@ -3,18 +3,18 @@ package com.example.ajouevent.controller;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.Principal;
+import java.util.Calendar;
 import java.util.List;
 
+import com.example.ajouevent.dto.*;
+import com.example.ajouevent.service.CalendarService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.example.ajouevent.dto.EventResponseDto;
-import com.example.ajouevent.dto.PostEventDto;
-import com.example.ajouevent.dto.PostNotificationDto;
-import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.service.EventService;
 import lombok.RequiredArgsConstructor;
 
@@ -24,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 public class EventController {
 
 	private final EventService eventService;
+	private final CalendarService calendarService;
 
 	// 알림 등록 - 동아리, 학생회 이벤트 + 공지사항 크롤링
 	@PostMapping("/notification")
@@ -63,9 +64,11 @@ public class EventController {
 	public List<EventResponseDto> getEventTypeList(@PathVariable String type) {
 		return eventService.getEventTypeList(type);
 	}
-	@GetMapping("/test")
-	public void testGetMethod() throws GeneralSecurityException, IOException {
-        eventService.GoogleAPIClient();
+
+	@PreAuthorize("isAuthenticated()")
+	@PostMapping("/calendar")
+	public void testGetMethod(@RequestBody CalendarStoreDto calendarStoreDto, Principal principal) throws GeneralSecurityException, IOException {
+		calendarService.GoogleAPIClient(calendarStoreDto, principal);
     }
 
 }
