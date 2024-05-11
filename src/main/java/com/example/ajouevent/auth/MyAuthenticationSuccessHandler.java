@@ -53,18 +53,20 @@ public class MyAuthenticationSuccessHandler extends SimpleUrlAuthenticationSucce
             String refreshToken = jwtUtil.createRefreshToken(Dto);
             log.info(String.valueOf(Dto));
 
-            response.setContentType("application/json");
-            response.setCharacterEncoding("UTF-8");
-            JsonObject jsonResponse = new JsonObject();
-            jsonResponse.addProperty("accessToken", accessToken);
-            jsonResponse.addProperty("refreshToken", refreshToken);
-            jsonResponse.addProperty("id", Dto.getMemberId());
-            jsonResponse.addProperty("email", Dto.getEmail());
-            jsonResponse.addProperty("name", member.getName());
-            jsonResponse.addProperty("major", member.getMajor());
-            PrintWriter out = response.getWriter();
-            out.print(jsonResponse.toString());
-            out.flush();
+
+            String targetUrl = UriComponentsBuilder.fromUriString("http://localhost:3000/loginSuccess")
+                    .queryParam("accessToken", accessToken)
+                    .queryParam("refreshToken", refreshToken)
+                    .queryParam("id", Dto.getMemberId())
+                    .queryParam("email", Dto.getEmail())
+                    .queryParam("name", member.getName())
+                    .queryParam("major", member.getMajor())
+                    .build()
+                    .encode(StandardCharsets.UTF_8)
+                    .toUriString();
+
+            getRedirectStrategy().sendRedirect(request, response, targetUrl);
+
 
         } else {
 
