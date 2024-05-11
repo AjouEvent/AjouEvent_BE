@@ -68,7 +68,7 @@ public class EventController {
 	}
 
 	// 게시글 수정 - 데이터
-	@PatchMapping("/{eventId}/data")
+	@PatchMapping("/{eventId}")
 	public ResponseEntity<ResponseDto> updateEventData(@PathVariable("eventId") Long eventId,
 		@RequestBody UpdateEventRequest request) {
 		eventService.updateEventData(eventId, request);
@@ -103,7 +103,7 @@ public class EventController {
 	}
 
 	// 게시글 상세 조회
-	@GetMapping("/{eventId}")
+	@GetMapping("/detail/{eventId}")
 	public EventDetailResponseDto detail(@PathVariable("eventId") Long eventId) {
 		return eventService.getEventDetail(eventId);
 	}
