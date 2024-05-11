@@ -4,16 +4,20 @@ import static org.springframework.data.domain.Sort.Direction.*;
 
 import java.io.IOException;
 import java.security.Principal;
+import java.util.Calendar;
 import java.util.List;
 
+import com.example.ajouevent.dto.*;
+import com.example.ajouevent.service.CalendarService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
 import com.example.ajouevent.dto.EventDetailResponseDto;
 import com.example.ajouevent.dto.EventResponseDto;
 import com.example.ajouevent.dto.PostEventDto;
@@ -32,6 +36,7 @@ import lombok.RequiredArgsConstructor;
 public class EventController {
 
 	private final EventService eventService;
+	private final CalendarService calendarService;
 
 	// 알림 등록 - 동아리, 학생회 이벤트 + 공지사항 크롤링
 	@PostMapping("/notification")
@@ -120,6 +125,12 @@ public class EventController {
 	public SliceResponse<EventResponseDto> getEventTypeList(@PathVariable String type, @PageableDefault(size = 10) Pageable pageable) {
 		return eventService.getEventTypeList(type, pageable);
 	}
+
+	@PreAuthorize("isAuthenticated()")
+	@PostMapping("/calendar")
+	public void testGetMethod(@RequestBody CalendarStoreDto calendarStoreDto, Principal principal) throws GeneralSecurityException, IOException {
+		calendarService.GoogleAPIClient(calendarStoreDto, principal);
+    }
 
 	@GetMapping("/test")
 	public String testGetMethod() {
