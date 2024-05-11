@@ -1,4 +1,4 @@
-package com.example.ajouevent;
+package com.example.ajouevent.service;
 
 import java.io.IOException;
 import java.net.URL;
