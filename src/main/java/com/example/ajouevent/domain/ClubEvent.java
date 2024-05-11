@@ -31,7 +31,7 @@ public class ClubEvent {
     private String writer;
 
     @Column
-    private LocalDateTime date;
+    private LocalDateTime createdAt;
 
     @Column
     private String subject;
@@ -71,7 +71,7 @@ public class ClubEvent {
             this.type = request.getType();
         }
         // date는 일반적으로 업데이트 요청 시 현재 시간으로 설정하는 것이 일반적이므로 주석 처리
-        this.date = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
     }
 
 }

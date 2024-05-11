@@ -1,5 +1,7 @@
 package com.example.ajouevent.dto;
 
+import java.time.LocalDateTime;
+
 import com.example.ajouevent.domain.ClubEvent;
 import com.example.ajouevent.domain.Type;
 
@@ -15,6 +17,7 @@ public class EventDetailResponseDto { // 게시글 상세 조회시에 나오는
 	private String content;
 	private String imgUrl;
 	private Long eventId;
+	private LocalDateTime createdAt;
 	private Type type;
 	private String writer;
 
@@ -24,6 +27,7 @@ public class EventDetailResponseDto { // 게시글 상세 조회시에 나오는
 			.title(clubEvent.getTitle())
 			.content(clubEvent.getContent())
 			.writer(clubEvent.getWriter())
+			.createdAt(clubEvent.getCreatedAt())
 			.type(clubEvent.getType())
 			.imgUrl(clubEvent.getClubEventImageList().get(0).getUrl())
 			.build();
