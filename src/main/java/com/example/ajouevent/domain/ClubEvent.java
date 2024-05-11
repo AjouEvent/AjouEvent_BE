@@ -2,9 +2,13 @@ package com.example.ajouevent.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.joda.time.DateTime;
 
+import java.time.LocalDateTime;
 import java.util.List;
+
+import org.hibernate.annotations.BatchSize;
+
+import com.example.ajouevent.dto.UpdateEventRequest;
 
 @Entity
 @Getter
@@ -27,7 +31,7 @@ public class ClubEvent {
     private String writer;
 
     @Column
-    private DateTime date;
+    private LocalDateTime date;
 
     @Column
     private String subject;
@@ -42,8 +46,32 @@ public class ClubEvent {
     @Enumerated(value = EnumType.STRING)
     private Type type;
 
+    @BatchSize(size=100) //
     @OneToMany(mappedBy = "clubEvent", fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.REMOVE}, orphanRemoval = true)
     @ToString.Exclude
     private List<ClubEventImage> clubEventImageList;
+
+    public void updateEvent(UpdateEventRequest request) {
+        if (request.getTitle() != null) {
+            this.title = request.getTitle();
+        }
+        if (request.getContent() != null) {
+            this.content = request.getContent();
+        }
+        if (request.getWriter() != null) {
+            this.writer = request.getWriter();
+        }
+        if (request.getSubject() != null) {
+            this.subject = request.getSubject();
+        }
+        if (request.getUrl() != null) {
+            this.url = request.getUrl();
+        }
+        if (request.getType() != null) {
+            this.type = request.getType();
+        }
+        // date는 일반적으로 업데이트 요청 시 현재 시간으로 설정하는 것이 일반적이므로 주석 처리
+        this.date = LocalDateTime.now();
+    }
 
 }

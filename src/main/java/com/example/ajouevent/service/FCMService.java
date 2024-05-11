@@ -75,7 +75,7 @@ public class FCMService {
 
 		for (Token token : tokens) {
 			Message message = Message.builder()
-				.setToken(token.getValue())
+				.setToken(token.getTokenValue())
 				.setNotification(Notification.builder()
 					.setTitle(title)
 					.setBody(body)
@@ -186,12 +186,9 @@ public class FCMService {
 		}
 	}
 
-	public void unsubscribeFromTopic(String topic, List<Token> tokens) {
-		List<String> tokenValues = tokens.stream()
-			.map(Token::getValue)
-			.toList();
+	public void unsubscribeFromTopic(String topic, List<String> tokens) {
 		try {
-			TopicManagementResponse response = FirebaseMessaging.getInstance().unsubscribeFromTopicAsync(tokenValues, topic).get();
+			TopicManagementResponse response = FirebaseMessaging.getInstance().unsubscribeFromTopicAsync(tokens, topic).get();
 			System.out.println("Unsubscribed from topic: " + topic);
 			System.out.println(response.getSuccessCount() + " tokens were unsubscribed successfully");
 		} catch (InterruptedException | ExecutionException e) {

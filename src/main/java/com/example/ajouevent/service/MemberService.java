@@ -61,13 +61,9 @@ public class MemberService {
 	public ResponseEntity<LoginResponse> login(MemberDto.LoginRequest loginRequest) {
 		String email = loginRequest.getEmail();
 		String password = loginRequest.getPassword();
-		Optional<Member> optionalMember = memberRepository.findByEmail(email);
+		Member member = memberRepository.findByEmail(email)
+			.orElseThrow(() -> new UsernameNotFoundException("이메일이 존재하지 않습니다."));
 
-		if (optionalMember.isEmpty()) {
-			throw new UsernameNotFoundException("이메일이 존재하지 않습니다.");
-		}
-
-		Member member = optionalMember.get();
 		if (!encoder.matches(password, member.getPassword())) {
 			throw new BadCredentialsException("비밀번호가 일치하지 않습니다.");
 		}
@@ -87,13 +83,13 @@ public class MemberService {
 
 
 		// 로그인을 하고 토큰이 이미 존재한다면, token의 만료 기간을 현재 날짜에서 2달 늘려줌
-		Optional<Token> existingToken = tokenRepository.findByValueAndMember(loginRequest.getFcmToken(), member);
-		if (existingToken.isPresent()) {
-			Token token = existingToken.get();
-			log.info("이미 존재하는 토큰: " + existingToken.get().getValue());
-			token.setExpirationDate(LocalDate.now().plusMonths(2));
-			tokenRepository.save(token);
-		}
+		// Optional<Token> existingToken = tokenRepository.findByTokenValueAndMember(loginRequest.getFcmToken(), member);
+		// if (existingToken.isPresent()) {
+		// 	Token token = existingToken.get();
+		// 	log.info("이미 존재하는 토큰: " + existingToken.get().getTokenValue());
+		// 	token.setExpirationDate(LocalDate.now().plusMonths(2));
+		// 	tokenRepository.save(token);
+		// }
 
 		LoginResponse loginResponse = LoginResponse.builder()
 				.id(member.getId())
