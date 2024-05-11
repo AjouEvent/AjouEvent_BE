@@ -1,5 +1,7 @@
 package com.example.ajouevent.controller;
 
+import static org.springframework.data.domain.Sort.Direction.*;
+
 import java.io.IOException;
 import java.security.Principal;
 import java.util.List;
@@ -17,6 +19,7 @@ import com.example.ajouevent.dto.EventResponseDto;
 import com.example.ajouevent.dto.PostEventDto;
 import com.example.ajouevent.dto.PostNotificationDto;
 import com.example.ajouevent.dto.ResponseDto;
+import com.example.ajouevent.dto.SliceResponse;
 import com.example.ajouevent.dto.UpdateEventRequest;
 import com.example.ajouevent.service.EventService;
 
@@ -107,14 +110,14 @@ public class EventController {
 
 	// 전체 글 보기 페이지(홈) -> 일단 테스트용으로 올린거 전부
 	@GetMapping("/all")
-	public Slice<EventResponseDto> getEventList(Pageable pageable) {
+	public SliceResponse<EventResponseDto> getEventList(@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable) {
 		return eventService.getEventList(pageable);
 	}
 
 
 	// type별로 글 보기
 	@GetMapping("/{type}")
-	public Slice<EventResponseDto> getEventTypeList(@PathVariable String type, @PageableDefault(size = 10) Pageable pageable) {
+	public SliceResponse<EventResponseDto> getEventTypeList(@PathVariable String type, @PageableDefault(size = 10) Pageable pageable) {
 		return eventService.getEventTypeList(type, pageable);
 	}
 

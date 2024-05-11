@@ -13,10 +13,10 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.SliceImpl;
+import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -36,6 +36,7 @@ import com.example.ajouevent.dto.EventResponseDto;
 import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.PostEventDto;
 import com.example.ajouevent.dto.PostNotificationDto;
+import com.example.ajouevent.dto.SliceResponse;
 import com.example.ajouevent.dto.UpdateEventRequest;
 import com.example.ajouevent.repository.AlarmRepository;
 import com.example.ajouevent.repository.ClubEventImageRepository;
@@ -445,27 +446,34 @@ public class EventService {
 
 	// 글 전체 조회 (동아리, 학생회, 공지사항, 기타)
 	@Transactional
-	public Slice<EventResponseDto> getEventList(Pageable pageable) {
+	public SliceResponse<EventResponseDto> getEventList(Pageable pageable) {
 		Slice<ClubEvent> clubEventSlice = eventRepository.findAll(pageable);
 
 		List<EventResponseDto> eventResponseDtoList = clubEventSlice.getContent().stream()
 			.map(EventResponseDto::toDto)
 			.collect(Collectors.toList());
 
-		return new SliceImpl<>(eventResponseDtoList, pageable, clubEventSlice.hasNext());
+		// SliceResponse 생성
+		SliceResponse.SortResponse sortResponse = SliceResponse.SortResponse.builder()
+			.sorted(pageable.getSort().isSorted())
+			.direction(String.valueOf(pageable.getSort().descending()))
+			.orderProperty(pageable.getSort().stream().map(Sort.Order::getProperty).findFirst().orElse(null))
+			.build();
 
+		return new SliceResponse<>(eventResponseDtoList, clubEventSlice.hasPrevious(), clubEventSlice.hasNext(),
+			clubEventSlice.getNumber(), sortResponse);
 	}
 
 
 	@Transactional
-	public Slice<EventResponseDto> getEventTypeList(String type, Pageable pageable) {
+	public SliceResponse<EventResponseDto> getEventTypeList(String type, Pageable pageable) {
 		// 대소문자를 구분하지 않고 입력 받기 위해 입력된 문자열을 대문자로 변환합니다.
 		Type eventType;
 		try {
 			eventType = Type.valueOf(type.toUpperCase());
 		} catch (IllegalArgumentException e) {
 			// 유효하지 않은 Type이 입력된 경우, 빈 리스트를 반환합니다.
-			return new SliceImpl<>(Collections.emptyList());
+			return new SliceResponse<>(Collections.emptyList(), false, false, pageable.getPageNumber(), null);
 		}
 
 		// Spring Data JPA의 Slice를 사용하여 페이지로 나눠서 결과를 조회합니다.
@@ -476,8 +484,16 @@ public class EventService {
 			.map(EventResponseDto::toDto)
 			.collect(Collectors.toList());
 
+		// SliceResponse 생성
+		SliceResponse.SortResponse sortResponse = SliceResponse.SortResponse.builder()
+			.sorted(pageable.getSort().isSorted())
+			.direction(String.valueOf(pageable.getSort().descending()))
+			.orderProperty(pageable.getSort().stream().map(Sort.Order::getProperty).findFirst().orElse(null))
+			.build();
+
 		// 결과를 Slice로 감싸서 반환합니다.
-		return new SliceImpl<>(eventResponseDtoList, pageable, clubEventSlice.hasNext());
+		return new SliceResponse<>(eventResponseDtoList, clubEventSlice.hasPrevious(), clubEventSlice.hasNext(),
+			clubEventSlice.getNumber(), sortResponse);
 	}
 
 	// 게시글 상세 조회
