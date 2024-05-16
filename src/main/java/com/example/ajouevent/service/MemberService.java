@@ -151,4 +151,11 @@ public class MemberService {
 		memberRepository.save(member);
 		return "수정 완료";
 	}
+
+	@Transactional
+	public String deleteMember (Principal principal) {
+		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow();
+		memberRepository.delete(member);
+		return "삭제 완료";
+	}
 }

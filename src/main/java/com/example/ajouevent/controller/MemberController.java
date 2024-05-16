@@ -62,4 +62,11 @@ public class MemberController {
 		return ResponseEntity.status(HttpStatus.OK).body(res);
 	}
 
+	@PreAuthorize("isAuthenticated()")
+	@DeleteMapping("")
+	public ResponseEntity<String> deleteMember (Principal principal) {
+		String res = memberService.deleteMember(principal);
+		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
 }
