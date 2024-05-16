@@ -15,7 +15,6 @@ import java.util.List;
 
 import com.example.ajouevent.domain.EventLike;
 import com.example.ajouevent.dto.ResponseDto;
-import com.example.ajouevent.dto.SaveEventRequest;
 import com.example.ajouevent.exception.UserNotFoundException;
 import com.example.ajouevent.repository.EventLikeRepository;
 import com.google.api.client.auth.oauth2.Credential;
