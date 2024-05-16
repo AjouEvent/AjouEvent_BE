@@ -140,4 +140,15 @@ public class MemberService {
 				.phone(member.getPhone())
 				.build();
 	}
+
+	@Transactional
+	public String updateMemberInfo (MemberUpdateDto memberUpdateDto, Principal principal) {
+		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow();
+
+		if (memberUpdateDto.getMajor() != null) member.setMajor(memberUpdateDto.getMajor());
+		if (memberUpdateDto.getName() != null) member.setName(memberUpdateDto.getName());
+		if (memberUpdateDto.getPhone() != null) member.setPhone(memberUpdateDto.getPhone());
+		memberRepository.save(member);
+		return "수정 완료";
+	}
 }

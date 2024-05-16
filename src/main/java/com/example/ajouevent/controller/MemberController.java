@@ -55,4 +55,11 @@ public class MemberController {
 		return ResponseEntity.status(HttpStatus.OK).body(memberGetDtoList);
 	}
 
+	@PreAuthorize("isAuthenticated()")
+	@PatchMapping("")
+	public ResponseEntity<String> updateMemberInfo (@RequestBody MemberUpdateDto memberUpdateDto, Principal principal) {
+		String res = memberService.updateMemberInfo(memberUpdateDto, principal);
+		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
 }
