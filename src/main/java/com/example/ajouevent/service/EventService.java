@@ -137,8 +137,10 @@ public class EventService {
 		ClubEvent clubEvent = ClubEvent.builder()
 			.title(noticeDto.getTitle())
 			.content(noticeDto.getContent())
-			.createdAt(LocalDateTime.now())
+			.createdAt(noticeDto.getDate())
 			.url(noticeDto.getUrl())
+			.subject(noticeDto.getKoreanTopic())
+			.writer(noticeDto.getDepartment())
 			.type(type)
 			.likesCount(0L)
 			.build();
