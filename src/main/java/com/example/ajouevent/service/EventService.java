@@ -11,6 +11,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+
+import com.example.ajouevent.domain.EventLike;
+import com.example.ajouevent.dto.ResponseDto;
+import com.example.ajouevent.dto.SaveEventRequest;
+import com.example.ajouevent.exception.UserNotFoundException;
+import com.example.ajouevent.repository.EventLikeRepository;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
@@ -87,6 +93,7 @@ public class EventService {
 	private final ClubEventImageRepository clubEventImageRepository;
 	private final S3Upload s3Upload;
 	private final FileService fileService;
+	private final EventLikeRepository eventLikeRepository;
 
 
 	// 행사, 동아리, 학생회 이벤트와 같은 알림 등록용 메서드
@@ -129,6 +136,7 @@ public class EventService {
 			.createdAt(LocalDateTime.now())
 			.url(noticeDto.getUrl())
 			.type(type)
+			.likesCount(0L)
 			.build();
 
 		log.info("크롤링한 공지사항 원래 url" + noticeDto.getUrl());
@@ -228,6 +236,7 @@ public class EventService {
 			.subject(postEventDto.getSubject())
 			.type(postEventDto.getType())
 			.clubEventImageList(new ArrayList<>())
+			.likesCount(0L)
 			.build();
 
 		// 각 업로드된 이미지의 URL을 사용하여 ClubEventImage를 생성하고, ClubEvent와 연관시킵니다.
@@ -257,6 +266,7 @@ public class EventService {
 			.subject(postEventDto.getSubject())
 			.type(postEventDto.getType())
 			.clubEventImageList(new ArrayList<>())
+			.likesCount(0L)
 			.build();
 
 		// 프론트엔드에서 받은 이미지 URL 리스트를 처리
@@ -463,15 +473,19 @@ public class EventService {
 		eventRepository.deleteById(eventId);
 	}
 
-
 	// 글 전체 조회 (동아리, 학생회, 공지사항, 기타)
 	@Transactional
-	public SliceResponse<EventResponseDto> getEventList(Pageable pageable) {
+	public SliceResponse<EventResponseDto> getEventList(Pageable pageable, Principal principal) {
 		Slice<ClubEvent> clubEventSlice = eventRepository.findAll(pageable);
 
+		// 조회된 ClubEvent 목록을 이벤트 응답 DTO 목록으로 매핑합니다.
 		List<EventResponseDto> eventResponseDtoList = clubEventSlice.getContent().stream()
 			.map(EventResponseDto::toDto)
 			.collect(Collectors.toList());
+
+		for (EventResponseDto dto : eventResponseDtoList) {
+			dto.setStar(false);
+		}
 
 		// SliceResponse 생성
 		SliceResponse.SortResponse sortResponse = SliceResponse.SortResponse.builder()
@@ -480,14 +494,29 @@ public class EventService {
 			.orderProperty(pageable.getSort().stream().map(Sort.Order::getProperty).findFirst().orElse(null))
 			.build();
 
+		// 사용자가 로그인한 경우에만 찜한 이벤트 목록을 가져와서 설정합니다.
+		if (principal != null) {
+			String userEmail = principal.getName();
+
+			Slice<EventLike> likedEventSlice = eventLikeRepository.findByMember(member);
+			Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
+				.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+
+			// 각 이벤트 DTO에 사용자의 찜 여부 설정
+			for (EventResponseDto dto : eventResponseDtoList) {
+				dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
+			}
+		}
+
 		return new SliceResponse<>(eventResponseDtoList, clubEventSlice.hasPrevious(), clubEventSlice.hasNext(),
 			clubEventSlice.getNumber(), sortResponse);
 	}
 
-
+	// 글 타입별 조회 (동아리, 학생회, 공지사항, 기타)
 	@Transactional
-	public SliceResponse<EventResponseDto> getEventTypeList(String type, Pageable pageable) {
+	public SliceResponse<EventResponseDto> getEventTypeList(String type, Pageable pageable, Principal principal) {
 		// 대소문자를 구분하지 않고 입력 받기 위해 입력된 문자열을 대문자로 변환합니다.
+
 		Type eventType;
 		try {
 			eventType = Type.valueOf(type.toUpperCase());
@@ -499,10 +528,32 @@ public class EventService {
 		// Spring Data JPA의 Slice를 사용하여 페이지로 나눠서 결과를 조회합니다.
 		Slice<ClubEvent> clubEventSlice = eventRepository.findByType(eventType, pageable);
 
-		// ClubEvent를 EventResponseDto로 변환합니다.
+		// 조회된 ClubEvent 목록을 이벤트 응답 DTO 목록으로 매핑합니다.
 		List<EventResponseDto> eventResponseDtoList = clubEventSlice.getContent().stream()
 			.map(EventResponseDto::toDto)
 			.collect(Collectors.toList());
+
+		// 사용자가 로그인한 경우에만 찜한 이벤트 목록을 가져와서 설정합니다.
+		if (principal != null) {
+			log.info("유저 Email" + principal.getName());
+			String userEmail = principal.getName();
+			Member member = memberRepository.findByEmail(userEmail)
+				.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + userEmail));
+
+			// 사용자가 찜한 게시글 목록 조회
+			List<EventLike> likedEventSlice = member.getEventLikeList();
+			Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
+				.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+
+			// 각 이벤트 DTO에 사용자의 찜 여부 설정
+			for (EventResponseDto dto : eventResponseDtoList) {
+				dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
+			}
+		} else {
+			for (EventResponseDto dto : eventResponseDtoList) {
+				dto.setStar(false);
+			}
+		}
 
 		// SliceResponse 생성
 		SliceResponse.SortResponse sortResponse = SliceResponse.SortResponse.builder()
@@ -514,15 +565,166 @@ public class EventService {
 		// 결과를 Slice로 감싸서 반환합니다.
 		return new SliceResponse<>(eventResponseDtoList, clubEventSlice.hasPrevious(), clubEventSlice.hasNext(),
 			clubEventSlice.getNumber(), sortResponse);
+
 	}
 
 	// 게시글 상세 조회
 	@Transactional
-	public EventDetailResponseDto getEventDetail(Long eventId) {
+	public EventDetailResponseDto getEventDetail(Long eventId, Principal principal) {
 		ClubEvent clubEvent = eventRepository.findById(eventId)
 			.orElseThrow(() -> new NoSuchElementException("Event not found with id: " + eventId));
 
 		return EventDetailResponseDto.toDto(clubEvent);
+		if (principal != null) {
+			String userEmail = principal.getName(); // 현재 로그인한 사용자의 이메일 가져오기
+
+			// 사용자 조회
+			Member member = memberRepository.findByEmail(userEmail)
+				.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + userEmail));
+
+			boolean isLiked = eventLikeRepository.existsByMemberAndClubEvent(member, clubEvent);
+			return EventDetailResponseDto.toDto(clubEvent, isLiked);
+		}
+
+		boolean isLiked = false;
+		return EventDetailResponseDto.toDto(clubEvent, isLiked);
+	}
+
+	// 게시글 찜하기
+	@Transactional
+	public ResponseEntity<ResponseDto> likeEvent(Long eventId, Principal principal) {
+		// 사용자가 로그인하지 않은 경우
+		if (principal == null) {
+			return ResponseEntity.ok().body(ResponseDto.builder()
+				.successStatus(HttpStatus.UNAUTHORIZED)
+				.successContent("로그인이 필요합니다.")
+				.build()
+			);
+		}
+
+		String userEmail = principal.getName(); // 현재 로그인한 사용자의 이메일 가져오기
+
+		// 이벤트 조회
+		ClubEvent clubEvent = eventRepository.findById(eventId)
+			.orElseThrow(() -> new NoSuchElementException("Event not found with id: " + eventId));
+
+		// 사용자 조회
+		Member member = memberRepository.findByEmail(userEmail).orElseThrow(() -> new IllegalArgumentException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + userEmail));
+
+		// 이미 찜한 이벤튼지 확인
+		if (eventLikeRepository.existsByMemberAndClubEvent(member, clubEvent)) {
+			return ResponseEntity.ok().body(ResponseDto.builder()
+				.successStatus(HttpStatus.OK)
+				.successContent("이미 찜한 이벤트입니다.")
+				.build()
+			);
+		}
+
+		// 이벤트를 사용자의 찜 목록에 추가
+		EventLike eventLike = EventLike.builder()
+			.clubEvent(clubEvent)
+			.member(member)
+			.build();
+
+		// 게시글의 좋아요 수 증가
+		clubEvent.incrementLikes();
+
+		eventLikeRepository.save(eventLike);
+
+		return ResponseEntity.ok().body(ResponseDto.builder()
+			.successStatus(HttpStatus.CREATED)
+			.successContent("게시글을 찜했습니다.")
+			.build()
+		);
+
+	}
+
+	// 게시글 찜 취소 하기
+	@Transactional
+	public ResponseEntity<ResponseDto> cancelLikeEvent(Long eventId, Principal principal) {
+		// 사용자가 로그인하지 않은 경우
+		if (principal == null) {
+			return ResponseEntity.ok().body(ResponseDto.builder()
+				.successStatus(HttpStatus.UNAUTHORIZED)
+				.successContent("로그인이 필요합니다.")
+				.build()
+			);
+		}
+
+		String userEmail = principal.getName(); // 현재 로그인한 사용자의 이메일 가져오기
+
+		// 이벤트 조회
+		ClubEvent clubEvent = eventRepository.findById(eventId)
+			.orElseThrow(() -> new NoSuchElementException("Event not found with id: " + eventId));
+
+
+		// 찜한 이벤트인지 확인
+		EventLike eventLike = eventLikeRepository.findByClubEventAndMember(clubEvent, member).orElseThrow(() -> new NoSuchElementException("EventLike not found "));
+		if (eventLike == null) {
+
+			return ResponseEntity.ok().body(ResponseDto.builder()
+				.successStatus(HttpStatus.BAD_REQUEST)
+				.successContent("찜한 이벤트를 찾을 수 없습니다.")
+				.build()
+			);
+		}
+
+		// 게시글의 저장수 감소
+		clubEvent.decreaseLikes();
+
+		// 이벤트 찜 취소
+		eventLikeRepository.delete(eventLike);
+
+		return ResponseEntity.ok().body(ResponseDto.builder()
+			.successStatus(HttpStatus.OK)
+			.successContent("게시글 찜하기를 취소했습니다.")
+			.build()
+		);
+	}
+
+	// 유저의 찜한 이벤트 목록 조회
+	@Transactional
+	public SliceResponse<EventResponseDto> getLikedEvents(Pageable pageable, Principal principal) {
+		// 사용자가 로그인하지 않은 경우
+		if (principal == null) {
+			throw new IllegalArgumentException("로그인이 필요합니다");
+		}
+
+		String userEmail = principal.getName(); // 현재 로그인한 사용자의 이메일 가져오기
+
+		// 사용자 조회
+		Member member = memberRepository.findByEmail(userEmail)
+			.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + userEmail));
+
+		// 사용자의 찜한 이벤트 목록 조회
+		Slice<EventLike> likedEventSlice = eventLikeRepository.findByMember(member);
+
+
+
+		// 조회된 ClubEvent 목록을 이벤트 응답 DTO 목록으로 매핑합니다.
+		List<EventResponseDto> eventResponseDtoList = likedEventSlice.getContent().stream()
+			.map(event -> {
+				EventResponseDto eventResponseDto = EventResponseDto.toDto(event.getClubEvent());
+
+				// 유저의 찜 여부 설정
+				boolean isLiked = likedEventSlice.stream().anyMatch(eventLike -> eventLike.getClubEvent().equals(event.getClubEvent()));
+				eventResponseDto.setStar(isLiked);
+
+				return eventResponseDto;
+			})
+			.collect(Collectors.toList());
+
+		// SliceResponse 생성
+		SliceResponse.SortResponse sortResponse = SliceResponse.SortResponse.builder()
+			.sorted(pageable.getSort().isSorted())
+			.direction(String.valueOf(pageable.getSort().descending()))
+			.orderProperty(pageable.getSort().stream().map(Sort.Order::getProperty).findFirst().orElse(null))
+			.build();
+
+
+		// 결과를 Slice로 감싸서 반환합니다.
+		return new SliceResponse<>(eventResponseDtoList, likedEventSlice.hasPrevious(), likedEventSlice.hasNext(),
+			likedEventSlice.getNumber(), sortResponse);
 	}
 
 }

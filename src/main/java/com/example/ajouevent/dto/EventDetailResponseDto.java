@@ -20,8 +20,10 @@ public class EventDetailResponseDto { // 게시글 상세 조회시에 나오는
 	private LocalDateTime createdAt;
 	private Type type;
 	private String writer;
+	private Long likesCount;
+	private Boolean star;
 
-	public static EventDetailResponseDto toDto(ClubEvent clubEvent) {
+	public static EventDetailResponseDto toDto(ClubEvent clubEvent, Boolean isLiked) {
 		return EventDetailResponseDto.builder()
 			.eventId(clubEvent.getEventId())
 			.title(clubEvent.getTitle())
@@ -30,6 +32,8 @@ public class EventDetailResponseDto { // 게시글 상세 조회시에 나오는
 			.createdAt(clubEvent.getCreatedAt())
 			.type(clubEvent.getType())
 			.imgUrl(clubEvent.getClubEventImageList().get(0).getUrl())
+			.likesCount(clubEvent.getLikesCount())
+			.star(isLiked)
 			.build();
 	}
 }

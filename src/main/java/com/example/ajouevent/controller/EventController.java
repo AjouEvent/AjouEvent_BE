@@ -124,6 +124,22 @@ public class EventController {
 	@GetMapping("/{type}")
 	public SliceResponse<EventResponseDto> getEventTypeList(@PathVariable String type, @PageableDefault(size = 10) Pageable pageable) {
 		return eventService.getEventTypeList(type, pageable);
+	// 게시글 찜하기
+	@PostMapping("/like/{eventId}")
+	public ResponseEntity<ResponseDto> likeEvent(@PathVariable Long eventId, Principal principal) {
+		return eventService.likeEvent(eventId, principal);
+	}
+
+	// 게시글 찜 취소
+	@DeleteMapping("/like/{eventId}")
+	public ResponseEntity<ResponseDto> cancelLikeEvent(@PathVariable Long eventId, Principal principal) {
+		return eventService.cancelLikeEvent(eventId, principal);
+	}
+
+	// 찜한 게시글 불러오기
+	@GetMapping("/liked")
+	public SliceResponse<EventResponseDto> getLikedEvents(@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
+		return eventService.getLikedEvents(pageable, principal);
 	}
 
 	@PreAuthorize("isAuthenticated()")

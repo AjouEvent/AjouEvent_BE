@@ -42,6 +42,9 @@ public class ClubEvent {
     @Column
     private String major;
 
+    @Column
+    private Long likesCount;
+
     @Column(length = 50000)
     @Enumerated(value = EnumType.STRING)
     private Type type;
@@ -73,5 +76,16 @@ public class ClubEvent {
         // date는 일반적으로 업데이트 요청 시 현재 시간으로 설정하는 것이 일반적이므로 주석 처리
         this.createdAt = LocalDateTime.now();
     }
+
+    // 게시글의 저장수 증가
+    public void incrementLikes() {
+        this.likesCount++;
+    }
+
+    // 게시글의 저장수 감소
+    public void decreaseLikes() {
+        this.likesCount--;
+    }
+
 
 }

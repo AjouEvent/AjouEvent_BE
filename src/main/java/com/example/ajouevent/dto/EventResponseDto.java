@@ -17,6 +17,7 @@ public class EventResponseDto { // 게시글 홈 화면 조회 시에 나오는 
 	private String url;
 	private LocalDateTime createdAt;
 	private Long eventId;
+	private Long likesCount;
 	private Boolean star;
 
 	public static EventResponseDto toDto(ClubEvent clubEvent) {
@@ -26,6 +27,7 @@ public class EventResponseDto { // 게시글 홈 화면 조회 시에 나오는 
 			.imgUrl(clubEvent.getClubEventImageList().get(0).getUrl())
 			.url(clubEvent.getUrl())
 			.createdAt(clubEvent.getCreatedAt())
+			.likesCount(clubEvent.getLikesCount())
 			.build();
 	}
 }
