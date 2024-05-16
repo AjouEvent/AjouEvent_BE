@@ -24,7 +24,7 @@ public class ClubEvent {
     @Column
     private String title;
 
-    @Column
+    @Column(length = 50000)
     private String content;
 
     @Column
