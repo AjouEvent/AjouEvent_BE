@@ -109,21 +109,22 @@ public class EventController {
 
 	// 게시글 상세 조회
 	@GetMapping("/detail/{eventId}")
-	public EventDetailResponseDto detail(@PathVariable("eventId") Long eventId) {
-		return eventService.getEventDetail(eventId);
+	public EventDetailResponseDto detail(@PathVariable("eventId") Long eventId, Principal principal) {
+		return eventService.getEventDetail(eventId, principal);
 	}
 
 	// 전체 글 보기 페이지(홈) -> 일단 테스트용으로 올린거 전부
 	@GetMapping("/all")
-	public SliceResponse<EventResponseDto> getEventList(@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable) {
-		return eventService.getEventList(pageable);
+	public SliceResponse<EventResponseDto> getEventList(@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
+		return eventService.getEventList(pageable, principal);
 	}
-
 
 	// type별로 글 보기
 	@GetMapping("/{type}")
-	public SliceResponse<EventResponseDto> getEventTypeList(@PathVariable String type, @PageableDefault(size = 10) Pageable pageable) {
-		return eventService.getEventTypeList(type, pageable);
+	public SliceResponse<EventResponseDto> getEventTypeList(@PathVariable String type, @PageableDefault(size = 10) Pageable pageable, Principal principal) {
+		return eventService.getEventTypeList(type, pageable, principal);
+	}
+
 	// 게시글 찜하기
 	@PostMapping("/like/{eventId}")
 	public ResponseEntity<ResponseDto> likeEvent(@PathVariable Long eventId, Principal principal) {

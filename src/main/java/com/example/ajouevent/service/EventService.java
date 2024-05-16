@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.security.GeneralSecurityException;
 import java.security.Principal;
+import java.security.Security;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,6 +37,8 @@ import com.google.api.services.calendar.model.EventDateTime;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
 import org.springframework.beans.factory.annotation.Value;
+
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -44,6 +47,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.SliceImpl;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -186,8 +191,10 @@ public class EventService {
 
 	@Transactional
 	public void createNotification(PostNotificationDto postNotificationDTO, Principal principal) {
-		String email = principal.getName();
-		Member member = memberRepository.findByEmail(email).orElseThrow(() -> new IllegalArgumentException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + email));
+		String userEmail = principal.getName();
+		// 사용자 조회
+		Member member = memberRepository.findByEmail(userEmail)
+			.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + userEmail));
 
 		Type type = Type.valueOf(postNotificationDTO.getType().getEnglishTopic().toUpperCase());
 		log.info("저장하는 타입 : " + type.getEnglishTopic());
@@ -497,6 +504,8 @@ public class EventService {
 		// 사용자가 로그인한 경우에만 찜한 이벤트 목록을 가져와서 설정합니다.
 		if (principal != null) {
 			String userEmail = principal.getName();
+			Member member = memberRepository.findByEmail(userEmail)
+				.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + userEmail));
 
 			Slice<EventLike> likedEventSlice = eventLikeRepository.findByMember(member);
 			Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
@@ -574,7 +583,6 @@ public class EventService {
 		ClubEvent clubEvent = eventRepository.findById(eventId)
 			.orElseThrow(() -> new NoSuchElementException("Event not found with id: " + eventId));
 
-		return EventDetailResponseDto.toDto(clubEvent);
 		if (principal != null) {
 			String userEmail = principal.getName(); // 현재 로그인한 사용자의 이메일 가져오기
 
@@ -657,6 +665,9 @@ public class EventService {
 		ClubEvent clubEvent = eventRepository.findById(eventId)
 			.orElseThrow(() -> new NoSuchElementException("Event not found with id: " + eventId));
 
+		// 사용자 조회
+		Member member = memberRepository.findByEmail(userEmail)
+			.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + userEmail));
 
 		// 찜한 이벤트인지 확인
 		EventLike eventLike = eventLikeRepository.findByClubEventAndMember(clubEvent, member).orElseThrow(() -> new NoSuchElementException("EventLike not found "));

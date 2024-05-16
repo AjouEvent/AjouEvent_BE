@@ -23,6 +23,7 @@ import com.example.ajouevent.domain.TopicToken;
 import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.TopicRequest;
+import com.example.ajouevent.exception.UserNotFoundException;
 import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.TokenRepository;
 import com.example.ajouevent.repository.TopicMemberRepository;
@@ -106,7 +107,7 @@ public class TopicService {
 
 		// 현재 사용자 정보 가져오기
 		Member member = memberRepository.findByEmail(memberEmail)
-			.orElseThrow(() -> new NoSuchElementException("해당 이메일의 멤버를 찾을 수 없습니다: " + memberEmail));
+			.orElseThrow(() -> new UserNotFoundException("해당 이메일의 멤버를 찾을 수 없습니다: " + memberEmail));
 
 		// 멤버가 구독하고 있는 해당 토픽을 찾아서 삭제
 		topicMemberRepository.deleteByTopicAndMember(topic, member);
@@ -130,7 +131,10 @@ public class TopicService {
 	@Transactional
 	public void saveFCMToken(MemberDto.LoginRequest loginRequest) {
 		log.info("saveFCMToken 메서드 호출");
-		Member member = memberRepository.findByEmail(loginRequest.getEmail()).orElseThrow(NoSuchElementException::new);
+
+		// 사용자 조회
+		Member member = memberRepository.findByEmail(loginRequest.getEmail())
+			.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + loginRequest.getEmail()));
 
 		// token이 이미 있는지 체크
 		Optional<Token> existingToken = tokenRepository.findByTokenValueAndMember(loginRequest.getFcmToken(), member);
