@@ -29,8 +29,6 @@ public class PostEventDto {
 
     private String major;
 
-    private String postImage;
-
     private LocalDateTime eventDateTime;
 
     @NotNull(message = "type은 Null일 수 없습니다")
