@@ -23,6 +23,7 @@ import com.example.ajouevent.domain.TopicToken;
 import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.TopicRequest;
+import com.example.ajouevent.dto.TopicResponse;
 import com.example.ajouevent.exception.UserNotFoundException;
 import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.TokenRepository;
@@ -235,7 +236,7 @@ public class TopicService {
 	}
 
 	@Transactional
-	public List<String> getSubscribedTopics() {
+	public TopicResponse getSubscribedTopics() {
 		log.info("getSubscribedTopics 입장");
 		// 스프링 시큐리티 컨텍스트에서 현재 사용자의 이메일 가져오기
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -246,10 +247,15 @@ public class TopicService {
 
 		// 회원이 구독하는 토픽 목록 조회
 		List<TopicMember> topicMembers = topicMemberRepository.findByMember(member);
+
 		// TopicMember 목록에서 토픽의 이름만 추출하여 반환
-		return topicMembers.stream()
+		List<String> topics = topicMembers.stream()
 			.map(topicMember -> topicMember.getTopic().getDepartment())
 			.collect(Collectors.toList());
+
+
+		// TopicResponse 객체 생성하여 반환
+		return new TopicResponse(topics);
 	}
 
 
