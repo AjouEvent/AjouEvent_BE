@@ -24,23 +24,23 @@ public class ClubEvent {
     @Column
     private String title;
 
-    @Column
+    @Column(length = 50000)
     private String content;
 
-    @Column
+    @Column // 게시글 작성자(작성 기관)
     private String writer;
 
-    @Column
-    private LocalDateTime date;
+    @Column // 게시글 생성 시간
+    private LocalDateTime createdAt;
 
-    @Column
+    @Column // 게시글 분류 - 아주대학교 - 일반, 소프트웨어학과, 동아리
     private String subject;
 
-    @Column
+    @Column // 원래 공지사항 url
     private String url;
 
-    @Column
-    private String major;
+    @Column // 찜한 수 (default는 0)
+    private Long likesCount;
 
     @Column(length = 50000)
     @Enumerated(value = EnumType.STRING)
@@ -71,7 +71,18 @@ public class ClubEvent {
             this.type = request.getType();
         }
         // date는 일반적으로 업데이트 요청 시 현재 시간으로 설정하는 것이 일반적이므로 주석 처리
-        this.date = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
     }
+
+    // 게시글의 저장수 증가
+    public void incrementLikes() {
+        this.likesCount++;
+    }
+
+    // 게시글의 저장수 감소
+    public void decreaseLikes() {
+        this.likesCount--;
+    }
+
 
 }

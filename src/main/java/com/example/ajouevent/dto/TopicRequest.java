@@ -14,13 +14,7 @@ import lombok.RequiredArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class TopicRequest {
-	// private List<String> topics;
 	private String topic;
-
-	// @JsonCreator
-	// public TopicRequest(List<String> topics) {
-	// 	this.topics = topics;
-	// }
 
 	@JsonCreator
 	public TopicRequest(String topic) {

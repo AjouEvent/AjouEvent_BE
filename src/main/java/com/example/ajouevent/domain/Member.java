@@ -41,6 +41,10 @@ public class Member {
 	@ToString.Exclude
 	private List<Alarm> alarmList;
 
+	@OneToMany(mappedBy = "member", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST,
+		CascadeType.REMOVE}, orphanRemoval = true)
+	private List<EventLike> eventLikeList;
+
 	@Builder
 	public Member(Long id, String email, String name, String password, String major, String phone) {
 		this.id = id;

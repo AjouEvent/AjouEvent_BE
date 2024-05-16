@@ -24,6 +24,7 @@ import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.dto.WebhookResponse;
+import com.example.ajouevent.exception.UserNotFoundException;
 import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.TokenRepository;
 import com.example.ajouevent.repository.TopicMemberRepository;
@@ -47,8 +48,9 @@ public class FCMService {
 	private final TopicMemberRepository topicMemberRepository;
 
 	public void sendEventNotification(String email, Alarm alarm) {
+		// 사용자 조회
 		Member member = memberRepository.findByEmail(email)
-			.orElseThrow(() -> new NoSuchElementException("해당 유저가 존재하지 않습니다"));
+			.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + email));
 
 		if (member.getTokens().isEmpty()) {
 			log.info("알림 전송 실패: 토큰이 없습니다.");

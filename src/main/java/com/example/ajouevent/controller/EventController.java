@@ -1,5 +1,7 @@
 package com.example.ajouevent.controller;
 
+import static org.springframework.data.domain.Sort.Direction.*;
+
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.Principal;
@@ -22,6 +24,7 @@ import com.example.ajouevent.dto.EventResponseDto;
 import com.example.ajouevent.dto.PostEventDto;
 import com.example.ajouevent.dto.PostNotificationDto;
 import com.example.ajouevent.dto.ResponseDto;
+import com.example.ajouevent.dto.SliceResponse;
 import com.example.ajouevent.dto.UpdateEventRequest;
 import com.example.ajouevent.service.EventService;
 
@@ -71,7 +74,7 @@ public class EventController {
 	}
 
 	// 게시글 수정 - 데이터
-	@PatchMapping("/{eventId}/data")
+	@PatchMapping("/{eventId}")
 	public ResponseEntity<ResponseDto> updateEventData(@PathVariable("eventId") Long eventId,
 		@RequestBody UpdateEventRequest request) {
 		eventService.updateEventData(eventId, request);
@@ -106,22 +109,39 @@ public class EventController {
 	}
 
 	// 게시글 상세 조회
-	@GetMapping("/{eventId}")
-	public EventDetailResponseDto detail(@PathVariable("eventId") Long eventId) {
-		return eventService.getEventDetail(eventId);
+	@GetMapping("/detail/{eventId}")
+	public EventDetailResponseDto detail(@PathVariable("eventId") Long eventId, Principal principal) {
+		return eventService.getEventDetail(eventId, principal);
 	}
 
 	// 전체 글 보기 페이지(홈) -> 일단 테스트용으로 올린거 전부
 	@GetMapping("/all")
-	public Slice<EventResponseDto> getEventList(Pageable pageable) {
-		return eventService.getEventList(pageable);
+	public SliceResponse<EventResponseDto> getEventList(@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
+		return eventService.getEventList(pageable, principal);
 	}
-
 
 	// type별로 글 보기
 	@GetMapping("/{type}")
-	public Slice<EventResponseDto> getEventTypeList(@PathVariable String type, @PageableDefault(size = 10) Pageable pageable) {
-		return eventService.getEventTypeList(type, pageable);
+	public SliceResponse<EventResponseDto> getEventTypeList(@PathVariable String type, @PageableDefault(size = 10) Pageable pageable, Principal principal) {
+		return eventService.getEventTypeList(type, pageable, principal);
+	}
+
+	// 게시글 찜하기
+	@PostMapping("/like/{eventId}")
+	public ResponseEntity<ResponseDto> likeEvent(@PathVariable Long eventId, Principal principal) {
+		return eventService.likeEvent(eventId, principal);
+	}
+
+	// 게시글 찜 취소
+	@DeleteMapping("/like/{eventId}")
+	public ResponseEntity<ResponseDto> cancelLikeEvent(@PathVariable Long eventId, Principal principal) {
+		return eventService.cancelLikeEvent(eventId, principal);
+	}
+
+	// 찜한 게시글 불러오기
+	@GetMapping("/liked")
+	public SliceResponse<EventResponseDto> getLikedEvents(@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
+		return eventService.getLikedEvents(pageable, principal);
 	}
 
 	@PreAuthorize("isAuthenticated()")
