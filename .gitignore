@@ -52,4 +52,4 @@ out/
 .vscode/
 
 **/src/main/resources/credentials.json
-**/tokens/StoredCredential
+**/tokens/
