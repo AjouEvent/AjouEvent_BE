@@ -13,28 +13,12 @@ import java.util.HashSet;
 import java.util.List;
 
 import com.example.ajouevent.domain.EventLike;
+import com.example.ajouevent.domain.Topic;
+import com.example.ajouevent.domain.TopicMember;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.exception.UserNotFoundException;
 import com.example.ajouevent.repository.EventLikeRepository;
-import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
-import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
-import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
-import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.http.HttpRequestInitializer;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.gson.GsonFactory;
-import com.google.api.client.util.DateTime;
-import com.google.api.client.util.store.FileDataStoreFactory;
-import com.google.api.services.calendar.Calendar;
-import com.google.api.services.calendar.CalendarScopes;
-import com.google.api.services.calendar.model.Event;
-import com.google.api.services.calendar.model.EventDateTime;
-import com.google.auth.http.HttpCredentialsAdapter;
-import com.google.auth.oauth2.GoogleCredentials;
-import org.springframework.beans.factory.annotation.Value;
+import com.example.ajouevent.repository.TopicMemberRepository;
 
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -98,6 +82,7 @@ public class EventService {
 	private final S3Upload s3Upload;
 	private final FileService fileService;
 	private final EventLikeRepository eventLikeRepository;
+	private final TopicMemberRepository topicMemberRepository;
 
 	// 게시글 생성시 기본 좋아요 수 상수 정의(기본 좋아요 수는 0)
 	final Long DEFAULT_LIKES_COUNT = 0L;
@@ -599,6 +584,67 @@ public class EventService {
 
 		boolean isLiked = false;
 		return EventDetailResponseDto.toDto(clubEvent, isLiked);
+	}
+
+	// 사용자가 구독하고 있는 topic 관련 글 조회(로그인 안하면 기본은 AjouNormal)
+	@Transactional
+	public SliceResponse<EventResponseDto> getSubscribedEvents(Pageable pageable, Principal principal) {
+		// 사용자가 로그인하지 않은 경우
+		if (principal == null) {
+			String type = String.valueOf(Type.AJOUNORMAL);
+			return getEventTypeList(type, pageable, principal);
+		}
+
+		String userEmail = principal.getName();
+		log.info("사용자 이메일: {}", userEmail);
+
+		Member member = memberRepository.findByEmail(userEmail)
+			.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + userEmail));
+
+		// 사용자가 구독하는 모든 토픽 가져오기
+		List<TopicMember> subscribedTopicMembers = topicMemberRepository.findByMember(member);
+
+		// 토픽 멤버에서 토픽만 추출하여 Type 열거형 리스트로 변환
+		List<Type> subscribedTopics = subscribedTopicMembers.stream()
+			.map(TopicMember::getTopic)
+			.map(Topic::getType)
+			.collect(Collectors.toList());
+
+		// 각 구독하는 토픽을 로그로 출력
+		for (Type topic : subscribedTopics) {
+			log.info("사용자가 구독하는 토픽: {}", topic.getEnglishTopic());
+		}
+
+		// 변환된 Type 열거형 리스트를 사용하여 이벤트를 조회
+		Slice<ClubEvent> clubEventSlice = eventRepository.findByTypeIn(subscribedTopics, pageable);
+
+		// 사용자가 찜한 게시글 목록 조회
+		List<EventLike> likedEventSlice = member.getEventLikeList();
+		Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
+			.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+
+		// 이벤트를 이벤트 응답 DTO로 변환하여 반환
+		List<EventResponseDto> eventResponseDtoList = clubEventSlice.getContent().stream()
+			.map(EventResponseDto::toDto)
+			.collect(Collectors.toList());
+
+		// 각 이벤트 DTO에 사용자의 찜 여부 설정
+		for (EventResponseDto dto : eventResponseDtoList) {
+			dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
+		}
+
+		// SliceResponse 생성
+		SliceResponse.SortResponse sortResponse = SliceResponse.SortResponse.builder()
+			.sorted(pageable.getSort().isSorted())
+			.direction(String.valueOf(pageable.getSort().descending()))
+			.orderProperty(pageable.getSort().stream().map(Sort.Order::getProperty).findFirst().orElse(null))
+			.build();
+
+		// 결과를 Slice로 감싸서 반환합니다.
+		return new SliceResponse<>(eventResponseDtoList, clubEventSlice.hasPrevious(), clubEventSlice.hasNext(),
+			clubEventSlice.getNumber(), sortResponse);
+
+
 	}
 
 	// 게시글 찜하기
