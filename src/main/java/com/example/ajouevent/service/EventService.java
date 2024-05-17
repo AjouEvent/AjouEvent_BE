@@ -99,6 +99,8 @@ public class EventService {
 	private final FileService fileService;
 	private final EventLikeRepository eventLikeRepository;
 
+	// 게시글 생성시 기본 좋아요 수 상수 정의(기본 좋아요 수는 0)
+	final Long DEFAULT_LIKES_COUNT = 0L;
 
 	// 행사, 동아리, 학생회 이벤트와 같은 알림 등록용 메서드
 	// Controller의 호출없이 주기적으로 계속 실행
@@ -142,7 +144,7 @@ public class EventService {
 			.subject(noticeDto.getKoreanTopic())
 			.writer(noticeDto.getDepartment())
 			.type(type)
-			.likesCount(0L)
+			.likesCount(DEFAULT_LIKES_COUNT)
 			.build();
 
 		log.info("크롤링한 공지사항 원래 url" + noticeDto.getUrl());
@@ -244,7 +246,7 @@ public class EventService {
 			.subject(postEventDto.getSubject())
 			.type(postEventDto.getType())
 			.clubEventImageList(new ArrayList<>())
-			.likesCount(0L)
+			.likesCount(DEFAULT_LIKES_COUNT)
 			.build();
 
 		// 각 업로드된 이미지의 URL을 사용하여 ClubEventImage를 생성하고, ClubEvent와 연관시킵니다.
@@ -274,7 +276,7 @@ public class EventService {
 			.subject(postEventDto.getSubject())
 			.type(postEventDto.getType())
 			.clubEventImageList(new ArrayList<>())
-			.likesCount(0L)
+			.likesCount(DEFAULT_LIKES_COUNT)
 			.build();
 
 		// 프론트엔드에서 받은 이미지 URL 리스트를 처리
