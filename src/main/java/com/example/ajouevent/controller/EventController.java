@@ -64,7 +64,7 @@ public class EventController {
 
 	// 게시글 생성 - S3 프론트에서 변환
 	@PostMapping("/post")
-	public ResponseEntity<ResponseDto> postEvent(@Valid @RequestBody PostEventDto postEventDto) throws IOException {
+	public ResponseEntity<ResponseDto> postEvent(@Valid @RequestBody PostEventDto postEventDto) {
 		eventService.postEvent(postEventDto);
 		return ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
@@ -122,7 +122,7 @@ public class EventController {
 
 	// type별로 글 보기
 	@GetMapping("/{type}")
-	public SliceResponse<EventResponseDto> getEventTypeList(@PathVariable String type, @PageableDefault(size = 10) Pageable pageable, Principal principal) {
+	public SliceResponse<EventResponseDto> getEventTypeList(@PathVariable String type, @PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
 		return eventService.getEventTypeList(type, pageable, principal);
 	}
 
