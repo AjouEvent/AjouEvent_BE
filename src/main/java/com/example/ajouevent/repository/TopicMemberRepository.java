@@ -21,4 +21,6 @@ public interface TopicMemberRepository extends JpaRepository<TopicMember, Long> 
 	// Member와 Topic으로 TopicMember 삭제
 	void deleteByTopicAndMember(Topic topic, Member member);
 
+	List<TopicMember> findByTopic(Topic topic);
+
 }
