@@ -1,10 +1,6 @@
 package com.example.ajouevent.service;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.security.GeneralSecurityException;
 import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -25,10 +21,8 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
-import org.springframework.data.domain.SliceImpl;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,7 +30,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.ResourceUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.ajouevent.domain.Alarm;
@@ -55,17 +48,6 @@ import com.example.ajouevent.repository.AlarmRepository;
 import com.example.ajouevent.repository.ClubEventImageRepository;
 import com.example.ajouevent.repository.EventRepository;
 import com.example.ajouevent.repository.MemberRepository;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.http.HttpRequestInitializer;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.gson.GsonFactory;
-import com.google.api.client.util.DateTime;
-import com.google.api.services.calendar.Calendar;
-import com.google.api.services.calendar.CalendarScopes;
-import com.google.api.services.calendar.model.Event;
-import com.google.api.services.calendar.model.EventDateTime;
-import com.google.auth.http.HttpCredentialsAdapter;
-import com.google.auth.oauth2.GoogleCredentials;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -116,11 +98,6 @@ public class EventService {
 		Type type = Type.valueOf(noticeDto.getEnglishTopic().toUpperCase());
 		log.info("저장하는 타입 : " + type.getEnglishTopic());
 
-
-		// log.info("저장하는 타입1 : " + stringType);
-		// log.info("저장하는 타입2 : " + Type.valueOf(noticeDto.getEnglishTopic()));
-		// log.info("저장하는 타입3 : " + Type.AJOUNORMAL.getEnglishTopic());
-
 		ClubEvent clubEvent = ClubEvent.builder()
 			.title(noticeDto.getTitle())
 			.content(noticeDto.getContent())
@@ -133,7 +110,6 @@ public class EventService {
 			.build();
 
 		log.info("크롤링한 공지사항 원래 url" + noticeDto.getUrl());
-
 
 		// 기본 default 이미지는 학교 로고
 		String image = "https://ajou-event-bucket.s3.ap-northeast-2.amazonaws.com/static/1e7b1dc2-ae1b-4254-ba38-d1a0e7cfa00c.20240307_170436.jpg";
@@ -161,17 +137,10 @@ public class EventService {
 
 		// 각 업로드된 이미지의 URL을 사용하여 ClubEventImage를 생성하고, ClubEvent와 연관시킵니다.
 
-
 		// 이미지 URL을 첫 번째 이미지로 설정
 		image = String.valueOf(noticeDto.getImages().get(0));
 
 		log.info("공지사항에서 크롤링한 이미지: " + image);
-
-		// ClubEventImage clubEventImage = ClubEventImage.builder()
-		// 	.clubEvent(clubEvent)
-		// 	.build();
-		//
-		// clubEvent.getClubEventImageList().add(clubEventImage);
 
 		eventRepository.save(clubEvent);
 
