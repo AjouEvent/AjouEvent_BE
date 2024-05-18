@@ -1,5 +1,9 @@
 package com.example.ajouevent.controller;
 
+import com.example.ajouevent.auth.GoogleAccessTokenRequest;
+import com.example.ajouevent.auth.GoogleAccessTokenResponse;
+import com.example.ajouevent.auth.OAuth;
+import com.example.ajouevent.auth.OAuthDto;
 import com.example.ajouevent.dto.*;
 import com.example.ajouevent.dto.ReissueTokenDto;
 import org.springframework.http.HttpStatus;
@@ -15,6 +19,7 @@ import com.example.ajouevent.service.TopicService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import javax.security.auth.login.LoginException;
 import java.io.IOException;
 import java.security.Principal;
 import java.util.List;
@@ -28,6 +33,7 @@ public class MemberController {
 	private final FCMService fcmService;
 	private final MemberService memberService;
 	private final TopicService topicService;
+	private final OAuth oAuth;
 
 	@PostMapping("/register")
 	public String register(@RequestBody RegisterRequest request) throws IOException {
@@ -67,6 +73,12 @@ public class MemberController {
 	public ResponseEntity<String> deleteMember (Principal principal) {
 		String res = memberService.deleteMember(principal);
 		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
+	@PostMapping("/oauth")
+	public ResponseEntity<LoginResponse> getAccessToken (@RequestBody OAuthDto oAuthDto) throws LoginException {
+		LoginResponse loginResponse = memberService.socialLogin(oAuthDto);
+		return ResponseEntity.status(HttpStatus.OK).body(loginResponse);
 	}
 
 }
