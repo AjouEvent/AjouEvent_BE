@@ -78,19 +78,6 @@ public class MemberService {
 		String accessToken = jwtUtil.createAccessToken(memberInfoDto);
 		String refreshToken = jwtUtil.createRefreshToken(memberInfoDto);
 
-
-		// member = memberRepository.findByEmail(loginRequest.getEmail()).orElseThrow(NoSuchElementException::new);
-
-
-		// 로그인을 하고 토큰이 이미 존재한다면, token의 만료 기간을 현재 날짜에서 2달 늘려줌
-		// Optional<Token> existingToken = tokenRepository.findByTokenValueAndMember(loginRequest.getFcmToken(), member);
-		// if (existingToken.isPresent()) {
-		// 	Token token = existingToken.get();
-		// 	log.info("이미 존재하는 토큰: " + existingToken.get().getTokenValue());
-		// 	token.setExpirationDate(LocalDate.now().plusMonths(2));
-		// 	tokenRepository.save(token);
-		// }
-
 		LoginResponse loginResponse = LoginResponse.builder()
 				.id(member.getId())
 				.grantType("Authorization")
