@@ -1,7 +1,6 @@
 package com.example.ajouevent.config;
 
 import com.example.ajouevent.auth.*;
-import com.example.ajouevent.auth.CustomOAuth2UserService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -28,9 +27,6 @@ public class WebSecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final CustomAccessDeniedHandler accessDeniedHandler;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
-    private final CustomOAuth2UserService customOAuth2UserService;
-    private final MyAuthenticationSuccessHandler myAuthenticationSuccessHandler;
-    private final MyAuthenticationFailureHandler myAuthenticationFailureHandler;
 
     private static final String[] AUTH_WHITELIST = {
             "swagger-ui/**", "/users/register", "/users/login", "/users/reissueToken",  // 여기에 포함되지 않은 모든 요청은 인증 필요
@@ -63,18 +59,8 @@ public class WebSecurityConfig {
                 .requestMatchers(AUTH_WHITELIST).permitAll()
                 //@PreAuthorization을 사용하는 경우 모든 경로에 대한 인증 처리는 permit
                 .anyRequest().permitAll()
-                )
-                .oauth2Login(
-                        oauth2 -> oauth2
-                                .userInfoEndpoint(
-                                        endpoint -> endpoint
-                                                .userService(customOAuth2UserService)
-                                )
-
-                                .failureHandler(myAuthenticationFailureHandler)  // OAuth2 로그인 실패 시 처리할 핸들러 지정
-                                .successHandler(myAuthenticationSuccessHandler) // OAuth2 로그인 성공 시 처리할 핸들러 지정
-
                 );
+
         return http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class).build();
     }
 
@@ -83,4 +69,6 @@ public class WebSecurityConfig {
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
+
 }

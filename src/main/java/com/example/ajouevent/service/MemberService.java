@@ -2,16 +2,16 @@ package com.example.ajouevent.service;
 
 import java.io.IOException;
 import java.security.Principal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import com.example.ajouevent.auth.JwtUtil;
+import com.example.ajouevent.auth.OAuth;
+import com.example.ajouevent.auth.OAuthDto;
+import com.example.ajouevent.auth.UserInfoGetDto;
 import com.example.ajouevent.domain.Member;
-import com.example.ajouevent.domain.Token;
 import com.example.ajouevent.dto.*;
 import jakarta.validation.ValidationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -24,6 +24,9 @@ import com.example.ajouevent.repository.TokenRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.server.ResponseStatusException;
+
+import javax.security.auth.login.LoginException;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +37,8 @@ public class MemberService {
 	private final PasswordEncoder encoder;
 	private final JwtUtil jwtUtil;
 	private final BCryptPasswordEncoder BCryptEncoder;
+	private final OAuth oAuth;
+	private final TopicService topicService;
 
 	@Transactional
 	public String register(RegisterRequest registerRequest) throws IOException {
@@ -157,5 +162,38 @@ public class MemberService {
 		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow();
 		memberRepository.delete(member);
 		return "삭제 완료";
+	}
+
+	public LoginResponse socialLogin (OAuthDto oAuthDto) throws LoginException {
+		String googleAccessToken = oAuth.requestGoogleAccessToken(oAuthDto.getAuthenticationCode());
+		UserInfoGetDto userInfoGetDto = oAuth.printUserResource(googleAccessToken);
+		Member member = memberRepository.findByEmail(userInfoGetDto.getEmail()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+
+		MemberDto.MemberInfoDto memberInfoDto = MemberDto.MemberInfoDto.builder()
+				.memberId(member.getId())
+				.email(member.getEmail())
+				.password(member.getPassword())
+				.role(member.getRole())
+				.build();
+
+		String accessToken = jwtUtil.createAccessToken(memberInfoDto);
+		String refreshToken = jwtUtil.createRefreshToken(memberInfoDto);
+
+		MemberDto.LoginRequest loginRequest = MemberDto.LoginRequest.builder()
+				.email(member.getEmail())
+				.password(member.getPassword())
+				.fcmToken(oAuthDto.getFcmToken())
+				.build();
+
+		topicService.saveFCMToken(loginRequest);
+
+        return LoginResponse.builder()
+				.id(member.getId())
+				.grantType("Authorization")
+				.accessToken(accessToken)
+				.refreshToken(refreshToken)
+				.name(member.getName())
+				.major(member.getMajor())
+				.build();
 	}
 }
