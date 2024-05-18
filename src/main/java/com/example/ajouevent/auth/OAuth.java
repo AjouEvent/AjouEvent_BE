@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.security.auth.login.LoginException;
 import java.net.URLDecoder;
@@ -88,7 +89,7 @@ public class OAuth {
         if (response.getStatusCode().is2xxSuccessful()) {
             JsonNode responseBody = response.getBody();
 
-            assert responseBody != null;
+            if (responseBody != null && responseBody.has("email")) {
             return UserInfoGetDto.builder()
                     .id(responseBody.get("id").asText())
                     .email(responseBody.get("email").asText())
@@ -100,6 +101,9 @@ public class OAuth {
                     .locale(responseBody.get("locale").asText())
                     .hd(responseBody.get("hd").asText())
                     .build();
+            } else {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자 이메일을 찾을 수 없습니다.");
+            }
         } else {
             System.err.println("Failed to fetch user resource: " + response.getStatusCode());
         }

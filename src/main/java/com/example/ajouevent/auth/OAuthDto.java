@@ -4,6 +4,6 @@ import lombok.Data;
 
 @Data
 public class OAuthDto {
-    private String authenticationCode;
+    private String authorizationCode;
     private String fcmToken;
 }
