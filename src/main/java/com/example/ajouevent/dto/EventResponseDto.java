@@ -3,6 +3,7 @@ package com.example.ajouevent.dto;
 import java.time.LocalDateTime;
 
 import com.example.ajouevent.domain.ClubEvent;
+import com.example.ajouevent.domain.Type;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -19,6 +20,7 @@ public class EventResponseDto { // 게시글 홈 화면 조회 시에 나오는 
 	private Long eventId;
 	private Long likesCount;
 	private Boolean star;
+	private Type type;
 
 	public static EventResponseDto toDto(ClubEvent clubEvent) {
 		return EventResponseDto.builder()
@@ -28,6 +30,7 @@ public class EventResponseDto { // 게시글 홈 화면 조회 시에 나오는 
 			.url(clubEvent.getUrl())
 			.createdAt(clubEvent.getCreatedAt())
 			.likesCount(clubEvent.getLikesCount())
+			.type(clubEvent.getType())
 			.build();
 	}
 }
