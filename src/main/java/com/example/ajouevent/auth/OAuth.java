@@ -33,7 +33,9 @@ public class OAuth {
 
 
     public String requestGoogleAccessToken(final String code) throws LoginException {
-
+        if (code == null || code.isEmpty()) {
+            throw new IllegalArgumentException("Authorization code cannot be null or empty");
+        }
         String url = "https://oauth2.googleapis.com/token";
         String decode = URLDecoder.decode(code, StandardCharsets.UTF_8);
 
@@ -54,7 +56,10 @@ public class OAuth {
 
         // POST 요청 보내기
         ResponseEntity<String> responseEntity = restTemplate.postForEntity(url, requestEntity, String.class);
-
+// 응답 본문 체크
+        if (responseEntity.getBody() == null) {
+            throw new LoginException("Response body is null");
+        }
 
         // 응답 헤더 출력
         HttpHeaders responseHeaders = responseEntity.getHeaders();
@@ -89,7 +94,11 @@ public class OAuth {
         if (response.getStatusCode().is2xxSuccessful()) {
             JsonNode responseBody = response.getBody();
 
-            if (responseBody != null && responseBody.has("email")) {
+            if (responseBody == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Response body is null");
+            }
+
+            if (responseBody.has("email")) {
             return UserInfoGetDto.builder()
                     .id(responseBody.get("id").asText())
                     .email(responseBody.get("email").asText())
