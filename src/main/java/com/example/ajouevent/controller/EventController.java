@@ -126,6 +126,11 @@ public class EventController {
 		return eventService.getEventTypeList(type, pageable, principal);
 	}
 
+	@GetMapping("/subscribed")
+	public SliceResponse<EventResponseDto> getSubscribedEvent(@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
+		return eventService.getSubscribedEvents(pageable, principal);
+	}
+
 	// 게시글 찜하기
 	@PostMapping("/like/{eventId}")
 	public ResponseEntity<ResponseDto> likeEvent(@PathVariable Long eventId, Principal principal) {
