@@ -25,6 +25,7 @@ import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.dto.WebhookResponse;
 import com.example.ajouevent.exception.UserNotFoundException;
+import com.example.ajouevent.logger.NotificationLogger;
 import com.example.ajouevent.logger.WebhookLogger;
 import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.TokenRepository;
@@ -50,6 +51,7 @@ public class FCMService {
 	private final TopicMemberRepository topicMemberRepository;
 	private final TopicRepository topicRepository;
 	private final WebhookLogger webhookLogger;
+	private final NotificationLogger notificationLogger;
 
 	public void sendEventNotification(String email, Alarm alarm) {
 		// 사용자 조회
@@ -93,8 +95,9 @@ public class FCMService {
 			send(message);
 		}
 
-
-		log.info(email+ "에게 알림 전송 완료");
+		webhookLogger.log(email + " 에게 알림 전송");
+		webhookLogger.log("전송하는 알림: " + title);
+		log.info(email+ "에게 알림 전송");
 
 		ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
