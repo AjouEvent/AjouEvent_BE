@@ -573,19 +573,37 @@ public class EventService {
 		// 사용자가 구독하는 모든 토픽 가져오기
 		List<TopicMember> subscribedTopicMembers = topicMemberRepository.findByMember(member);
 
+		if (subscribedTopicMembers.isEmpty()) {
+			log.info("사용자가 구독하는 토픽이 없습니다.");
+		}
+
+		// 각 TopicMember의 Topic과 Type을 로그로 출력
+		for (TopicMember topicMember : subscribedTopicMembers) {
+			Topic topic = topicMember.getTopic();
+			if (topic != null) {
+				log.info("Topic ID: {}, Type: {}", topic.getId(), topic.getType());
+			} else {
+				log.warn("TopicMember에 연결된 Topic이 null입니다.");
+			}
+		}
+
 		// 토픽 멤버에서 토픽만 추출하여 Type 열거형 리스트로 변환
-		List<Type> subscribedTopics = subscribedTopicMembers.stream()
+		List<Type> subscribedTypes = subscribedTopicMembers.stream()
 			.map(TopicMember::getTopic)
 			.map(Topic::getType)
 			.collect(Collectors.toList());
 
 		// 각 구독하는 토픽을 로그로 출력
-		for (Type topic : subscribedTopics) {
-			log.info("사용자가 구독하는 토픽: {}", topic.getEnglishTopic());
+		for (Type type : subscribedTypes) {
+			if (type != null) {
+				log.info("사용자가 구독하는 토픽: {}", type.getEnglishTopic());
+			} else {
+				log.warn("null 토픽이 발견되었습니다.");
+			}
 		}
 
 		// 변환된 Type 열거형 리스트를 사용하여 이벤트를 조회
-		Slice<ClubEvent> clubEventSlice = eventRepository.findByTypeIn(subscribedTopics, pageable);
+		Slice<ClubEvent> clubEventSlice = eventRepository.findByTypeIn(subscribedTypes, pageable);
 
 		// 사용자가 찜한 게시글 목록 조회
 		List<EventLike> likedEventSlice = member.getEventLikeList();
