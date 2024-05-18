@@ -172,7 +172,8 @@ public class MemberService {
 				.fcmToken(oAuthDto.getFcmToken())
 				.build();
 
-		topicService.saveFCMToken(loginRequest);
+		if (loginRequest.getFcmToken() != null)
+			topicService.saveFCMToken(loginRequest);
 
         return LoginResponse.builder()
 				.id(member.getId())
