@@ -152,7 +152,7 @@ public class MemberService {
 	}
 
 	public LoginResponse socialLogin (OAuthDto oAuthDto) throws LoginException {
-		String googleAccessToken = oAuth.requestGoogleAccessToken(oAuthDto.getAuthenticationCode());
+		String googleAccessToken = oAuth.requestGoogleAccessToken(oAuthDto.getAuthorizationCode());
 		UserInfoGetDto userInfoGetDto = oAuth.printUserResource(googleAccessToken);
 		Member member = memberRepository.findByEmail(userInfoGetDto.getEmail()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
