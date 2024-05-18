@@ -46,6 +46,9 @@ public class TopicService {
 	private final MemberRepository memberRepository;
 	private final FCMService fcmService;
 
+	// 토큰 만료 기간 상수 정의
+	final int TOKEN_EXPIRATION_MONTHS = 2;
+
 	// 토픽 구독 - 토픽 하나씩
 	@Transactional
 	public void subscribeToTopics(TopicRequest topicRequest) {
@@ -149,7 +152,7 @@ public class TopicService {
 			Token token = Token.builder()
 				.tokenValue(loginRequest.getFcmToken())
 				.member(member)
-				.expirationDate(LocalDate.now().plusMonths(2))
+				.expirationDate(LocalDate.now().plusMonths(TOKEN_EXPIRATION_MONTHS))
 				.build();
 			log.info("DB에 저장하는 token : " + token.getTokenValue());
 			tokenRepository.save(token);

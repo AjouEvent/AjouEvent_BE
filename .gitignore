@@ -53,3 +53,4 @@ out/
 
 **/src/main/resources/credentials.json
 **/tokens/
+/webhook_log.txt

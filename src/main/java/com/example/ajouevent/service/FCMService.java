@@ -25,9 +25,12 @@ import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.dto.WebhookResponse;
 import com.example.ajouevent.exception.UserNotFoundException;
+import com.example.ajouevent.logger.NotificationLogger;
+import com.example.ajouevent.logger.WebhookLogger;
 import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.TokenRepository;
 import com.example.ajouevent.repository.TopicMemberRepository;
+import com.example.ajouevent.repository.TopicRepository;
 import com.example.ajouevent.repository.TopicTokenRepository;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
@@ -46,6 +49,9 @@ public class FCMService {
 	private final MemberRepository memberRepository;
 	private final TopicTokenRepository topicTokenRepository;
 	private final TopicMemberRepository topicMemberRepository;
+	private final TopicRepository topicRepository;
+	private final WebhookLogger webhookLogger;
+	private final NotificationLogger notificationLogger;
 
 	public void sendEventNotification(String email, Alarm alarm) {
 		// 사용자 조회
@@ -89,8 +95,9 @@ public class FCMService {
 			send(message);
 		}
 
-
-		log.info(email+ "에게 알림 전송 완료");
+		webhookLogger.log(email + " 에게 알림 전송");
+		webhookLogger.log("전송하는 알림: " + title);
+		log.info(email+ "에게 알림 전송");
 
 		ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
@@ -106,7 +113,6 @@ public class FCMService {
 		log.info("크롤링한 공지사항 title: " + noticeDto.getTitle());
 		log.info("크롤링한 공지사항 englishTopic: " + noticeDto.getEnglishTopic());
 		log.info("크롤링한 공지사항 url: " + noticeDto.getUrl());
-
 
 		// 알람에서 꺼낼지 vs payload에서 꺼낼지
 		String koreanTopic = noticeDto.getKoreanTopic();
@@ -160,7 +166,31 @@ public class FCMService {
 
 		send(message);
 
-		log.info(topic+ "을 구독한 사람에게 알림 전송 완료");
+		webhookLogger.log("크롤링 한 제목 : " + title);
+		webhookLogger.log(topic + "을 구독한 사람에게 알림 전송 완료");
+
+		// englishTopic 값을 사용하여 해당하는 Topic 객체를 가져옴
+		Topic topicEntity = topicRepository.findByDepartment(noticeDto.getEnglishTopic())
+			.orElseThrow(() -> new NoSuchElementException("Topic을 찾을 수 없습니다: " + noticeDto.getEnglishTopic()));
+
+
+		// TopicMemberRepository를 사용하여 해당 topic을 구독하는 멤버 목록을 가져옴
+		List<TopicMember> topicMembers = topicMemberRepository.findByTopic(topicEntity);
+
+		// 멤버 목록에서 각 멤버의 토큰을 가져와 로그로 출력
+		for (TopicMember topicMember : topicMembers) {
+			Member member = topicMember.getMember();
+			List<Token> tokens = member.getTokens();
+			webhookLogger.log("해당 " + topic + "을 구독하는 유저 이메일 " + member.getEmail());
+
+			for (Token token : tokens) {
+				webhookLogger.log(token.getTokenValue());
+			}
+			webhookLogger.log("\n");
+		}
+
+
+
 
 		ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
