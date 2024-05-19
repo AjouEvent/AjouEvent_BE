@@ -116,14 +116,14 @@ public class EventController {
 
 	// 전체 글 보기 페이지(홈) -> 일단 테스트용으로 올린거 전부
 	@GetMapping("/all")
-	public SliceResponse<EventResponseDto> getEventList(@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
-		return eventService.getEventList(pageable, principal);
+	public SliceResponse<EventResponseDto> getEventList(@RequestParam(required = false, defaultValue = "", name="keyword") String keyword, @PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
+		return eventService.getEventList(pageable, keyword, principal);
 	}
 
 	// type별로 글 보기
 	@GetMapping("/{type}")
-	public SliceResponse<EventResponseDto> getEventTypeList(@PathVariable String type, @PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
-		return eventService.getEventTypeList(type, pageable, principal);
+	public SliceResponse<EventResponseDto> getEventTypeList(@PathVariable String type, @RequestParam(required = false, defaultValue = "", name="keyword") String keyword, @PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
+		return eventService.getEventTypeList(type, keyword, pageable, principal);
 	}
 
 	@GetMapping("/subscribed")

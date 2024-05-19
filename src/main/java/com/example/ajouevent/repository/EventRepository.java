@@ -12,7 +12,9 @@ import com.example.ajouevent.domain.Type;
 
 @Repository
 public interface EventRepository extends JpaRepository<ClubEvent, Long> {
-	Slice<ClubEvent> findByType(Type type, Pageable pageable);
+	Slice<ClubEvent> findByTypeAndTitleContaining(Type type, String keyword, Pageable pageable);
 
 	Slice<ClubEvent> findByTypeIn(List<Type> types, Pageable pageable);
+
+	Slice<ClubEvent> findAllByTitleContaining(String keyword, Pageable pageable);
 }
