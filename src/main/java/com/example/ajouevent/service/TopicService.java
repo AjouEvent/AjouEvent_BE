@@ -261,6 +261,13 @@ public class TopicService {
 		return new TopicResponse(topics);
 	}
 
+	// 전체 topic 조회
+	public TopicResponse getAllTopics() {
+		List<Topic> topics = topicRepository.findAll();
+		List<String> topicName = topics.stream()
+			.map(Topic::getKoreanTopic)
+			.toList();
 
-
+		return new TopicResponse(topicName);
+	}
 }

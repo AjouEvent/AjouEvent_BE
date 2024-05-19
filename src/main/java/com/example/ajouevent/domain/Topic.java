@@ -27,12 +27,18 @@ public class Topic {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(unique = true)
+	@Column
 	private String department;
 
 	@Enumerated(EnumType.STRING)
 	@Column(unique = true)
 	private Type type;
+
+	@Column
+	private String classification;
+
+	@Column
+	private String koreanTopic;
 
 	@OneToMany(mappedBy = "topic")
 	private List<TopicToken> topicTokens;
