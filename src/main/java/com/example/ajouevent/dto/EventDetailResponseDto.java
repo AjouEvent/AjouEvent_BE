@@ -44,6 +44,7 @@ public class EventDetailResponseDto { // 게시글 상세 조회시에 나오는
 			.likesCount(clubEvent.getLikesCount())
 			.url(clubEvent.getUrl())
 			.star(isLiked)
+			.type(clubEvent.getType())
 			.build();
 	}
 }
