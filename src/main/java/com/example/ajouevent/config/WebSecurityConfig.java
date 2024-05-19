@@ -30,7 +30,7 @@ public class WebSecurityConfig {
 
     private static final String[] AUTH_WHITELIST = {
             "swagger-ui/**", "/users/register", "/users/login", "/users/reissueToken",  // 여기에 포함되지 않은 모든 요청은 인증 필요
-            "/send/registeration-token", "/set", "/get/{key}", "login",
+            "/send/registeration-token", "/set", "/get/{key}", "login", "/api/event/type*", "/api/event/all*"
     };
 
     @Bean
