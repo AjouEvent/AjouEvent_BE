@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.example.ajouevent.exception.CustomErrorCode;
+import com.example.ajouevent.exception.CustomException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -116,7 +118,7 @@ public class FileService {
 		try {
 			amazonS3.deleteObject(bucket, fileName);
 		} catch (SdkClientException e) {
-			throw new IOException("Error deleting file from S3", e);
+			throw new CustomException(CustomErrorCode.SUBSCRIBE_CANCEL_FAILED);
 		}
 	}
 

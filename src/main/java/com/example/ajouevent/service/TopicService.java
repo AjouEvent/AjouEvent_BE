@@ -8,6 +8,8 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.example.ajouevent.exception.CustomErrorCode;
+import com.example.ajouevent.exception.CustomException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -56,7 +58,7 @@ public class TopicService {
 
 		// 토픽 가져오기 또는 에러처리
 		Topic topic = topicRepository.findByDepartment(topicName)
-			.orElseThrow(() -> new NoSuchElementException("해당 토픽을 찾을 수 없습니다: " + topicName));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
 
 		// 사용자 정보는 스프링시큐리티 컨텍스트에서 가져옴
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -64,11 +66,11 @@ public class TopicService {
 
 		// 현재 사용자 정보 가져오기
 		Member member = memberRepository.findByEmail(memberEmail)
-			.orElseThrow(() -> new NoSuchElementException("해당 이메일의 멤버를 찾을 수 없습니다: " + memberEmail));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 이미 해당 토픽에 구독 중인지 확인
 		if (topicMemberRepository.existsByTopicAndMember(topic, member)) {
-			throw new IllegalStateException("이미 해당 토픽을 구독 중입니다: " + topicName);
+			throw new CustomException(CustomErrorCode.ALREADY_SUBSCRIBED_TOPIC);
 		}
 
 		// 현재 사용자의 토큰 목록 가져오기
@@ -103,7 +105,7 @@ public class TopicService {
 
 		// 토픽 가져오기 또는 에러처리
 		Topic topic = topicRepository.findByDepartment(topicName)
-			.orElseThrow(() -> new NoSuchElementException("해당 토픽을 찾을 수 없습니다: " + topicName));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
 
 		// 사용자 정보는 스프링시큐리티 컨텍스트에서 가져옴
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -111,7 +113,7 @@ public class TopicService {
 
 		// 현재 사용자 정보 가져오기
 		Member member = memberRepository.findByEmail(memberEmail)
-			.orElseThrow(() -> new UserNotFoundException("해당 이메일의 멤버를 찾을 수 없습니다: " + memberEmail));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 멤버가 구독하고 있는 해당 토픽을 찾아서 삭제
 		topicMemberRepository.deleteByTopicAndMember(topic, member);
@@ -138,7 +140,7 @@ public class TopicService {
 
 		// 사용자 조회
 		Member member = memberRepository.findByEmail(loginRequest.getEmail())
-			.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + loginRequest.getEmail()));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// token이 이미 있는지 체크
 		Optional<Token> existingToken = tokenRepository.findByTokenValueAndMember(loginRequest.getFcmToken(), member);
@@ -219,7 +221,7 @@ public class TopicService {
 
 		// Member 객체를 가져온 뒤
 		Member member = memberRepository.findByEmail(email)
-			.orElseThrow(() -> new NoSuchElementException("Member not found id : " + 1));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// Member가 구독하고 있는 Topic과 Member가 가지고 있는 토큰을 가져옴
 		List<TopicMember> topicMembers = topicMemberRepository.findByMember(member);
@@ -246,7 +248,7 @@ public class TopicService {
 		log.info("가져온 이메일 : " + memberEmail);
 		// 이메일을 기반으로 회원 정보 조회
 		Member member = memberRepository.findByEmail(memberEmail)
-			.orElseThrow(() -> new NoSuchElementException("해당 이메일을 가진 사용자가 없습니다."));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 회원이 구독하는 토픽 목록 조회
 		List<TopicMember> topicMembers = topicMemberRepository.findByMember(member);

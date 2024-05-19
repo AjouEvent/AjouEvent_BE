@@ -1,6 +1,8 @@
 package com.example.ajouevent.service;
 
 import com.example.ajouevent.dto.CalendarStoreDto;
+import com.example.ajouevent.exception.CustomErrorCode;
+import com.example.ajouevent.exception.CustomException;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
@@ -73,7 +75,7 @@ public class CalendarService {
         String keyFileName = "/credentials.json";
         InputStream in = CalendarService.class.getResourceAsStream(keyFileName);
         if (in == null) {
-            throw new FileNotFoundException("Resource not found: " + keyFileName);
+            throw new CustomException(CustomErrorCode.FILE_NOT_FOUND);
         }
 
         GoogleClientSecrets clientSecrets =
@@ -87,8 +89,7 @@ public class CalendarService {
                 .build();
 
         LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
-        Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
         //returns an authorized Credential object.
-        return credential;
+        return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
     }
 }
