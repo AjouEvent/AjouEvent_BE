@@ -1,5 +1,6 @@
 package com.example.ajouevent.exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,7 @@ import java.util.Date;
 
 import com.example.ajouevent.dto.ExceptionResponse;
 
+@Slf4j
 @RestController
 @ControllerAdvice
 public class CustomizedResponseEntityExceptionHandler extends ResponseEntityExceptionHandler {
@@ -50,6 +52,18 @@ public class CustomizedResponseEntityExceptionHandler extends ResponseEntityExce
 			.details(ex.getBindingResult().toString())
 			.build();
 		return new ResponseEntity(exceptionResponse, HttpStatus.BAD_REQUEST);
+	}
+
+	@ExceptionHandler(CustomException.class)
+	public ResponseEntity<CustomErrorResponse> handleCustomException(CustomException ex) {
+		log.error("Handling custom exception: {}", ex.getMessage());
+		CustomErrorResponse errorResponse = CustomErrorResponse.builder()
+				.status(ex.getErrorCode().getStatusCode())
+				.statusMessage(ex.getErrorCode().getMessage())
+				.message(ex.getMessage())
+				.build();
+
+		return new ResponseEntity<>(errorResponse, HttpStatus.valueOf(ex.getErrorCode().getStatusCode()));
 	}
 
 }

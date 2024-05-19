@@ -10,6 +10,8 @@ import com.example.ajouevent.auth.OAuthDto;
 import com.example.ajouevent.auth.UserInfoGetDto;
 import com.example.ajouevent.domain.Member;
 import com.example.ajouevent.dto.*;
+import com.example.ajouevent.exception.CustomErrorCode;
+import com.example.ajouevent.exception.CustomException;
 import jakarta.validation.ValidationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.security.auth.login.LoginException;
+
 
 @Service
 @RequiredArgsConstructor
@@ -70,7 +73,7 @@ public class MemberService {
 			.orElseThrow(() -> new UsernameNotFoundException("이메일이 존재하지 않습니다."));
 
 		if (!encoder.matches(password, member.getPassword())) {
-			throw new BadCredentialsException("비밀번호가 일치하지 않습니다.");
+			throw new CustomException(CustomErrorCode.LOGIN_FAILED);
 		}
 
 		MemberDto.MemberInfoDto memberInfoDto = MemberDto.MemberInfoDto.builder()
@@ -184,4 +187,6 @@ public class MemberService {
 				.major(member.getMajor())
 				.build();
 	}
+
+
 }
