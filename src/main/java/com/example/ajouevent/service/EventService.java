@@ -439,8 +439,8 @@ public class EventService {
 
 	// 글 전체 조회 (동아리, 학생회, 공지사항, 기타)
 	@Transactional
-	public SliceResponse<EventResponseDto> getEventList(Pageable pageable, Principal principal) {
-		Slice<ClubEvent> clubEventSlice = eventRepository.findAll(pageable);
+	public SliceResponse<EventResponseDto> getEventList(Pageable pageable, String keyword, Principal principal) {
+		Slice<ClubEvent> clubEventSlice = eventRepository.findAllByTitleContaining(keyword, pageable);
 
 		// 조회된 ClubEvent 목록을 이벤트 응답 DTO 목록으로 매핑합니다.
 		List<EventResponseDto> eventResponseDtoList = clubEventSlice.getContent().stream()
@@ -480,7 +480,7 @@ public class EventService {
 
 	// 글 타입별 조회 (동아리, 학생회, 공지사항, 기타)
 	@Transactional
-	public SliceResponse<EventResponseDto> getEventTypeList(String type, Pageable pageable, Principal principal) {
+	public SliceResponse<EventResponseDto> getEventTypeList(String type, String keyword, Pageable pageable, Principal principal) {
 		// 대소문자를 구분하지 않고 입력 받기 위해 입력된 문자열을 대문자로 변환합니다.
 
 		Type eventType;
@@ -492,7 +492,7 @@ public class EventService {
 		}
 
 		// Spring Data JPA의 Slice를 사용하여 페이지로 나눠서 결과를 조회합니다.
-		Slice<ClubEvent> clubEventSlice = eventRepository.findByType(eventType, pageable);
+		Slice<ClubEvent> clubEventSlice = eventRepository.findByTypeAndTitleContaining(eventType, keyword, pageable);
 
 		// 조회된 ClubEvent 목록을 이벤트 응답 DTO 목록으로 매핑합니다.
 		List<EventResponseDto> eventResponseDtoList = clubEventSlice.getContent().stream()
@@ -561,7 +561,8 @@ public class EventService {
 		// 사용자가 로그인하지 않은 경우
 		if (principal == null) {
 			String type = String.valueOf(Type.AJOUNORMAL);
-			return getEventTypeList(type, pageable, principal);
+			String keyword = "";
+			return getEventTypeList(type, keyword, pageable, principal);
 		}
 
 		String userEmail = principal.getName();
