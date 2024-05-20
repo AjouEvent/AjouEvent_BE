@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.View;
 
 import com.example.ajouevent.domain.Alarm;
 import com.example.ajouevent.domain.AlarmImage;
@@ -52,6 +53,7 @@ public class FCMService {
 	private final TopicRepository topicRepository;
 	private final WebhookLogger webhookLogger;
 	private final NotificationLogger notificationLogger;
+	private final View error;
 
 	public void sendEventNotification(String email, Alarm alarm) {
 		// 사용자 조회
@@ -210,8 +212,15 @@ public class FCMService {
 	public void subscribeToTopic(String topicName, List<String> tokens) {
 		try {
 			TopicManagementResponse response = FirebaseMessaging.getInstance().subscribeToTopicAsync(tokens, topicName).get();
-			System.out.println("Subscribed to topic: " + topicName);
-			System.out.println(response.getSuccessCount() + " tokens were subscribed successfully");
+			log.info("Subscribed to topic: " + topicName);
+			log.info(response.getSuccessCount() + " tokens were subscribed successfully");
+			if (response.getFailureCount() > 0) {
+				log.info(response.getFailureCount() + " tokens failed to subscribe");
+				response.getErrors().forEach(error -> {
+					String failedToken = tokens.get(error.getIndex());
+					log.info("Error for token at index " + error.getIndex() + ": " + error.getReason() + " (Token: " + failedToken + ")");
+				});
+			}
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
 			// 구독에 실패한 경우에 대한 처리
@@ -221,8 +230,15 @@ public class FCMService {
 	public void unsubscribeFromTopic(String topic, List<String> tokens) {
 		try {
 			TopicManagementResponse response = FirebaseMessaging.getInstance().unsubscribeFromTopicAsync(tokens, topic).get();
-			System.out.println("Unsubscribed from topic: " + topic);
-			System.out.println(response.getSuccessCount() + " tokens were unsubscribed successfully");
+			log.info("Unsubscribed to topic: " + topic);
+			log.info(response.getSuccessCount() + " tokens were unsubscribed successfully");
+			if (response.getFailureCount() > 0) {
+				log.info(response.getFailureCount() + " tokens failed to unsubscribe");
+				response.getErrors().forEach(error -> {
+					String failedToken = tokens.get(error.getIndex());
+					log.info("Error for token at index " + error.getIndex() + ": " + error.getReason() + " (Token: " + failedToken + ")");
+				});
+			}
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
 			// 구독 해지에 실패한 경우에 대한 처리
