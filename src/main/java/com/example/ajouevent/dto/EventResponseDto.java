@@ -20,6 +20,7 @@ public class EventResponseDto { // 게시글 홈 화면 조회 시에 나오는 
 	private Long eventId;
 	private Long likesCount;
 	private Boolean star;
+	private String subject;
 	private Type type;
 
 	public static EventResponseDto toDto(ClubEvent clubEvent) {
@@ -31,6 +32,7 @@ public class EventResponseDto { // 게시글 홈 화면 조회 시에 나오는 
 			.createdAt(clubEvent.getCreatedAt())
 			.likesCount(clubEvent.getLikesCount())
 			.type(clubEvent.getType())
+			.subject(clubEvent.getType().getKoreanTopic())
 			.build();
 	}
 }
