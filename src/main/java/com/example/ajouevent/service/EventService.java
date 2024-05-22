@@ -528,6 +528,8 @@ public class EventService {
 			.orderProperty(pageable.getSort().stream().map(Sort.Order::getProperty).findFirst().orElse(null))
 			.build();
 
+		log.info("조회하는 타입 : " + type);
+
 		// 결과를 Slice로 감싸서 반환합니다.
 		return new SliceResponse<>(eventResponseDtoList, clubEventSlice.hasPrevious(), clubEventSlice.hasNext(),
 			clubEventSlice.getNumber(), sortResponse);
