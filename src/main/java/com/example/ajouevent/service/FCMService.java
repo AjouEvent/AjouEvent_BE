@@ -26,6 +26,7 @@ import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.dto.WebhookResponse;
 import com.example.ajouevent.exception.UserNotFoundException;
+import com.example.ajouevent.logger.AlarmLogger;
 import com.example.ajouevent.logger.NotificationLogger;
 import com.example.ajouevent.logger.TopicLogger;
 import com.example.ajouevent.logger.WebhookLogger;
@@ -53,7 +54,9 @@ public class FCMService {
 	private final TopicMemberRepository topicMemberRepository;
 	private final TopicRepository topicRepository;
 	private final WebhookLogger webhookLogger;
+	private final TopicLogger topicLogger;
 	private final NotificationLogger notificationLogger;
+	private final AlarmLogger alarmLogger;
 	private final View error;
 
 	public void sendEventNotification(String email, Alarm alarm) {
@@ -62,7 +65,7 @@ public class FCMService {
 			.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + email));
 
 		if (member.getTokens().isEmpty()) {
-			log.info("알림 전송 실패: 토큰이 없습니다.");
+			alarmLogger.log("알림 전송 실패: 토큰이 없습니다.");
 		}
 
 		String title = alarm.getSubject(); // ex) 아주대학교 소프트웨어학과 공지사항
@@ -84,6 +87,8 @@ public class FCMService {
 
 		List<Token> tokens = member.getTokens();
 
+		alarmLogger.log(email + " 에게 알림 전송");
+
 		for (Token token : tokens) {
 			Message message = Message.builder()
 				.setToken(token.getTokenValue())
@@ -94,13 +99,11 @@ public class FCMService {
 					.build())
 				.putData("click_action", url) // 동아리, 학생회 이벤트는 post한 이벤트 상세 페이지로 redirection "https://ajou-event.shop/event/{eventId}
 				.build();
-
+			alarmLogger.log(token + " 토큰으로 알림 전송");
 			send(message);
 		}
 
-		webhookLogger.log(email + " 에게 알림 전송");
-		webhookLogger.log("전송하는 알림: " + title);
-		log.info(email+ "에게 알림 전송");
+		alarmLogger.log("전송하는 알림: " + title);
 
 		ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
