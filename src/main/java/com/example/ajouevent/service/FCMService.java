@@ -27,6 +27,7 @@ import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.dto.WebhookResponse;
 import com.example.ajouevent.exception.UserNotFoundException;
 import com.example.ajouevent.logger.NotificationLogger;
+import com.example.ajouevent.logger.TopicLogger;
 import com.example.ajouevent.logger.WebhookLogger;
 import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.TokenRepository;
@@ -212,13 +213,13 @@ public class FCMService {
 	public void subscribeToTopic(String topicName, List<String> tokens) {
 		try {
 			TopicManagementResponse response = FirebaseMessaging.getInstance().subscribeToTopicAsync(tokens, topicName).get();
-			log.info("Subscribed to topic: " + topicName);
-			log.info(response.getSuccessCount() + " tokens were subscribed successfully");
+			topicLogger.log("Subscribed to topic: " + topicName);
+			topicLogger.log(response.getSuccessCount() + " tokens were subscribed successfully");
 			if (response.getFailureCount() > 0) {
-				log.info(response.getFailureCount() + " tokens failed to subscribe");
+				topicLogger.log(response.getFailureCount() + " tokens failed to subscribe");
 				response.getErrors().forEach(error -> {
 					String failedToken = tokens.get(error.getIndex());
-					log.info("Error for token at index " + error.getIndex() + ": " + error.getReason() + " (Token: " + failedToken + ")");
+					topicLogger.log("Error for token at index " + error.getIndex() + ": " + error.getReason() + " (Token: " + failedToken + ")");
 				});
 			}
 		} catch (InterruptedException | ExecutionException e) {
@@ -230,13 +231,13 @@ public class FCMService {
 	public void unsubscribeFromTopic(String topic, List<String> tokens) {
 		try {
 			TopicManagementResponse response = FirebaseMessaging.getInstance().unsubscribeFromTopicAsync(tokens, topic).get();
-			log.info("Unsubscribed to topic: " + topic);
-			log.info(response.getSuccessCount() + " tokens were unsubscribed successfully");
+			topicLogger.log("Unsubscribed to topic: " + topic);
+			topicLogger.log(response.getSuccessCount() + " tokens were unsubscribed successfully");
 			if (response.getFailureCount() > 0) {
-				log.info(response.getFailureCount() + " tokens failed to unsubscribe");
+				topicLogger.log(response.getFailureCount() + " tokens failed to unsubscribe");
 				response.getErrors().forEach(error -> {
 					String failedToken = tokens.get(error.getIndex());
-					log.info("Error for token at index " + error.getIndex() + ": " + error.getReason() + " (Token: " + failedToken + ")");
+					topicLogger.log("Error for token at index " + error.getIndex() + ": " + error.getReason() + " (Token: " + failedToken + ")");
 				});
 			}
 		} catch (InterruptedException | ExecutionException e) {

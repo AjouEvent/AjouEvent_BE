@@ -21,6 +21,7 @@ import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.dto.TopicRequest;
 import com.example.ajouevent.dto.TopicResponse;
 import com.example.ajouevent.exception.UserNotFoundException;
+import com.example.ajouevent.logger.TopicLogger;
 import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.TokenRepository;
 import com.example.ajouevent.repository.TopicMemberBulkRepository;
@@ -45,6 +46,7 @@ public class TopicService {
 	private final FCMService fcmService;
 	private final TopicMemberBulkRepository topicMemberBulkRepository;
 	private final TopicTokenBulkRepository topicTokenBulkRepository;
+	private final TopicLogger topicLogger;
 
 	// 토큰 만료 기간 상수 정의
 	final int TOKEN_EXPIRATION_MONTHS = 2;
@@ -60,7 +62,6 @@ public class TopicService {
 
 		// 사용자 정보는 스프링시큐리티 컨텍스트에서 가져옴
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-		log.info("멤버 이메일 : " + memberEmail);
 
 		// 현재 사용자 정보 가져오기
 		Member member = memberRepository.findByEmail(memberEmail)
@@ -70,6 +71,9 @@ public class TopicService {
 		if (topicMemberRepository.existsByTopicAndMember(topic, member)) {
 			throw new IllegalStateException("이미 해당 토픽을 구독 중입니다: " + topicName);
 		}
+
+		topicLogger.log(topic.getDepartment() + "토픽 구독");
+		topicLogger.log("멤버 이메일 : " + memberEmail);
 
 		// 현재 사용자의 토큰 목록 가져오기
 		// List<Token> memberTokens = tokenRepository.findByMemberEmail(memberEmail);
@@ -108,7 +112,8 @@ public class TopicService {
 
 		// 사용자 정보는 스프링시큐리티 컨텍스트에서 가져옴
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-		log.info("멤버 이메일 : " + memberEmail);
+		topicLogger.log(topic.getDepartment() + "토픽 구독 취소");
+		topicLogger.log("멤버 이메일 : " + memberEmail);
 
 		// 현재 사용자 정보 가져오기
 		Member member = memberRepository.findByEmail(memberEmail)
@@ -237,6 +242,7 @@ public class TopicService {
 
 	@Transactional
 	public void resetAllSubscriptions() {
+		topicLogger.log("로그인한 사용자의 구독 목록 초기화");
 		// 스프링시큐리티 컨텍스트에서 유저 email 정보를 가져옴
 		String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
@@ -260,9 +266,9 @@ public class TopicService {
 			.toList();
 
 		// 사용자 구독하고 있는 topic 로그 출력
-		log.info(email + " 가 구독하고 있는 토픽 목록");
+		topicLogger.log(email + " 가 구독하고 있는 토픽 목록 : ");
 		topicMembers.forEach(topicMember -> {
-			log.info("Topic: " + topicMember.getTopic().getDepartment());
+			topicLogger.log("Topic: " + topicMember.getTopic().getDepartment());
 			System.out.println(topicMember);
 		});
 
@@ -271,9 +277,8 @@ public class TopicService {
 		topicMembers.forEach(topicMember -> {
 			fcmService.unsubscribeFromTopic(topicMember.getTopic().getDepartment(), tokenValues);
 			// topicTokenRepository.deleteByTopic(topicMember.getTopic());
-			log.info("Deleting TopicMember - Member: " + topicMember.getMember().getEmail() + ", Topic: "
+			topicLogger.log("Deleting TopicMember - Member: " + topicMember.getMember().getEmail() + ", Topic: "
 				+ topicMember.getTopic().getDepartment());
-			log.info("삭제할 id : " + topicMember.getId());
 		});
 
 		for (TopicMember topicMember : topicMembers) {
