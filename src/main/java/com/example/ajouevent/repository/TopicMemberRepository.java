@@ -4,17 +4,21 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import com.example.ajouevent.domain.Member;
 import com.example.ajouevent.domain.Topic;
 import com.example.ajouevent.domain.TopicMember;
 
+import io.lettuce.core.dynamic.annotation.Param;
+
 @Repository
 public interface TopicMemberRepository extends JpaRepository<TopicMember, Long> {
 	List<TopicMember> findByMember(Member member);
 
-	void deleteByMember(Optional<Member> member);
+	void deleteByMember(Member member);
 
 	boolean existsByTopicAndMember(Topic topic, Member member);
 
@@ -23,4 +27,9 @@ public interface TopicMemberRepository extends JpaRepository<TopicMember, Long> 
 
 	List<TopicMember> findByTopic(Topic topic);
 
+
+
+	@Modifying
+	@Query("delete from TopicMember c where c.id in :ids")
+	void deleteAllByIds(@Param("ids") List<Long> ids);
 }
