@@ -33,7 +33,7 @@ public class ClubEvent {
     @Column // 게시글 생성 시간
     private LocalDateTime createdAt;
 
-    @Column // 게시글 분류 - 아주대학교 - 일반, 소프트웨어학과, 동아리
+    @Column // 게시글 분류(topic) - 아주대학교 - 일반, 소프트웨어학과, 동아리
     private String subject;
 
     @Column // 원래 공지사항 url

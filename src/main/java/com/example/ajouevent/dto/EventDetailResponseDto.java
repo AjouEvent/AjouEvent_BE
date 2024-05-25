@@ -45,6 +45,7 @@ public class EventDetailResponseDto { // 게시글 상세 조회시에 나오는
 			.url(clubEvent.getUrl())
 			.star(isLiked)
 			.type(clubEvent.getType())
+			.subject(clubEvent.getType().getKoreanTopic())
 			.build();
 	}
 }

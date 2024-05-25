@@ -1,31 +1,28 @@
 package com.example.ajouevent.service;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.View;
 
 import com.example.ajouevent.domain.Alarm;
 import com.example.ajouevent.domain.AlarmImage;
-import com.example.ajouevent.domain.ClubEventImage;
 import com.example.ajouevent.domain.Member;
 import com.example.ajouevent.domain.Token;
 import com.example.ajouevent.domain.Topic;
 import com.example.ajouevent.domain.TopicMember;
-import com.example.ajouevent.domain.TopicToken;
 import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.ResponseDto;
-import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.dto.WebhookResponse;
 import com.example.ajouevent.exception.UserNotFoundException;
+import com.example.ajouevent.logger.AlarmLogger;
 import com.example.ajouevent.logger.NotificationLogger;
+import com.example.ajouevent.logger.TopicLogger;
 import com.example.ajouevent.logger.WebhookLogger;
 import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.TokenRepository;
@@ -51,7 +48,10 @@ public class FCMService {
 	private final TopicMemberRepository topicMemberRepository;
 	private final TopicRepository topicRepository;
 	private final WebhookLogger webhookLogger;
+	private final TopicLogger topicLogger;
 	private final NotificationLogger notificationLogger;
+	private final AlarmLogger alarmLogger;
+	private final View error;
 
 	public void sendEventNotification(String email, Alarm alarm) {
 		// 사용자 조회
@@ -59,7 +59,7 @@ public class FCMService {
 			.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + email));
 
 		if (member.getTokens().isEmpty()) {
-			log.info("알림 전송 실패: 토큰이 없습니다.");
+			alarmLogger.log("알림 전송 실패: 토큰이 없습니다.");
 		}
 
 		String title = alarm.getSubject(); // ex) 아주대학교 소프트웨어학과 공지사항
@@ -81,6 +81,8 @@ public class FCMService {
 
 		List<Token> tokens = member.getTokens();
 
+		alarmLogger.log(email + " 에게 알림 전송");
+
 		for (Token token : tokens) {
 			Message message = Message.builder()
 				.setToken(token.getTokenValue())
@@ -91,13 +93,11 @@ public class FCMService {
 					.build())
 				.putData("click_action", url) // 동아리, 학생회 이벤트는 post한 이벤트 상세 페이지로 redirection "https://ajou-event.shop/event/{eventId}
 				.build();
-
+			alarmLogger.log(token + " 토큰으로 알림 전송");
 			send(message);
 		}
 
-		webhookLogger.log(email + " 에게 알림 전송");
-		webhookLogger.log("전송하는 알림: " + title);
-		log.info(email+ "에게 알림 전송");
+		alarmLogger.log("전송하는 알림: " + title);
 
 		ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
@@ -107,7 +107,7 @@ public class FCMService {
 		);
 	}
 
-	public ResponseEntity<WebhookResponse> sendNoticeNotification(NoticeDto noticeDto) {
+	public ResponseEntity<WebhookResponse> sendNoticeNotification(NoticeDto noticeDto, Long eventId) {
 
 		log.info("크롤링한 공지사항 date: " + noticeDto.getDate());
 		log.info("크롤링한 공지사항 title: " + noticeDto.getTitle());
@@ -134,14 +134,14 @@ public class FCMService {
 		log.info("body 정보: " + body);
 
 		if (noticeDto.getUrl() != null) {
-			url = noticeDto.getUrl();
+			url = "https://ajou-event.vercel.app/" + eventId;
+			webhookLogger.log("리다이렉션하는 url : " + url);
 		}
 
 		// 기본 default 이미지는 학교 로고
 		String imageUrl = "https://ajou-event-bucket.s3.ap-northeast-2.amazonaws.com/static/1e7b1dc2-ae1b-4254-ba38-d1a0e7cfa00c.20240307_170436.jpg";
 
 		if (noticeDto.getImages() == null || noticeDto.getImages().isEmpty()) {
-			log.info("images 리스트가 비어있습니다.");
 			// images 리스트가 null 이거나 비어있을 경우, 기본 이미지 리스트를 생성하고 설정
 
 			List<String> defaultImages = new ArrayList<>();
@@ -210,8 +210,15 @@ public class FCMService {
 	public void subscribeToTopic(String topicName, List<String> tokens) {
 		try {
 			TopicManagementResponse response = FirebaseMessaging.getInstance().subscribeToTopicAsync(tokens, topicName).get();
-			System.out.println("Subscribed to topic: " + topicName);
-			System.out.println(response.getSuccessCount() + " tokens were subscribed successfully");
+			topicLogger.log("Subscribed to topic: " + topicName);
+			topicLogger.log(response.getSuccessCount() + " tokens were subscribed successfully");
+			if (response.getFailureCount() > 0) {
+				topicLogger.log(response.getFailureCount() + " tokens failed to subscribe");
+				response.getErrors().forEach(error -> {
+					String failedToken = tokens.get(error.getIndex());
+					topicLogger.log("Error for token at index " + error.getIndex() + ": " + error.getReason() + " (Token: " + failedToken + ")");
+				});
+			}
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
 			// 구독에 실패한 경우에 대한 처리
@@ -221,8 +228,15 @@ public class FCMService {
 	public void unsubscribeFromTopic(String topic, List<String> tokens) {
 		try {
 			TopicManagementResponse response = FirebaseMessaging.getInstance().unsubscribeFromTopicAsync(tokens, topic).get();
-			System.out.println("Unsubscribed from topic: " + topic);
-			System.out.println(response.getSuccessCount() + " tokens were unsubscribed successfully");
+			topicLogger.log("Unsubscribed to topic: " + topic);
+			topicLogger.log(response.getSuccessCount() + " tokens were unsubscribed successfully");
+			if (response.getFailureCount() > 0) {
+				topicLogger.log(response.getFailureCount() + " tokens failed to unsubscribe");
+				response.getErrors().forEach(error -> {
+					String failedToken = tokens.get(error.getIndex());
+					topicLogger.log("Error for token at index " + error.getIndex() + ": " + error.getReason() + " (Token: " + failedToken + ")");
+				});
+			}
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
 			// 구독 해지에 실패한 경우에 대한 처리

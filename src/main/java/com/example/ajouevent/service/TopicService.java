@@ -1,15 +1,12 @@
 package com.example.ajouevent.service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -21,14 +18,16 @@ import com.example.ajouevent.domain.Topic;
 import com.example.ajouevent.domain.TopicMember;
 import com.example.ajouevent.domain.TopicToken;
 import com.example.ajouevent.dto.MemberDto;
-import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.TopicRequest;
 import com.example.ajouevent.dto.TopicResponse;
 import com.example.ajouevent.exception.UserNotFoundException;
+import com.example.ajouevent.logger.TopicLogger;
 import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.TokenRepository;
+import com.example.ajouevent.repository.TopicMemberBulkRepository;
 import com.example.ajouevent.repository.TopicMemberRepository;
 import com.example.ajouevent.repository.TopicRepository;
+import com.example.ajouevent.repository.TopicTokenBulkRepository;
 import com.example.ajouevent.repository.TopicTokenRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -45,9 +44,12 @@ public class TopicService {
 	private final TopicMemberRepository topicMemberRepository;
 	private final MemberRepository memberRepository;
 	private final FCMService fcmService;
+	private final TopicMemberBulkRepository topicMemberBulkRepository;
+	private final TopicTokenBulkRepository topicTokenBulkRepository;
+	private final TopicLogger topicLogger;
 
 	// 토큰 만료 기간 상수 정의
-	final int TOKEN_EXPIRATION_MONTHS = 2;
+	final int TOKEN_EXPIRATION_WEEKS = 4;
 
 	// 토픽 구독 - 토픽 하나씩
 	@Transactional
@@ -60,7 +62,6 @@ public class TopicService {
 
 		// 사용자 정보는 스프링시큐리티 컨텍스트에서 가져옴
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-		log.info("멤버 이메일 : " + memberEmail);
 
 		// 현재 사용자 정보 가져오기
 		Member member = memberRepository.findByEmail(memberEmail)
@@ -71,6 +72,9 @@ public class TopicService {
 			throw new IllegalStateException("이미 해당 토픽을 구독 중입니다: " + topicName);
 		}
 
+		topicLogger.log(topic.getDepartment() + "토픽 구독");
+		topicLogger.log("멤버 이메일 : " + memberEmail);
+
 		// 현재 사용자의 토큰 목록 가져오기
 		// List<Token> memberTokens = tokenRepository.findByMemberEmail(memberEmail);
 		List<Token> memberTokens = member.getTokens();
@@ -80,14 +84,15 @@ public class TopicService {
 			.topic(topic)
 			.member(member)
 			.build();
-		topicMemberRepository.save(topicMember);
-
+		// topicMemberRepository.save(topicMember);
+		topicMemberBulkRepository.saveAll(List.of(topicMember));
 
 		// 토픽과 토큰을 매핑하여 저장 -> 사용자가 가지고 있는 토큰들이 topic을 구독
 		List<TopicToken> topicTokens = memberTokens.stream()
 			.map(token -> new TopicToken(topic, token))
 			.collect(Collectors.toList());
-		topicTokenRepository.saveAll(topicTokens);
+		// topicTokenRepository.saveAll(topicTokens);
+		topicTokenBulkRepository.saveAll(topicTokens);
 
 		// FCM 서비스를 사용하여 토픽에 대한 구독 진행
 		List<String> tokenValues = memberTokens.stream()
@@ -107,17 +112,41 @@ public class TopicService {
 
 		// 사용자 정보는 스프링시큐리티 컨텍스트에서 가져옴
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-		log.info("멤버 이메일 : " + memberEmail);
+		topicLogger.log(topic.getDepartment() + "토픽 구독 취소");
+		topicLogger.log("멤버 이메일 : " + memberEmail);
 
 		// 현재 사용자 정보 가져오기
 		Member member = memberRepository.findByEmail(memberEmail)
 			.orElseThrow(() -> new UserNotFoundException("해당 이메일의 멤버를 찾을 수 없습니다: " + memberEmail));
 
-		// 멤버가 구독하고 있는 해당 토픽을 찾아서 삭제
-		topicMemberRepository.deleteByTopicAndMember(topic, member);
+		// // 멤버가 구독하고 있는 해당 토픽을 찾아서 삭제
+		// topicMemberRepository.deleteByTopicAndMember(topic, member);
+		//
+		// // 해당 토픽을 구독하는 모든 TopicToken 삭제
+		// topicTokenRepository.deleteByTopic(topic);
 
-		// 해당 토픽을 구독하는 모든 TopicToken 삭제
-		topicTokenRepository.deleteByTopic(topic);
+		// 해당 멤버와 관련된 TopicMember 엔티티 목록을 가져옴
+		List<TopicMember> topicMembersToDelete = topicMemberRepository.findByMember(member);
+
+
+		// TopicMember의 ID를 추출
+		List<Long> topicMemberIds = topicMembersToDelete.stream()
+			.map(TopicMember::getId)
+			.collect(Collectors.toList());
+
+		// TopicMember와 연관된 TopicToken의 topic ID 목록을 추출
+		List<Long> topicIds = topicMembersToDelete.stream()
+			.map(tm -> tm.getTopic().getId())
+			.collect(Collectors.toList());
+
+
+		// TopicToken 삭제
+		topicTokenRepository.deleteAllByIds(topicIds);
+
+		// TopicMember 삭제
+		topicMemberRepository.deleteAllByIds(topicMemberIds);
+
+
 
 		// 현재 사용자의 토큰 목록 가져오기
 		// List<Token> memberTokens = tokenRepository.findByMemberEmail(memberEmail);
@@ -145,14 +174,14 @@ public class TopicService {
 		if (existingToken.isPresent()) {
 			Token token = existingToken.get();
 			log.info("이미 존재하는 토큰: " + existingToken.get().getTokenValue());
-			token.setExpirationDate(LocalDate.now().plusMonths(2));
+			token.setExpirationDate(LocalDate.now().plusWeeks(4));
 			tokenRepository.save(token);
 		} else {
 			// Only create and save a new token if it does not exist
 			Token token = Token.builder()
 				.tokenValue(loginRequest.getFcmToken())
 				.member(member)
-				.expirationDate(LocalDate.now().plusMonths(TOKEN_EXPIRATION_MONTHS))
+				.expirationDate(LocalDate.now().plusMonths(TOKEN_EXPIRATION_WEEKS))
 				.build();
 			log.info("DB에 저장하는 token : " + token.getTokenValue());
 			tokenRepository.save(token);
@@ -213,7 +242,7 @@ public class TopicService {
 
 	@Transactional
 	public void resetAllSubscriptions() {
-
+		topicLogger.log("로그인한 사용자의 구독 목록 초기화");
 		// 스프링시큐리티 컨텍스트에서 유저 email 정보를 가져옴
 		String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
@@ -221,21 +250,57 @@ public class TopicService {
 		Member member = memberRepository.findByEmail(email)
 			.orElseThrow(() -> new NoSuchElementException("Member not found id : " + 1));
 
+		// Member 객체를 가져온 뒤
+		// Member member = memberRepository.findByEmailWithSubscriptions(email)
+		// 	.orElseThrow(() -> new NoSuchElementException("Member not found for email: " + email));
+
 		// Member가 구독하고 있는 Topic과 Member가 가지고 있는 토큰을 가져옴
 		List<TopicMember> topicMembers = topicMemberRepository.findByMember(member);
 		List<Token> tokens = tokenRepository.findByMember(member);
+
+		// List<TopicMember> topicMembers = member.getTopicMembers();
+		// List<Token> tokens = member.getTokens();
 
 		List<String> tokenValues = tokens.stream()
 			.map(Token::getTokenValue)
 			.toList();
 
+		// 사용자 구독하고 있는 topic 로그 출력
+		topicLogger.log(email + " 가 구독하고 있는 토픽 목록 : ");
+		topicMembers.forEach(topicMember -> {
+			topicLogger.log("Topic: " + topicMember.getTopic().getDepartment());
+			System.out.println(topicMember);
+		});
+
 		// FcmService를 호출해서 Member가 가지고 있는 Token과 Member가 구독하고 있는 Topic을 1대1로 매핑하여 구독 취소
 		// TopicMemberRepository, TopicTokenRepository에서도 삭제
 		topicMembers.forEach(topicMember -> {
 			fcmService.unsubscribeFromTopic(topicMember.getTopic().getDepartment(), tokenValues);
-			topicTokenRepository.deleteByTopic(topicMember.getTopic());
-			topicMemberRepository.delete(topicMember);
+			// topicTokenRepository.deleteByTopic(topicMember.getTopic());
+			topicLogger.log("Deleting TopicMember - Member: " + topicMember.getMember().getEmail() + ", Topic: "
+				+ topicMember.getTopic().getDepartment());
 		});
+
+		for (TopicMember topicMember : topicMembers) {
+			System.out.println(topicMember);
+		}
+
+		// Extract Topic IDs from TopicMembers
+		List<Long> topicIds = topicMembers.stream()
+			.map(tm -> tm.getTopic().getId())
+			.collect(Collectors.toList());
+
+		// Delete all TopicTokens associated with these topics
+		topicTokenRepository.deleteAllByIds(topicIds);
+
+		// Extract TopicMember IDs
+		List<Long> topicMemberIds = topicMembers.stream()
+			.map(TopicMember::getId)
+			.collect(Collectors.toList());
+
+		// Delete all TopicMembers by IDs
+		topicMemberRepository.deleteAllByIds(topicMemberIds);
+
 	}
 
 	@Transactional
@@ -261,6 +326,13 @@ public class TopicService {
 		return new TopicResponse(topics);
 	}
 
+	// 전체 topic 조회
+	public TopicResponse getAllTopics() {
+		List<Topic> topics = topicRepository.findAll();
+		List<String> topicName = topics.stream()
+			.map(Topic::getKoreanTopic)
+			.toList();
 
-
+		return new TopicResponse(topicName);
+	}
 }

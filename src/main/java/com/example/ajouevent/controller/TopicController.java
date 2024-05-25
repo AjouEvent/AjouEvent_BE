@@ -61,4 +61,8 @@ public class TopicController {
 		return topicService.getSubscribedTopics();
 	}
 
+	@GetMapping("/all")
+	public TopicResponse getAllTopics() {
+		return topicService.getAllTopics();
+	}
 }

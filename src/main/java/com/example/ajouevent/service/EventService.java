@@ -2,7 +2,9 @@ package com.example.ajouevent.service;
 
 import java.io.IOException;
 import java.security.Principal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -13,6 +15,7 @@ import com.example.ajouevent.domain.Topic;
 import com.example.ajouevent.domain.TopicMember;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.exception.UserNotFoundException;
+import com.example.ajouevent.logger.AlarmLogger;
 import com.example.ajouevent.repository.EventLikeRepository;
 import com.example.ajouevent.repository.TopicMemberRepository;
 
@@ -65,6 +68,7 @@ public class EventService {
 	private final FileService fileService;
 	private final EventLikeRepository eventLikeRepository;
 	private final TopicMemberRepository topicMemberRepository;
+	private final AlarmLogger alarmLogger;
 
 	// 게시글 생성시 기본 좋아요 수 상수 정의(기본 좋아요 수는 0)
 	final Long DEFAULT_LIKES_COUNT = 0L;
@@ -85,7 +89,12 @@ public class EventService {
 		List<Alarm> alarms = alarmRepository.findAll();
 
 		for (Alarm alarm: alarms) {
-			if (alarm.getAlarmDateTime().getHour() == nowHour && alarm.getAlarmDateTime().getMinute() == nowMinute) {
+			LocalDate alarmDate = alarm.getAlarmDateTime().toLocalDate();
+			LocalTime alarmTime = alarm.getAlarmDateTime().toLocalTime();
+			alarmLogger.log("알람 날짜: " + alarmDate);
+			alarmLogger.log("알람 시간: " + alarmTime);
+
+			if (alarm.getAlarmDateTime().toLocalDate() == alarmDate && alarm.getAlarmDateTime().getHour() == nowHour && alarm.getAlarmDateTime().getMinute() == nowMinute) {
 				fcmService.sendEventNotification(alarm.getMember().getEmail(), alarm);
 			}
 		}
@@ -94,7 +103,7 @@ public class EventService {
 
 	// 크롤링한 공지사항 DB에 저장
 	@Transactional
-	public void postNotice(NoticeDto noticeDto) {
+	public Long postNotice(NoticeDto noticeDto) {
 		Type type = Type.valueOf(noticeDto.getEnglishTopic().toUpperCase());
 		log.info("저장하는 타입 : " + type.getEnglishTopic());
 
@@ -144,6 +153,7 @@ public class EventService {
 
 		eventRepository.save(clubEvent);
 
+		return clubEvent.getEventId();
 	}
 
 	@Transactional
@@ -527,6 +537,8 @@ public class EventService {
 			.direction(String.valueOf(pageable.getSort().descending()))
 			.orderProperty(pageable.getSort().stream().map(Sort.Order::getProperty).findFirst().orElse(null))
 			.build();
+
+		log.info("조회하는 타입 : " + type);
 
 		// 결과를 Slice로 감싸서 반환합니다.
 		return new SliceResponse<>(eventResponseDtoList, clubEventSlice.hasPrevious(), clubEventSlice.hasNext(),
