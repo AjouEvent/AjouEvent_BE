@@ -1,5 +1,6 @@
 package com.example.ajouevent.dto;
 
+import com.example.ajouevent.domain.Role;
 import lombok.*;
 
 public class MemberDto {
@@ -23,10 +24,10 @@ public class MemberDto {
 		private Long memberId;
 		private String email;
 		private String password;
-		private String role;
+		private Role role;
 
 		@Builder
-		public MemberInfoDto(Long memberId, String email, String password, String role) {
+		public MemberInfoDto(Long memberId, String email, String password, Role role) {
 			this.memberId = memberId;
 			this.email = email;
 			this.password = password;
