@@ -28,11 +28,11 @@ public class WebhookController {
 	public ResponseEntity<WebhookResponse> handleWebhook(@RequestBody NoticeDto noticeDto) {
 		// JSON 데이터를 Notice 객체로 변환 -> @RequestBody에서 직렬화 해줌
 		// 크롤링한 공지사항을 DB에 저장
-		eventService.postNotice(noticeDto);
+		Long eventId = eventService.postNotice(noticeDto);
 		// 크롤링한 공지사항을 프론트에 뿌리기
 		// 크롤링한 공지사항을 알림 전송
 		// 성공적으로 처리되었음을 클라이언트에 응답
-		fcmService.sendNoticeNotification(noticeDto);
+		fcmService.sendNoticeNotification(noticeDto, eventId);
 		WebhookResponse webhookResponse = WebhookResponse.builder()
 			.result("웹훅이 성공적으로 처리 되었습니다.")
 			.topic(noticeDto.getKoreanTopic())

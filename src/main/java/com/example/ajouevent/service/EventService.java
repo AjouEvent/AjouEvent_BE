@@ -94,7 +94,7 @@ public class EventService {
 
 	// 크롤링한 공지사항 DB에 저장
 	@Transactional
-	public void postNotice(NoticeDto noticeDto) {
+	public Long postNotice(NoticeDto noticeDto) {
 		Type type = Type.valueOf(noticeDto.getEnglishTopic().toUpperCase());
 		log.info("저장하는 타입 : " + type.getEnglishTopic());
 
@@ -144,6 +144,7 @@ public class EventService {
 
 		eventRepository.save(clubEvent);
 
+		return clubEvent.getEventId();
 	}
 
 	@Transactional
