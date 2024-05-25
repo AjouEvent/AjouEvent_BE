@@ -175,8 +175,11 @@ public class MemberService {
 				.fcmToken(oAuthDto.getFcmToken())
 				.build();
 
-		if (loginRequest.getFcmToken() != null)
+		if (loginRequest.getFcmToken() != null) {
 			topicService.saveFCMToken(loginRequest);
+		} else {
+			log.info("가져온 LoginRequest의 FcmToken이 null 입니다.");
+		}
 
         return LoginResponse.builder()
 				.id(member.getId())
@@ -185,6 +188,7 @@ public class MemberService {
 				.refreshToken(refreshToken)
 				.name(member.getName())
 				.major(member.getMajor())
+				.email(member.getEmail())
 				.build();
 	}
 
