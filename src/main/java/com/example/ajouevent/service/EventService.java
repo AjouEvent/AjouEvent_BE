@@ -14,6 +14,8 @@ import com.example.ajouevent.domain.EventLike;
 import com.example.ajouevent.domain.Topic;
 import com.example.ajouevent.domain.TopicMember;
 import com.example.ajouevent.dto.ResponseDto;
+import com.example.ajouevent.exception.CustomErrorCode;
+import com.example.ajouevent.exception.CustomException;
 import com.example.ajouevent.exception.UserNotFoundException;
 import com.example.ajouevent.logger.AlarmLogger;
 import com.example.ajouevent.repository.EventLikeRepository;
@@ -161,7 +163,7 @@ public class EventService {
 		String userEmail = principal.getName();
 		// 사용자 조회
 		Member member = memberRepository.findByEmail(userEmail)
-			.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + userEmail));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		Type type = Type.valueOf(postNotificationDTO.getType().getEnglishTopic().toUpperCase());
 		log.info("저장하는 타입 : " + type.getEnglishTopic());
@@ -194,7 +196,7 @@ public class EventService {
 					log.info("S3에 올라간 이미지: " + imageUrl); // 로그에 업로드된 이미지 URL 출력
 					postImages.add(imageUrl); // 업로드된 이미지 URL을 리스트에 추가
 				} catch (IOException e) {
-					e.printStackTrace();
+					throw new CustomException(CustomErrorCode.IMAGE_UPLOAD_FAILED);
 				}
 			}
 		} else {
@@ -337,7 +339,7 @@ public class EventService {
 	public void updateEventData(Long eventId, UpdateEventRequest request) {
 		// 수정할 게시글 조회
 		ClubEvent clubEvent = eventRepository.findById(eventId)
-			.orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + eventId));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
 
 		// 게시글 내용 수정
 		clubEvent.updateEvent(request);
@@ -418,7 +420,7 @@ public class EventService {
 	@Transactional
 	public void updateEventImages(Long eventId, List<MultipartFile> images) throws IOException {
 		ClubEvent clubEvent = eventRepository.findById(eventId)
-			.orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + eventId));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
 
 		// Process and update images if there are any
 		List<ClubEventImage> updatedImages = new ArrayList<>();
@@ -472,7 +474,7 @@ public class EventService {
 		if (principal != null) {
 			String userEmail = principal.getName();
 			Member member = memberRepository.findByEmail(userEmail)
-				.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + userEmail));
+				.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 			Slice<EventLike> likedEventSlice = eventLikeRepository.findByMember(member);
 			Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
@@ -514,7 +516,7 @@ public class EventService {
 			log.info("유저 Email" + principal.getName());
 			String userEmail = principal.getName();
 			Member member = memberRepository.findByEmail(userEmail)
-				.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + userEmail));
+				.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 			// 사용자가 찜한 게시글 목록 조회
 			List<EventLike> likedEventSlice = member.getEventLikeList();
@@ -550,14 +552,14 @@ public class EventService {
 	@Transactional
 	public EventDetailResponseDto getEventDetail(Long eventId, Principal principal) {
 		ClubEvent clubEvent = eventRepository.findById(eventId)
-			.orElseThrow(() -> new NoSuchElementException("Event not found with id: " + eventId));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
 
 		if (principal != null) {
 			String userEmail = principal.getName(); // 현재 로그인한 사용자의 이메일 가져오기
 
 			// 사용자 조회
 			Member member = memberRepository.findByEmail(userEmail)
-				.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + userEmail));
+				.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 			boolean isLiked = eventLikeRepository.existsByMemberAndClubEvent(member, clubEvent);
 			return EventDetailResponseDto.toDto(clubEvent, isLiked);
@@ -581,7 +583,7 @@ public class EventService {
 		log.info("사용자 이메일: {}", userEmail);
 
 		Member member = memberRepository.findByEmail(userEmail)
-			.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + userEmail));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 사용자가 구독하는 모든 토픽 가져오기
 		List<TopicMember> subscribedTopicMembers = topicMemberRepository.findByMember(member);
@@ -652,21 +654,17 @@ public class EventService {
 	public ResponseEntity<ResponseDto> likeEvent(Long eventId, Principal principal) {
 		// 사용자가 로그인하지 않은 경우
 		if (principal == null) {
-			return ResponseEntity.ok().body(ResponseDto.builder()
-				.successStatus(HttpStatus.UNAUTHORIZED)
-				.successContent("로그인이 필요합니다.")
-				.build()
-			);
+			throw new CustomException(CustomErrorCode.LOGIN_NEEDED);
 		}
 
 		String userEmail = principal.getName(); // 현재 로그인한 사용자의 이메일 가져오기
 
 		// 이벤트 조회
 		ClubEvent clubEvent = eventRepository.findById(eventId)
-			.orElseThrow(() -> new NoSuchElementException("Event not found with id: " + eventId));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
 
 		// 사용자 조회
-		Member member = memberRepository.findByEmail(userEmail).orElseThrow(() -> new IllegalArgumentException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + userEmail));
+		Member member = memberRepository.findByEmail(userEmail).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 이미 찜한 이벤튼지 확인
 		if (eventLikeRepository.existsByMemberAndClubEvent(member, clubEvent)) {
@@ -701,32 +699,23 @@ public class EventService {
 	public ResponseEntity<ResponseDto> cancelLikeEvent(Long eventId, Principal principal) {
 		// 사용자가 로그인하지 않은 경우
 		if (principal == null) {
-			return ResponseEntity.ok().body(ResponseDto.builder()
-				.successStatus(HttpStatus.UNAUTHORIZED)
-				.successContent("로그인이 필요합니다.")
-				.build()
-			);
+			throw new CustomException(CustomErrorCode.LOGIN_NEEDED);
 		}
 
 		String userEmail = principal.getName(); // 현재 로그인한 사용자의 이메일 가져오기
 
 		// 이벤트 조회
 		ClubEvent clubEvent = eventRepository.findById(eventId)
-			.orElseThrow(() -> new NoSuchElementException("Event not found with id: " + eventId));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
 
 		// 사용자 조회
 		Member member = memberRepository.findByEmail(userEmail)
-			.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + userEmail));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 찜한 이벤트인지 확인
-		EventLike eventLike = eventLikeRepository.findByClubEventAndMember(clubEvent, member).orElseThrow(() -> new NoSuchElementException("EventLike not found "));
+		EventLike eventLike = eventLikeRepository.findByClubEventAndMember(clubEvent, member).orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_LIKED));
 		if (eventLike == null) {
-
-			return ResponseEntity.ok().body(ResponseDto.builder()
-				.successStatus(HttpStatus.BAD_REQUEST)
-				.successContent("찜한 이벤트를 찾을 수 없습니다.")
-				.build()
-			);
+			throw new CustomException(CustomErrorCode.EVENT_NOT_LIKED);
 		}
 
 		// 게시글의 저장수 감소
@@ -747,14 +736,14 @@ public class EventService {
 	public SliceResponse<EventResponseDto> getLikedEvents(Pageable pageable, Principal principal) {
 		// 사용자가 로그인하지 않은 경우
 		if (principal == null) {
-			throw new IllegalArgumentException("로그인이 필요합니다");
+			throw new CustomException(CustomErrorCode.LOGIN_NEEDED);
 		}
 
 		String userEmail = principal.getName(); // 현재 로그인한 사용자의 이메일 가져오기
 
 		// 사용자 조회
 		Member member = memberRepository.findByEmail(userEmail)
-			.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + userEmail));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 사용자의 찜한 이벤트 목록 조회
 		Slice<EventLike> likedEventSlice = eventLikeRepository.findByMember(member);

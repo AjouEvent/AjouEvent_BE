@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.example.ajouevent.exception.CustomErrorCode;
+import com.example.ajouevent.exception.CustomException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
@@ -38,7 +40,7 @@ public class S3Upload {
 	// MultipartFile을 전달받아 File로 전환한 후 S3에 업로드
 	public String uploadFiles(MultipartFile multipartFile, String dirName) throws IOException {
 		File uploadFile = convert(multipartFile)
-			.orElseThrow(() -> new IllegalArgumentException("MultipartFile -> File 전환 실패"));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.FILE_CONVERT_FAILED));
 		return upload(uploadFile, dirName);
 	}
 

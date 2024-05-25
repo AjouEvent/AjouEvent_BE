@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ExecutionException;
 
+import com.example.ajouevent.exception.CustomErrorCode;
+import com.example.ajouevent.exception.CustomException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -56,7 +58,7 @@ public class FCMService {
 	public void sendEventNotification(String email, Alarm alarm) {
 		// 사용자 조회
 		Member member = memberRepository.findByEmail(email)
-			.orElseThrow(() -> new UserNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + email));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		if (member.getTokens().isEmpty()) {
 			alarmLogger.log("알림 전송 실패: 토큰이 없습니다.");
@@ -171,7 +173,7 @@ public class FCMService {
 
 		// englishTopic 값을 사용하여 해당하는 Topic 객체를 가져옴
 		Topic topicEntity = topicRepository.findByDepartment(noticeDto.getEnglishTopic())
-			.orElseThrow(() -> new NoSuchElementException("Topic을 찾을 수 없습니다: " + noticeDto.getEnglishTopic()));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
 
 
 		// TopicMemberRepository를 사용하여 해당 topic을 구독하는 멤버 목록을 가져옴
@@ -220,7 +222,7 @@ public class FCMService {
 				});
 			}
 		} catch (InterruptedException | ExecutionException e) {
-			e.printStackTrace();
+			throw new CustomException(CustomErrorCode.SUBSCRIBE_FAILED);
 			// 구독에 실패한 경우에 대한 처리
 		}
 	}
@@ -238,7 +240,7 @@ public class FCMService {
 				});
 			}
 		} catch (InterruptedException | ExecutionException e) {
-			e.printStackTrace();
+			throw new CustomException(CustomErrorCode.SUBSCRIBE_CANCEL_FAILED);
 			// 구독 해지에 실패한 경우에 대한 처리
 		}
 	}

@@ -47,7 +47,7 @@ public class MemberService {
 	public String register(RegisterRequest registerRequest) throws IOException {
 		Optional<Member> member = memberRepository.findByEmail(registerRequest.getEmail());
 		if (member.isPresent()) {
-			throw new IOException("This member email is already exist." + registerRequest.getEmail());
+			throw new CustomException(CustomErrorCode.DUPLICATED_EMAIL);
 		}
 
 		String password = BCryptEncoder.encode(registerRequest.getPassword());
@@ -70,7 +70,7 @@ public class MemberService {
 		String email = loginRequest.getEmail();
 		String password = loginRequest.getPassword();
 		Member member = memberRepository.findByEmail(email)
-			.orElseThrow(() -> new UsernameNotFoundException("이메일이 존재하지 않습니다."));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.LOGIN_FAILED));
 
 		if (!encoder.matches(password, member.getPassword())) {
 			throw new CustomException(CustomErrorCode.LOGIN_FAILED);
@@ -102,11 +102,12 @@ public class MemberService {
 	public LoginResponse reissueAccessToken(ReissueTokenDto refreshToken) {
 		String token = refreshToken.getRefreshToken();
 		if (!jwtUtil.validateToken(token)) {
-			throw new ValidationException("refresh token이 유효하지 않습니다.");
+			throw new CustomException(CustomErrorCode.UNAUTHORIZED);
 		}
+
 		Long memberId = jwtUtil.getUserId(token);
 
-		Member member = memberRepository.findById(memberId).orElseThrow();
+		Member member = memberRepository.findById(memberId).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 			MemberDto.MemberInfoDto memberInfoDto = MemberDto.MemberInfoDto.builder()
 				.memberId(member.getId())
@@ -126,7 +127,7 @@ public class MemberService {
 	}
 
 	public MemberGetDto getMemberInfo(Principal principal) {
-		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow();
+		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		return MemberGetDto.builder()
 				.name(member.getName())
@@ -138,7 +139,7 @@ public class MemberService {
 
 	@Transactional
 	public String updateMemberInfo (MemberUpdateDto memberUpdateDto, Principal principal) {
-		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow();
+		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		if (memberUpdateDto.getMajor() != null) member.setMajor(memberUpdateDto.getMajor());
 		if (memberUpdateDto.getName() != null) member.setName(memberUpdateDto.getName());
@@ -149,7 +150,7 @@ public class MemberService {
 
 	@Transactional
 	public String deleteMember (Principal principal) {
-		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow();
+		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 		memberRepository.delete(member);
 		return "삭제 완료";
 	}
@@ -157,7 +158,7 @@ public class MemberService {
 	public LoginResponse socialLogin (OAuthDto oAuthDto) throws LoginException {
 		String googleAccessToken = oAuth.requestGoogleAccessToken(oAuthDto.getAuthorizationCode());
 		UserInfoGetDto userInfoGetDto = oAuth.printUserResource(googleAccessToken);
-		Member member = memberRepository.findByEmail(userInfoGetDto.getEmail()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+		Member member = memberRepository.findByEmail(userInfoGetDto.getEmail()).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		MemberDto.MemberInfoDto memberInfoDto = MemberDto.MemberInfoDto.builder()
 				.memberId(member.getId())
