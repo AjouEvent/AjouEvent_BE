@@ -30,8 +30,9 @@ public class Member {
 	@Column
 	private String phone;
 
-	@Column
-	private String role;
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false)
+	private Role role = Role.USER;
 
 	@OneToMany(mappedBy = "member", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST,
 		CascadeType.REMOVE}, orphanRemoval = true)
@@ -57,6 +58,5 @@ public class Member {
 		this.password = password;
 		this.major = major;
 		this.phone = phone;
-		this.role = "USER";
 	}
 }
