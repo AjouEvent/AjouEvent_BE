@@ -87,4 +87,16 @@ public class MemberController {
 		return ResponseEntity.status(HttpStatus.OK).body(res);
 	}
 
+	@PostMapping("/emailCheckRequest")
+	public ResponseEntity<String> emailCheckRequest (@RequestParam(name="email") String email) {
+		String res = memberService.EmailCheckRequest(email);
+		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
+	@PostMapping("/emailCheck")
+	public ResponseEntity<String> emailCheck (@RequestParam(name="email") String email, @RequestParam(name="code") String code) {
+		String res = memberService.EmailCheck(email, code);
+		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
 }
