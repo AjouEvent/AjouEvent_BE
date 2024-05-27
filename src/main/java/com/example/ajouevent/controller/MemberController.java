@@ -81,4 +81,10 @@ public class MemberController {
 		return ResponseEntity.status(HttpStatus.OK).body(loginResponse);
 	}
 
+	@GetMapping("/duplicateEmail")
+	public ResponseEntity<Boolean> duplicateEmail (@RequestParam(name="email") String email) {
+		Boolean res = memberService.duplicateEmail(email);
+		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
 }

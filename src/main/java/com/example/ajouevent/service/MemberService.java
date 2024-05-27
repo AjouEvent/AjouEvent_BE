@@ -193,5 +193,8 @@ public class MemberService {
 				.build();
 	}
 
+	public boolean duplicateEmail (String email) {
+		return !memberRepository.existsByEmail(email);
+	}
 
 }
