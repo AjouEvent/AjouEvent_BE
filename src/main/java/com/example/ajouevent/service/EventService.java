@@ -33,6 +33,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -733,7 +734,7 @@ public class EventService {
 
 	// 유저의 찜한 이벤트 목록 조회
 	@Transactional
-	public SliceResponse<EventResponseDto> getLikedEvents(Pageable pageable, Principal principal) {
+	public SliceResponse<EventResponseDto> getLikedEvents(String type, String keyword, Pageable pageable, Principal principal) {
 		// 사용자가 로그인하지 않은 경우
 		if (principal == null) {
 			throw new CustomException(CustomErrorCode.LOGIN_NEEDED);
@@ -745,21 +746,47 @@ public class EventService {
 		Member member = memberRepository.findByEmail(userEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
-		// 사용자의 찜한 이벤트 목록 조회
-		Slice<EventLike> likedEventSlice = eventLikeRepository.findByMember(member);
+		// Fetch Join을 사용하여 ClubEvent와 관련된 엔티티를 한 번에 가져옵니다.
+		// Slice<EventLike> likedEventSlice = eventLikeRepository.findByMemberWithClubEvent(member, pageable);
 
 
+		// 사용자가 찜한 EventLike 엔티티들을 가져옵니다.
+		// List<EventLike> likedEvents = eventLikeRepository.findByMember(member);
+		List<EventLike> likedEvents = eventLikeRepository.findByMemberWithClubEvent(member);
 
-		// 조회된 ClubEvent 목록을 이벤트 응답 DTO 목록으로 매핑합니다.
-		List<EventResponseDto> eventResponseDtoList = likedEventSlice.getContent().stream()
+		// EventLike 엔티티에서 ClubEvent의 ID 목록을 추출합니다.
+		List<Long> eventIds = likedEvents.stream()
+			.map(eventLike -> eventLike.getClubEvent().getEventId())
+			.collect(Collectors.toList());
+
+		// ClubEvent 엔티티들을 페이징하여 가져옵니다.
+		Slice<ClubEvent> clubEventSlice = eventRepository.findByEventIds(eventIds, pageable);
+
+		List<EventResponseDto> eventResponseDtoList = clubEventSlice.getContent().stream()
+			.filter(event -> {
+				// 타입 조건 평가
+				boolean matchesType;
+				if (type == null || type.isEmpty()) {
+					matchesType = true; // type이 비어 있으면 모든 타입과 일치하도록 설정
+				} else {
+					matchesType = event.getType().name().equalsIgnoreCase(type); // 타입이 일치하는지 확인
+				}
+
+				// 키워드 조건 평가
+				boolean matchesKeyword;
+				if (keyword == null || keyword.isEmpty()) {
+					matchesKeyword = true; // keyword가 비어 있으면 모든 제목과 일치하도록 설정
+				} else {
+					matchesKeyword = event.getTitle().contains(keyword); // 제목에 키워드가 포함되어 있는지 확인
+				}
+
+				// 두 조건이 모두 참이면 필터링 통과
+				return matchesType && matchesKeyword;
+			})
 			.map(event -> {
-				EventResponseDto eventResponseDto = EventResponseDto.toDto(event.getClubEvent());
-
-				// 유저의 찜 여부 설정
-				boolean isLiked = likedEventSlice.stream().anyMatch(eventLike -> eventLike.getClubEvent().equals(event.getClubEvent()));
-				eventResponseDto.setStar(isLiked);
-
-				return eventResponseDto;
+				EventResponseDto dto = EventResponseDto.toDto(event);
+				dto.setStar(true);
+				return dto;
 			})
 			.collect(Collectors.toList());
 
@@ -770,10 +797,9 @@ public class EventService {
 			.orderProperty(pageable.getSort().stream().map(Sort.Order::getProperty).findFirst().orElse(null))
 			.build();
 
-
 		// 결과를 Slice로 감싸서 반환합니다.
-		return new SliceResponse<>(eventResponseDtoList, likedEventSlice.hasPrevious(), likedEventSlice.hasNext(),
-			likedEventSlice.getNumber(), sortResponse);
+		return new SliceResponse<>(eventResponseDtoList, clubEventSlice.hasPrevious(), clubEventSlice.hasNext(),
+			clubEventSlice.getNumber(), sortResponse);
 	}
 
 }

@@ -147,9 +147,12 @@ public class EventController {
 	}
 
 	// 찜한 게시글 불러오기
+	@PreAuthorize("isAuthenticated()")
 	@GetMapping("/liked")
-	public SliceResponse<EventResponseDto> getLikedEvents(@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
-		return eventService.getLikedEvents(pageable, principal);
+	public SliceResponse<EventResponseDto> getLikedEvents(@RequestParam(required = false, name = "type") String type,
+		@RequestParam(required = false, defaultValue = "", name="keyword") String keyword,
+		@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
+		return eventService.getLikedEvents(type, keyword, pageable, principal);
 	}
 
 	@PreAuthorize("isAuthenticated()")
