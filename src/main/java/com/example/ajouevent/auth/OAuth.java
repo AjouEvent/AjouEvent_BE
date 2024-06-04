@@ -1,7 +1,9 @@
 package com.example.ajouevent.auth;
 
+import com.example.ajouevent.domain.Member;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
+import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.service.CalendarService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -57,11 +59,16 @@ public class OAuth {
 
     Credential credential;
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
+    private final MemberRepository memberRepository;
 
 
     private static final String TOKENS_DIRECTORY_PATH = "tokens";
     private static final List<String> SCOPES =
             Collections.singletonList(CalendarScopes.CALENDAR);
+
+    public OAuth(MemberRepository memberRepository) {
+        this.memberRepository = memberRepository;
+    }
 
     public TokenResponse requestGoogleAccessToken(final String code) throws LoginException, JsonProcessingException {
         if (code == null || code.isEmpty()) {
@@ -91,6 +98,8 @@ public class OAuth {
         if (responseEntity.getBody() == null) {
             throw new LoginException("Response body is null");
         }
+
+        log.info("re"+ responseEntity.getBody());
 
         // 응답 헤더 출력
         HttpHeaders responseHeaders = responseEntity.getHeaders();
@@ -135,6 +144,8 @@ public class OAuth {
             }
 
             if (responseBody.has("email")) {
+                Member member = memberRepository.findByEmail(responseBody.get("email").asText())
+                        .orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
                 return UserInfoGetDto.builder()
                     .id(responseBody.get("id").asText())
