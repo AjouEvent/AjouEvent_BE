@@ -1,6 +1,7 @@
 package com.example.ajouevent.service;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Principal;
 import java.security.SecureRandom;
@@ -19,6 +20,7 @@ import com.example.ajouevent.dto.*;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import com.example.ajouevent.repository.EmailCheckRedisRepository;
+import com.google.api.client.auth.oauth2.TokenResponse;
 import jakarta.validation.constraints.Email;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -167,9 +169,11 @@ public class MemberService {
 		return "삭제 완료";
 	}
 
-	public LoginResponse socialLogin (OAuthDto oAuthDto) throws LoginException {
-		String googleAccessToken = oAuth.requestGoogleAccessToken(oAuthDto.getAuthorizationCode());
-		UserInfoGetDto userInfoGetDto = oAuth.printUserResource(googleAccessToken);
+	public LoginResponse socialLogin (OAuthDto oAuthDto) throws GeneralSecurityException, IOException {
+		TokenResponse googleToken = oAuth.requestGoogleAccessToken(oAuthDto.getAuthorizationCode());
+		UserInfoGetDto userInfoGetDto = oAuth.printUserResource(googleToken);
+		String res = oAuth.addCalendarCredentials(googleToken, userInfoGetDto.getEmail());
+
 		Member member = memberRepository.findByEmail(userInfoGetDto.getEmail()).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		MemberDto.MemberInfoDto memberInfoDto = MemberDto.MemberInfoDto.builder()

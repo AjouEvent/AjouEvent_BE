@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.security.Principal;
 import java.util.List;
 
@@ -76,7 +77,7 @@ public class MemberController {
 	}
 
 	@PostMapping("/oauth")
-	public ResponseEntity<LoginResponse> getAccessToken (@RequestBody OAuthDto oAuthDto) throws LoginException {
+	public ResponseEntity<LoginResponse> getAccessToken (@RequestBody OAuthDto oAuthDto) throws GeneralSecurityException, IOException {
 		LoginResponse loginResponse = memberService.socialLogin(oAuthDto);
 		return ResponseEntity.status(HttpStatus.OK).body(loginResponse);
 	}

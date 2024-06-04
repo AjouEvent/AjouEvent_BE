@@ -4,27 +4,29 @@ import com.example.ajouevent.dto.CalendarStoreDto;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
-import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
+import com.google.api.client.auth.oauth2.StoredCredential;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.DateTime;
+import com.google.api.client.util.store.DataStore;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.CalendarScopes;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.EventDateTime;
+import com.google.auth.oauth2.GoogleCredentials;
+import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.security.GeneralSecurityException;
 import java.security.Principal;
 import java.util.Collections;
@@ -40,13 +42,38 @@ public class CalendarService {
     private static final List<String> SCOPES =
             Collections.singletonList(CalendarScopes.CALENDAR);
 
+    @Value("${spring.security.oauth2.client.registration.google.client-secret}")
+    private String clientSecret;
+
 
     public void GoogleAPIClient(CalendarStoreDto calendarStoreDto, Principal principal) throws IOException, GeneralSecurityException {
-        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+        log.info("1");
+        String DATA_DIRECTORY_PATH = "tokens/"+principal.getName();
+        String CREDENTIAL_FILENAME = "StoredCredential";
+        String keyFileName = "/credentials.json";
+        InputStream in = CalendarService.class.getResourceAsStream(keyFileName);
+        if (in == null) {
+            throw new CustomException(CustomErrorCode.FILE_NOT_FOUND);
+        }
 
-        Calendar service = new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT, principal.getName())).setApplicationName(APPLICATION_NAME).build();
+        GoogleClientSecrets clientSecrets =
+                GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+
+        NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+        JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
+
+        FileDataStoreFactory dataStoreFactory = new FileDataStoreFactory(new File(DATA_DIRECTORY_PATH));
+        DataStore<StoredCredential> dataStore = dataStoreFactory.getDataStore(CREDENTIAL_FILENAME);
+        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+                HTTP_TRANSPORT,JSON_FACTORY, clientSecrets, SCOPES)
+                .setCredentialDataStore(dataStore).build();
+        Credential credential = flow.loadCredential(principal.getName());
+
+        Calendar service = new com.google.api.services.calendar.Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, credential)
+                .setApplicationName(APPLICATION_NAME).build();
         String calendarId = principal.getName();
 
+        log.info("2");
         /*
          * 캘린더 일정 생성
          */
@@ -69,27 +96,4 @@ public class CalendarService {
 
     }
 
-    private static Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT, String email)
-            throws IOException {
-
-        String keyFileName = "/credentials.json";
-        InputStream in = CalendarService.class.getResourceAsStream(keyFileName);
-        if (in == null) {
-            throw new CustomException(CustomErrorCode.FILE_NOT_FOUND);
-        }
-
-        GoogleClientSecrets clientSecrets =
-                GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
-
-        // Build flow and trigger user authorization request.
-        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-                HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-                .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH+"/"+email)))
-                .setAccessType("offline")
-                .build();
-
-        LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
-        //returns an authorized Credential object.
-        return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
-    }
 }
