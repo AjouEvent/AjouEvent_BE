@@ -19,6 +19,7 @@ public class EventResponseDto { // 게시글 홈 화면 조회 시에 나오는 
 	private LocalDateTime createdAt;
 	private Long eventId;
 	private Long likesCount;
+	private Long viewCount;
 	private Boolean star;
 	private String subject;
 	private Type type;
@@ -31,6 +32,7 @@ public class EventResponseDto { // 게시글 홈 화면 조회 시에 나오는 
 			.url(clubEvent.getUrl())
 			.createdAt(clubEvent.getCreatedAt())
 			.likesCount(clubEvent.getLikesCount())
+			.viewCount(clubEvent.getViewCount())
 			.type(clubEvent.getType())
 			.subject(clubEvent.getType().getKoreanTopic())
 			.build();
