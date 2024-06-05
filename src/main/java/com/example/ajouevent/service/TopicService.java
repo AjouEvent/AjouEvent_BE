@@ -1,12 +1,15 @@
 package com.example.ajouevent.service;
 
+import java.security.Principal;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.example.ajouevent.dto.TopicStatus;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import org.springframework.http.HttpStatus;
@@ -123,40 +126,13 @@ public class TopicService {
 		Member member = memberRepository.findByEmail(memberEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
-		// // 멤버가 구독하고 있는 해당 토픽을 찾아서 삭제
-		// topicMemberRepository.deleteByTopicAndMember(topic, member);
-		//
-		// // 해당 토픽을 구독하는 모든 TopicToken 삭제
-		// topicTokenRepository.deleteByTopic(topic);
-
-		// 해당 멤버와 관련된 TopicMember 엔티티 목록을 가져옴
-		List<TopicMember> topicMembersToDelete = topicMemberRepository.findByMember(member);
-
-
-		// TopicMember의 ID를 추출
-		List<Long> topicMemberIds = topicMembersToDelete.stream()
-			.map(TopicMember::getId)
-			.collect(Collectors.toList());
-
-		// TopicMember와 연관된 TopicToken의 topic ID 목록을 추출
-		List<Long> topicIds = topicMembersToDelete.stream()
-			.map(tm -> tm.getTopic().getId())
-			.collect(Collectors.toList());
-
-
-		// TopicToken 삭제
-		topicTokenRepository.deleteAllByIds(topicIds);
-
-		// TopicMember 삭제
-		topicMemberRepository.deleteAllByIds(topicMemberIds);
-
-
-
+		// 멤버가 구독하고 있는 해당 토픽을 찾아서 삭제
+		topicMemberRepository.deleteByTopicAndMember(topic, member);
+		// 해당 토픽을 구독하는 모든 TopicToken 삭제
+		topicTokenRepository.deleteByTopic(topic);
 		// 현재 사용자의 토큰 목록 가져오기
 		// List<Token> memberTokens = tokenRepository.findByMemberEmail(memberEmail);
-
 		List<Token> memberTokens = member.getTokens();
-
 		// FCM 서비스를 사용하여 토픽에 대한 구독 취소 진행
 		List<String> tokenValues = memberTokens.stream()
 			.map(Token::getTokenValue)
@@ -322,7 +298,7 @@ public class TopicService {
 
 		// TopicMember 목록에서 토픽의 이름만 추출하여 반환
 		List<String> topics = topicMembers.stream()
-			.map(topicMember -> topicMember.getTopic().getDepartment())
+			.map(topicMember -> topicMember.getTopic().getKoreanTopic())
 			.collect(Collectors.toList());
 
 
@@ -338,5 +314,21 @@ public class TopicService {
 			.toList();
 
 		return new TopicResponse(topicName);
+	}
+
+	// 사용자가 구독하고 있는 토픽 상태 조회
+	public List<TopicStatus> getTopicWithUserSubscriptionsStatus(Principal principal) {
+		List<Topic> allTopics = topicRepository.findAll();
+		Member member = memberRepository.findByEmail(principal.getName())
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		List<TopicMember> subscriptions = topicMemberRepository.findByMember(member);
+		Set<Long> subscribedTopicIds = subscriptions.stream()
+			.map(subscription -> subscription.getTopic().getId())
+			.collect(Collectors.toSet());
+
+		return allTopics.stream()
+			.map(topic -> new TopicStatus(topic, subscribedTopicIds.contains(topic.getId())))
+			.collect(Collectors.toList());
 	}
 }

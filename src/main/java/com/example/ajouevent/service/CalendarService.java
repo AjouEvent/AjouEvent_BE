@@ -74,6 +74,8 @@ public class CalendarService {
         String calendarId = principal.getName();
 
         log.info("2");
+        log.info("calendarId : " + calendarId);
+
         /*
          * 캘린더 일정 생성
          */

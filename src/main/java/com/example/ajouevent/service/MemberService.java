@@ -14,6 +14,7 @@ import com.example.ajouevent.auth.JwtUtil;
 import com.example.ajouevent.auth.OAuth;
 import com.example.ajouevent.auth.OAuthDto;
 import com.example.ajouevent.auth.UserInfoGetDto;
+import com.example.ajouevent.discord.DiscordMessageProvider;
 import com.example.ajouevent.domain.EmailCheck;
 import com.example.ajouevent.domain.Member;
 import com.example.ajouevent.dto.*;
@@ -51,6 +52,7 @@ public class MemberService {
 	private final BCryptPasswordEncoder BCryptEncoder;
 	private final OAuth oAuth;
 	private final TopicService topicService;
+	private final DiscordMessageProvider discordMessageProvider;
 	private final JavaMailSender javaMailSender;
 	private final EmailCheckRedisRepository emailCheckRedisRepository;
 	@Autowired
@@ -76,6 +78,9 @@ public class MemberService {
 
 		memberRepository.save(newMember);
 
+		// 회원가입이 완료되면 트리거 된다.
+		String registerMessage = newMember.getId() + "번째 유저" + registerRequest.getName() + " 님이 회원가입했습니다!\n";
+		discordMessageProvider.sendMessage(registerMessage);
 		return "가입 완료"; // -> 수정 필요
 	}
 
@@ -107,6 +112,7 @@ public class MemberService {
 				.refreshToken(refreshToken)
 				.name(member.getName())
 				.major(member.getMajor())
+				.email(member.getEmail())
 				.build();
 
 		return ResponseEntity.ok().body(loginResponse);
