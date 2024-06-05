@@ -112,6 +112,7 @@ public class MemberService {
 				.refreshToken(refreshToken)
 				.name(member.getName())
 				.major(member.getMajor())
+				.email(member.getEmail())
 				.build();
 
 		return ResponseEntity.ok().body(loginResponse);
