@@ -109,6 +109,7 @@ public class EventController {
 	}
 
 	// 게시글 상세 조회
+	@PreAuthorize("permitAll()")
 	@GetMapping("/detail/{eventId}")
 	public EventDetailResponseDto detail(@PathVariable("eventId") Long eventId, Principal principal) {
 		return eventService.getEventDetail(eventId, principal);

@@ -58,6 +58,7 @@ public class TopicController {
 		);
 	}
 
+	@PreAuthorize("isAuthenticated()")
 	@GetMapping("/subscriptions")
 	public TopicResponse getUserSubscriptions() {
 		// 현재 사용자가 구독하고 있는 토픽 리스트 가져오기
