@@ -481,7 +481,7 @@ public class EventService {
 			Member member = memberRepository.findByEmail(userEmail)
 				.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
-			Slice<EventLike> likedEventSlice = eventLikeRepository.findByMember(member);
+			List<EventLike> likedEventSlice = eventLikeRepository.findByMember(member);
 			Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
 				.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
 
@@ -661,7 +661,7 @@ public class EventService {
 	@Transactional
 	public ResponseEntity<ResponseDto> likeEvent(Long eventId, Principal principal) {
 		// 사용자가 로그인하지 않은 경우
-		if (principal == null) {
+		if (principal == null || SecurityContextHolder.getContext().getAuthentication() == null) {
 			throw new CustomException(CustomErrorCode.LOGIN_NEEDED);
 		}
 
