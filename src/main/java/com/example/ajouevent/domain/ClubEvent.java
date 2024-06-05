@@ -42,6 +42,9 @@ public class ClubEvent {
     @Column // 찜한 수 (default는 0)
     private Long likesCount;
 
+    @Column // 조회 수 (default는 0)
+    private Long viewCount;
+
     @Column(length = 50000)
     @Enumerated(value = EnumType.STRING)
     private Type type;
@@ -82,6 +85,11 @@ public class ClubEvent {
     // 게시글의 저장수 감소
     public void decreaseLikes() {
         this.likesCount--;
+    }
+
+    // 게시글의 조회수 증가
+    public void increaseViewCount() {
+        this.viewCount++;
     }
 
 

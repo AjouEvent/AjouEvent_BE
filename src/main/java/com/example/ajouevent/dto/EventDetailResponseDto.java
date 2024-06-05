@@ -24,6 +24,7 @@ public class EventDetailResponseDto { // 게시글 상세 조회시에 나오는
 	private Type type;
 	private String writer;
 	private Long likesCount;
+	private Long viewCount;
 	private Boolean star;
 	private String subject;
 	private String url;
@@ -42,6 +43,7 @@ public class EventDetailResponseDto { // 게시글 상세 조회시에 나오는
 			.type(clubEvent.getType())
 			.imgUrl(imgUrlList)
 			.likesCount(clubEvent.getLikesCount())
+			.viewCount(clubEvent.getViewCount())
 			.url(clubEvent.getUrl())
 			.star(isLiked)
 			.type(clubEvent.getType())
