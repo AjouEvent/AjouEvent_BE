@@ -123,7 +123,7 @@ public class FCMService {
 		// FCM 메시지 구성
 		String messageTitle = "[" + koreanTopic + "]" + " " + title;
 
-		String url = "https://ajou-event.shop"; // 실제 학교 홈페이지 공지사항으로 이동 (default는 우리 웹사이트)
+		String url = "https://ajou-event.vercel.app"; // 실제 학교 홈페이지 공지사항으로 이동 (default는 우리 웹사이트)
 
 		String topic = noticeDto.getEnglishTopic();
 
@@ -136,7 +136,7 @@ public class FCMService {
 		log.info("body 정보: " + body);
 
 		if (noticeDto.getUrl() != null) {
-			url = "https://ajou-event.vercel.app/" + eventId;
+			url = "https://ajou-event.vercel.app/event/" + eventId;
 			webhookLogger.log("리다이렉션하는 url : " + url);
 		}
 
