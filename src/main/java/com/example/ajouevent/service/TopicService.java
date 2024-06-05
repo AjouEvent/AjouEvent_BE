@@ -1,12 +1,15 @@
 package com.example.ajouevent.service;
 
+import java.security.Principal;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.example.ajouevent.dto.TopicStatus;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import org.springframework.http.HttpStatus;
@@ -338,5 +341,21 @@ public class TopicService {
 			.toList();
 
 		return new TopicResponse(topicName);
+	}
+
+	// 사용자가 구독하고 있는 토픽 상태 조회
+	public List<TopicStatus> getTopicWithUserSubscriptionsStatus(Principal principal) {
+		List<Topic> allTopics = topicRepository.findAll();
+		Member member = memberRepository.findByEmail(principal.getName())
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		List<TopicMember> subscriptions = topicMemberRepository.findByMember(member);
+		Set<Long> subscribedTopicIds = subscriptions.stream()
+			.map(subscription -> subscription.getTopic().getId())
+			.collect(Collectors.toSet());
+
+		return allTopics.stream()
+			.map(topic -> new TopicStatus(topic, subscribedTopicIds.contains(topic.getId())))
+			.collect(Collectors.toList());
 	}
 }
