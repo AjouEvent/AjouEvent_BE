@@ -129,6 +129,12 @@ public class EventController {
 		return eventService.getEventTypeList(type, keyword, pageable, principal);
 	}
 
+	// 인기글 조회 로직
+	@GetMapping("/popular")
+	public List<EventResponseDto> getPopularEvents() {
+		return eventService.getTopPopularEvents();
+	}
+
 	@GetMapping("/subscribed")
 	public SliceResponse<EventResponseDto> getSubscribedEvent(@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
 		return eventService.getSubscribedEvents(pageable, principal);

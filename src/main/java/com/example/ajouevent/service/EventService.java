@@ -809,4 +809,13 @@ public class EventService {
 			clubEventSlice.getNumber(), sortResponse);
 	}
 
+	public List<EventResponseDto> getTopPopularEvents() {
+		List<ClubEvent> clubEventList = eventRepository.findTop10ByOrderByViewCountDesc();
+
+		// 이벤트를 이벤트 응답 DTO로 변환하여 반환
+		return clubEventList.stream()
+			.map(EventResponseDto::toDto)
+			.collect(Collectors.toList());
+	}
+
 }
