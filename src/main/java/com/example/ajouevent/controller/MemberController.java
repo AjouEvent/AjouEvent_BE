@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.security.Principal;
 import java.util.List;
 
@@ -76,9 +77,27 @@ public class MemberController {
 	}
 
 	@PostMapping("/oauth")
-	public ResponseEntity<LoginResponse> getAccessToken (@RequestBody OAuthDto oAuthDto) throws LoginException {
+	public ResponseEntity<LoginResponse> getAccessToken (@RequestBody OAuthDto oAuthDto) throws GeneralSecurityException, IOException {
 		LoginResponse loginResponse = memberService.socialLogin(oAuthDto);
 		return ResponseEntity.status(HttpStatus.OK).body(loginResponse);
+	}
+
+	@GetMapping("/duplicateEmail")
+	public ResponseEntity<Boolean> duplicateEmail (@RequestParam(name="email") String email) {
+		Boolean res = memberService.duplicateEmail(email);
+		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
+	@PostMapping("/emailCheckRequest")
+	public ResponseEntity<String> emailCheckRequest (@RequestParam(name="email") String email) {
+		String res = memberService.EmailCheckRequest(email);
+		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
+	@PostMapping("/emailCheck")
+	public ResponseEntity<String> emailCheck (@RequestParam(name="email") String email, @RequestParam(name="code") String code) {
+		String res = memberService.EmailCheck(email, code);
+		return ResponseEntity.status(HttpStatus.OK).body(res);
 	}
 
 }

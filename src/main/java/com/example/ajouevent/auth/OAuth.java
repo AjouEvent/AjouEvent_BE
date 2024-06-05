@@ -1,7 +1,24 @@
 package com.example.ajouevent.auth;
 
+import com.example.ajouevent.domain.Member;
+import com.example.ajouevent.exception.CustomErrorCode;
+import com.example.ajouevent.exception.CustomException;
+import com.example.ajouevent.repository.MemberRepository;
+import com.example.ajouevent.service.CalendarService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.auth.oauth2.TokenResponse;
+import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
+import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.client.util.store.FileDataStoreFactory;
+import com.google.api.services.calendar.CalendarScopes;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
@@ -11,11 +28,20 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.security.auth.login.LoginException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.util.Collections;
+import java.util.List;
+
 
 
 @Component
+@Slf4j
 public class OAuth {
 
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
@@ -31,8 +57,20 @@ public class OAuth {
     @Value("${spring.security.oauth2.client.registration.google.redirect-uri}")
     private String redirectUri;
 
+    Credential credential;
+    private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
+    private final MemberRepository memberRepository;
 
-    public String requestGoogleAccessToken(final String code) throws LoginException {
+
+    private static final String TOKENS_DIRECTORY_PATH = "tokens";
+    private static final List<String> SCOPES =
+            Collections.singletonList(CalendarScopes.CALENDAR);
+
+    public OAuth(MemberRepository memberRepository) {
+        this.memberRepository = memberRepository;
+    }
+
+    public TokenResponse requestGoogleAccessToken(final String code) throws LoginException, JsonProcessingException {
         if (code == null || code.isEmpty()) {
             throw new IllegalArgumentException("Authorization code cannot be null or empty");
         }
@@ -61,24 +99,33 @@ public class OAuth {
             throw new LoginException("Response body is null");
         }
 
+        log.info("re"+ responseEntity.getBody());
+
         // 응답 헤더 출력
         HttpHeaders responseHeaders = responseEntity.getHeaders();
-
         ObjectMapper objectMapper = new ObjectMapper();
         try {
             JsonNode rootNode = objectMapper.readTree(responseEntity.getBody());
-            return rootNode.get("access_token").asText();
+
+            TokenResponse tokenResponse = new TokenResponse();
+            tokenResponse.setAccessToken(rootNode.get("access_token").asText());
+            tokenResponse.setExpiresInSeconds(Long.valueOf(rootNode.get("expires_in").asText()));
+            tokenResponse.setTokenType(rootNode.get("token_type").asText());
+            tokenResponse.setRefreshToken(null);
+            tokenResponse.setScope(rootNode.get("scope").asText());
+            return tokenResponse;
         } catch (Exception e) {
             System.out.println("Error parsing JSON response: " + e.getMessage());
         }
         return null;
+
     }
 
-    public UserInfoGetDto printUserResource(String accessToken) {
+    public UserInfoGetDto printUserResource(TokenResponse googleToken) {
         String GOOGLE_USERINFO_REQUEST_URL = "https://www.googleapis.com/oauth2/v1/userinfo";
 
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + accessToken);
+        headers.set("Authorization", "Bearer " + googleToken.getAccessToken());
         HttpEntity<?> entity = new HttpEntity<>(headers);
         RestTemplate restTemplate = new RestTemplate();
 
@@ -89,8 +136,6 @@ public class OAuth {
                 JsonNode.class
         );
 
-        ObjectMapper objectMapper = new ObjectMapper();
-
         if (response.getStatusCode().is2xxSuccessful()) {
             JsonNode responseBody = response.getBody();
 
@@ -99,7 +144,10 @@ public class OAuth {
             }
 
             if (responseBody.has("email")) {
-            return UserInfoGetDto.builder()
+                Member member = memberRepository.findByEmail(responseBody.get("email").asText())
+                        .orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+                return UserInfoGetDto.builder()
                     .id(responseBody.get("id").asText())
                     .email(responseBody.get("email").asText())
                     .verifiedEmail(responseBody.get("verified_email").asBoolean())
@@ -118,5 +166,30 @@ public class OAuth {
         }
         return null;
     }
+
+    public String addCalendarCredentials(TokenResponse tokenResponse, String userId) throws IOException, GeneralSecurityException {
+        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+
+        String keyFileName = "/credentials.json";
+        InputStream in = CalendarService.class.getResourceAsStream(keyFileName);
+        if (in == null) {
+            throw new CustomException(CustomErrorCode.FILE_NOT_FOUND);
+        }
+
+        GoogleClientSecrets clientSecrets =
+                GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+
+
+        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+                HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
+                .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH+"/"+userId)))
+                .setAccessType("offline")
+                .build();
+
+        credential = flow.createAndStoreCredential(tokenResponse, userId);
+
+        return "성공";
+    }
+
 
 }
