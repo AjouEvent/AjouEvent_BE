@@ -129,6 +129,12 @@ public class EventController {
 		return eventService.getEventTypeList(type, keyword, pageable, principal);
 	}
 
+	// 인기글 조회 로직
+	@GetMapping("/popular")
+	public List<EventResponseDto> getPopularEvents(Principal principal) {
+		return eventService.getTopPopularEvents(principal);
+	}
+
 	@GetMapping("/subscribed")
 	public SliceResponse<EventResponseDto> getSubscribedEvent(@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
 		return eventService.getSubscribedEvents(pageable, principal);
@@ -156,6 +162,24 @@ public class EventController {
 		return eventService.getLikedEvents(type, keyword, pageable, principal);
 	}
 
+	// 홈화면에 들어갈 이벤트 배너 추가 API
+	@PostMapping("/addBanner")
+	public ResponseEntity<ResponseDto> addEventBanner(@RequestBody EventBannerRequest eventBannerRequest) {
+		eventService.addEventBanner(eventBannerRequest);
+		return ResponseEntity.ok().body(ResponseDto.builder()
+			.successStatus(HttpStatus.OK)
+			.successContent("이벤트 배너에 등록되었습니다.")
+			.build()
+		);
+	}
+
+	// 홈화면에 들어갈 이벤트 배너 불러오기
+	@GetMapping("/banner")
+	public List<EventBannerDto> getAllEventBanners() {
+		return eventService.getAllEventBanners();
+	}
+
+	// 홈화면에 들어갈 이벤트 배너 추가 API
 	@PreAuthorize("isAuthenticated()")
 	@PostMapping("/calendar")
 	public void testGetMethod(@RequestBody CalendarStoreDto calendarStoreDto, Principal principal) throws GeneralSecurityException, IOException {

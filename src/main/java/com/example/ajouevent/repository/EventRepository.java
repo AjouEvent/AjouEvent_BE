@@ -23,4 +23,6 @@ public interface EventRepository extends JpaRepository<ClubEvent, Long> {
 
 	@Query("SELECT ce FROM ClubEvent ce WHERE ce.eventId IN :eventIds ORDER BY ce.createdAt DESC")
 	Slice<ClubEvent> findByEventIds(@Param("eventIds") List<Long> eventIds, Pageable pageable);
+
+	List<ClubEvent> findTop10ByOrderByViewCountDesc();
 }

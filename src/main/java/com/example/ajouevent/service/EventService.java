@@ -10,14 +10,18 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
+import com.example.ajouevent.domain.EventBanner;
 import com.example.ajouevent.domain.EventLike;
 import com.example.ajouevent.domain.Topic;
 import com.example.ajouevent.domain.TopicMember;
+import com.example.ajouevent.dto.EventBannerDto;
+import com.example.ajouevent.dto.EventBannerRequest;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import com.example.ajouevent.exception.UserNotFoundException;
 import com.example.ajouevent.logger.AlarmLogger;
+import com.example.ajouevent.repository.EventBannerRepository;
 import com.example.ajouevent.repository.EventLikeRepository;
 import com.example.ajouevent.repository.TopicMemberRepository;
 
@@ -72,6 +76,7 @@ public class EventService {
 	private final EventLikeRepository eventLikeRepository;
 	private final TopicMemberRepository topicMemberRepository;
 	private final AlarmLogger alarmLogger;
+	private final EventBannerRepository eventBannerRepository;
 
 	// 게시글 생성시 기본 좋아요 수 상수 정의(기본 좋아요 수는 0)
 	final Long DEFAULT_LIKES_COUNT = 0L;
@@ -807,6 +812,71 @@ public class EventService {
 		// 결과를 Slice로 감싸서 반환합니다.
 		return new SliceResponse<>(eventResponseDtoList, clubEventSlice.hasPrevious(), clubEventSlice.hasNext(),
 			clubEventSlice.getNumber(), sortResponse);
+	}
+
+	// 인기글 조회
+	public List<EventResponseDto> getTopPopularEvents(Principal principal) {
+		List<ClubEvent> clubEventList = eventRepository.findTop10ByOrderByViewCountDesc();
+
+		// 조회된 ClubEvent 목록을 이벤트 응답 DTO 목록으로 매핑합니다.
+		List<EventResponseDto> eventResponseDtoList = clubEventList.stream()
+			.map(EventResponseDto::toDto)
+			.collect(Collectors.toList());
+
+		// 사용자가 로그인한 경우에만 찜한 이벤트 목록을 가져와서 설정합니다.
+		if (principal != null) {
+			log.info("유저 Email" + principal.getName());
+			String userEmail = principal.getName();
+			Member member = memberRepository.findByEmail(userEmail)
+				.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+			// 사용자가 찜한 게시글 목록 조회
+			List<EventLike> likedEventList = member.getEventLikeList();
+			Map<Long, Boolean> likedEventMap = likedEventList.stream()
+				.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+
+			// 각 이벤트 DTO에 사용자의 찜 여부 설정
+			for (EventResponseDto dto : eventResponseDtoList) {
+				dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
+			}
+		} else {
+			for (EventResponseDto dto : eventResponseDtoList) {
+				dto.setStar(false);
+			}
+		}
+
+		// 이벤트를 이벤트 응답 DTO로 변환하여 반환
+		return eventResponseDtoList;
+	}
+
+	// 홈화면에 들어갈 이벤트 배너 추가
+	public void addEventBanner(EventBannerRequest eventBannerRequest) {
+		ClubEvent clubEvent = eventRepository.findById(eventBannerRequest.getEventId())
+			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
+
+		EventBanner eventBanner = EventBanner.builder()
+			.clubEvent(clubEvent)
+			.imgOrder(eventBannerRequest.getImgOrder())
+			.startDate(eventBannerRequest.getStartDate())
+			.endDate(eventBannerRequest.getEndDate())
+			.build();
+
+		eventBannerRepository.save(eventBanner);
+
+	}
+
+	// 홈화면에 들어갈 이벤트 배너 불러오기
+	public List<EventBannerDto> getAllEventBanners() {
+		return eventBannerRepository.findAllByOrderByImgOrderAsc().stream()
+			.map(EventBannerDto::toDto)
+			.collect(Collectors.toList());
+	}
+
+	// 기간 지난 배너 삭제
+	@Scheduled(cron = "0 0 0 * * ?")
+	public void deleteExpiredBanners() {
+		LocalDate now = LocalDate.now();
+		eventBannerRepository.deleteByEndDateBefore(now);
 	}
 
 }
