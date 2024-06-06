@@ -103,6 +103,7 @@ public class OAuth {
         // 응답 헤더 출력
         HttpHeaders responseHeaders = responseEntity.getHeaders();
         ObjectMapper objectMapper = new ObjectMapper();
+
         try {
             JsonNode rootNode = objectMapper.readTree(responseEntity.getBody());
 
@@ -143,9 +144,6 @@ public class OAuth {
             }
 
             if (responseBody.has("email")) {
-                Member member = memberRepository.findByEmail(responseBody.get("email").asText())
-                        .orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
                 return UserInfoGetDto.builder()
                     .id(responseBody.get("id").asText())
                     .email(responseBody.get("email").asText())
@@ -154,7 +152,6 @@ public class OAuth {
                     .givenName(responseBody.get("given_name").asText())
                     .familyName(responseBody.get("family_name").asText())
                     .picture(responseBody.get("picture").asText())
-                    .locale(responseBody.get("locale").asText())
                     .hd(responseBody.get("hd").asText())
                     .build();
             } else {
