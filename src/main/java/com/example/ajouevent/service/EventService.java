@@ -814,13 +814,39 @@ public class EventService {
 			clubEventSlice.getNumber(), sortResponse);
 	}
 
-	public List<EventResponseDto> getTopPopularEvents() {
+	// 인기글 조회
+	public List<EventResponseDto> getTopPopularEvents(Principal principal) {
 		List<ClubEvent> clubEventList = eventRepository.findTop10ByOrderByViewCountDesc();
 
-		// 이벤트를 이벤트 응답 DTO로 변환하여 반환
-		return clubEventList.stream()
+		// 조회된 ClubEvent 목록을 이벤트 응답 DTO 목록으로 매핑합니다.
+		List<EventResponseDto> eventResponseDtoList = clubEventList.stream()
 			.map(EventResponseDto::toDto)
 			.collect(Collectors.toList());
+
+		// 사용자가 로그인한 경우에만 찜한 이벤트 목록을 가져와서 설정합니다.
+		if (principal != null) {
+			log.info("유저 Email" + principal.getName());
+			String userEmail = principal.getName();
+			Member member = memberRepository.findByEmail(userEmail)
+				.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+			// 사용자가 찜한 게시글 목록 조회
+			List<EventLike> likedEventList = member.getEventLikeList();
+			Map<Long, Boolean> likedEventMap = likedEventList.stream()
+				.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+
+			// 각 이벤트 DTO에 사용자의 찜 여부 설정
+			for (EventResponseDto dto : eventResponseDtoList) {
+				dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
+			}
+		} else {
+			for (EventResponseDto dto : eventResponseDtoList) {
+				dto.setStar(false);
+			}
+		}
+
+		// 이벤트를 이벤트 응답 DTO로 변환하여 반환
+		return eventResponseDtoList;
 	}
 
 	// 홈화면에 들어갈 이벤트 배너 추가

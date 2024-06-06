@@ -131,8 +131,8 @@ public class EventController {
 
 	// 인기글 조회 로직
 	@GetMapping("/popular")
-	public List<EventResponseDto> getPopularEvents() {
-		return eventService.getTopPopularEvents();
+	public List<EventResponseDto> getPopularEvents(Principal principal) {
+		return eventService.getTopPopularEvents(principal);
 	}
 
 	@GetMapping("/subscribed")
