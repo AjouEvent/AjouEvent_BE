@@ -14,6 +14,7 @@ import lombok.Setter;
 @Builder
 public class EventResponseDto { // 게시글 홈 화면 조회 시에 나오는 이벤트 정보
 	private String title;
+	private String content;
 	private String imgUrl;
 	private String url;
 	private LocalDateTime createdAt;
@@ -28,6 +29,7 @@ public class EventResponseDto { // 게시글 홈 화면 조회 시에 나오는 
 		return EventResponseDto.builder()
 			.eventId(clubEvent.getEventId())
 			.title(clubEvent.getTitle())
+			.content(clubEvent.getContent())
 			.imgUrl(clubEvent.getClubEventImageList().get(0).getUrl())
 			.url(clubEvent.getUrl())
 			.createdAt(clubEvent.getCreatedAt())
