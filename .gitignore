@@ -32,6 +32,7 @@ bin/
 application.properties
 application.yml
 application-dev.yml
+/src/main/resources/*.yml
 
 .idea
 *.iws
@@ -57,3 +58,5 @@ out/
 /topic_log.txt
 /alarm_log.txt
 /notification_log.txt
+/src/main/resources/docker-compose.yml
+/src/main/resources/prometheus.yml
