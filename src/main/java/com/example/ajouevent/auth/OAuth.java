@@ -99,7 +99,6 @@ public class OAuth {
             throw new LoginException("Response body is null");
         }
 
-        log.info("re"+ responseEntity.getBody());
 
         // 응답 헤더 출력
         HttpHeaders responseHeaders = responseEntity.getHeaders();
