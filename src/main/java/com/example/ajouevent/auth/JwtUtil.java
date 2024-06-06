@@ -1,6 +1,8 @@
 package com.example.ajouevent.auth;
 
 import com.example.ajouevent.dto.MemberDto;
+import com.example.ajouevent.exception.CustomErrorCode;
+import com.example.ajouevent.exception.CustomException;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -85,18 +87,26 @@ public class JwtUtil {
             System.out.println(token);
             Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
             // 필수 claim 검사
+            if (!claims.getExpiration().after(new Date()))
+                throw new CustomException(CustomErrorCode.EXPIRED_TOKEN);
+            if (!claims.getIssuer().equals(issuer)) {
+                throw new CustomException(CustomErrorCode.INVALID_TOKEN);
+            }
             return claims.getExpiration().after(new Date()) && // 만료되지 않음
                     claims.getIssuer().equals(issuer); // 시스템에서 발급
         } catch (io.jsonwebtoken.security.SecurityException | MalformedJwtException e) {
             log.info("Invalid JWT Token: {}", e.getMessage());
+            throw new CustomException(CustomErrorCode.INVALID_TOKEN);
         } catch (ExpiredJwtException e) {
             log.info("Expired JWT Token", e);
+            throw new CustomException(CustomErrorCode.EXPIRED_TOKEN);
         } catch (UnsupportedJwtException e) {
             log.info("Unsupported JWT Token", e);
+            throw new CustomException(CustomErrorCode.UNSUPPORTED_TOKEN);
         } catch (IllegalArgumentException e) {
             log.info("JWT claims string is empty.", e);
+            throw new CustomException(CustomErrorCode.ILLEGAL_ARGUMENT_TOKEN);
         }
-        return false;
     }
 
 
