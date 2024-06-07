@@ -130,6 +130,7 @@ public class EventController {
 	}
 
 	// 인기글 조회 로직
+	@PreAuthorize("permitAll()")
 	@GetMapping("/popular")
 	public List<EventResponseDto> getPopularEvents(Principal principal) {
 		return eventService.getTopPopularEvents(principal);
