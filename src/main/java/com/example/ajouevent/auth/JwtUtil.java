@@ -87,11 +87,6 @@ public class JwtUtil {
             System.out.println(token);
             Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
             // 필수 claim 검사
-            if (!claims.getExpiration().after(new Date()))
-                throw new CustomException(CustomErrorCode.EXPIRED_TOKEN);
-            if (!claims.getIssuer().equals(issuer)) {
-                throw new CustomException(CustomErrorCode.INVALID_TOKEN);
-            }
             return claims.getExpiration().after(new Date()) && // 만료되지 않음
                     claims.getIssuer().equals(issuer); // 시스템에서 발급
         } catch (io.jsonwebtoken.security.SecurityException | MalformedJwtException e) {
