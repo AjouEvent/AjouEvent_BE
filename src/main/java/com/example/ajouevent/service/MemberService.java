@@ -176,7 +176,7 @@ public class MemberService {
 	}
 
 	public LoginResponse socialLogin (OAuthDto oAuthDto) throws GeneralSecurityException, IOException {
-		TokenResponse googleToken = oAuth.requestGoogleAccessToken(oAuthDto.getAuthorizationCode());
+		TokenResponse googleToken = oAuth.requestGoogleAccessToken(oAuthDto);
 		UserInfoGetDto userInfoGetDto = oAuth.printUserResource(googleToken);
 		String res = oAuth.addCalendarCredentials(googleToken, userInfoGetDto.getEmail());
 

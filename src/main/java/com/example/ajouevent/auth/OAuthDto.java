@@ -6,4 +6,5 @@ import lombok.Data;
 public class OAuthDto {
     private String authorizationCode;
     private String fcmToken;
+    private String redirectUri;
 }
