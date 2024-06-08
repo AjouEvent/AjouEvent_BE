@@ -131,7 +131,7 @@ public class EventService {
 		log.info("크롤링한 공지사항 원래 url" + noticeDto.getUrl());
 
 		// 기본 default 이미지는 학교 로고
-		String image = "https://ajou-event-bucket.s3.ap-northeast-2.amazonaws.com/static/1e7b1dc2-ae1b-4254-ba38-d1a0e7cfa00c.20240307_170436.jpg";
+		String image = "https://www.ajou.ac.kr/_res/ajou/kr/img/intro/img-symbol.png";
 
 		if (noticeDto.getImages() == null || noticeDto.getImages().isEmpty()) {
 			log.info("images 리스트가 비어있습니다.");
