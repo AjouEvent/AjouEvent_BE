@@ -70,7 +70,9 @@ public class OAuth {
         this.memberRepository = memberRepository;
     }
 
-    public TokenResponse requestGoogleAccessToken(final String code) throws LoginException, JsonProcessingException {
+    public TokenResponse requestGoogleAccessToken(OAuthDto oAuthDto) throws LoginException, JsonProcessingException {
+        String code = oAuthDto.getAuthorizationCode();
+
         if (code == null || code.isEmpty()) {
             throw new IllegalArgumentException("Authorization code cannot be null or empty");
         }
@@ -84,7 +86,7 @@ public class OAuth {
         MultiValueMap<String, String> parameters = new LinkedMultiValueMap<>();
         parameters.add("code", decode);
         parameters.add("grant_type", grantType);
-        parameters.add("redirect_uri", redirectUri);
+        parameters.add("redirect_uri", oAuthDto.getRedirectUri());
 
 
         HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(parameters, headers);
