@@ -98,6 +98,7 @@ public class EventController {
 
 
 	// 게시글 삭제
+	@PreAuthorize("isAuthenticated()")
 	@DeleteMapping("/{eventId}")
 	public ResponseEntity<ResponseDto> deleteEvent(@PathVariable("eventId") Long eventId) {
 		eventService.deleteEvent(eventId);
@@ -136,6 +137,7 @@ public class EventController {
 		return eventService.getTopPopularEvents(principal);
 	}
 
+	@PreAuthorize("isAuthenticated()")
 	@GetMapping("/subscribed")
 	public SliceResponse<EventResponseDto> getSubscribedEvent(@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
 		return eventService.getSubscribedEvents(pageable, principal);
@@ -164,6 +166,7 @@ public class EventController {
 	}
 
 	// 홈화면에 들어갈 이벤트 배너 추가 API
+	@PreAuthorize("isAuthenticated()")
 	@PostMapping("/addBanner")
 	public ResponseEntity<ResponseDto> addEventBanner(@RequestBody EventBannerRequest eventBannerRequest) {
 		eventService.addEventBanner(eventBannerRequest);
@@ -175,6 +178,7 @@ public class EventController {
 	}
 
 	// 홈화면에 들어갈 이벤트 배너 불러오기
+	@PreAuthorize("permitAll()")
 	@GetMapping("/banner")
 	public List<EventBannerDto> getAllEventBanners() {
 		return eventService.getAllEventBanners();
