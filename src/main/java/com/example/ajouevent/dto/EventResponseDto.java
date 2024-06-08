@@ -24,6 +24,7 @@ public class EventResponseDto { // 게시글 홈 화면 조회 시에 나오는 
 	private Boolean star;
 	private String subject;
 	private Type type;
+	private String writer;
 
 	public static EventResponseDto toDto(ClubEvent clubEvent) {
 		return EventResponseDto.builder()
@@ -37,6 +38,7 @@ public class EventResponseDto { // 게시글 홈 화면 조회 시에 나오는 
 			.viewCount(clubEvent.getViewCount())
 			.type(clubEvent.getType())
 			.subject(clubEvent.getType().getKoreanTopic())
+			.writer(clubEvent.getWriter())
 			.build();
 	}
 }
