@@ -71,7 +71,7 @@ public class MemberService {
 		Member newMember = Member.builder()
 				.email(registerRequest.getEmail())
 				.major(registerRequest.getMajor())
-				.phone(registerRequest.getPhone())
+				// .phone(registerRequest.getPhone())
 				.name(registerRequest.getName())
 				.password(password)
 				.build();
