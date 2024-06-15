@@ -27,5 +27,5 @@ public class RegisterRequest {
 
 	private String major;
 
-	private String phone;
+	// private String phone;
 }

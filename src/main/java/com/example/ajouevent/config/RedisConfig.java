@@ -24,22 +24,21 @@ public class RedisConfig {
 		return new LettuceConnectionFactory(host, port);
 	}
 
+	// StringRedisSerializer
 	@Bean
-	public RedisTemplate<String, Object> redisTemplate() {
+	public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
 		RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
 		redisTemplate.setConnectionFactory(redisConnectionFactory());
+		redisTemplate.setEnableTransactionSupport(true);
 
-		// 일반적인 key:value의 경우 시리얼라이저
 		redisTemplate.setKeySerializer(new StringRedisSerializer());
 		redisTemplate.setValueSerializer(new StringRedisSerializer());
 
-		// Hash를 사용할 경우 시리얼라이저
+		// Hash를 사용할 경우 Serializer
 		redisTemplate.setHashKeySerializer(new StringRedisSerializer());
 		redisTemplate.setHashValueSerializer(new StringRedisSerializer());
 
-		// 모든 경우
-		redisTemplate.setDefaultSerializer(new StringRedisSerializer());
-
 		return redisTemplate;
 	}
+
 }

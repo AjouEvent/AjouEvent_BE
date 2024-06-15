@@ -54,8 +54,6 @@ public class OAuth {
     @Value("${spring.security.oauth2.client.registration.google.authorization-grant-type}")
     private String grantType;
 
-    @Value("${spring.security.oauth2.client.registration.google.redirect-uri}")
-    private String redirectUri;
 
     Credential credential;
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();

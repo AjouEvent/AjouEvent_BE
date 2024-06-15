@@ -161,7 +161,7 @@ public class TopicService {
 			Token token = Token.builder()
 				.tokenValue(loginRequest.getFcmToken())
 				.member(member)
-				.expirationDate(LocalDate.now().plusMonths(TOKEN_EXPIRATION_WEEKS))
+				.expirationDate(LocalDate.now().plusWeeks(TOKEN_EXPIRATION_WEEKS))
 				.build();
 			log.info("DB에 저장하는 token : " + token.getTokenValue());
 			tokenRepository.save(token);

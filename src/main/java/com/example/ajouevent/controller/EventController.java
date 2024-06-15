@@ -12,7 +12,6 @@ import com.example.ajouevent.dto.*;
 import com.example.ajouevent.service.CalendarService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -98,6 +97,7 @@ public class EventController {
 
 
 	// 게시글 삭제
+	@PreAuthorize("isAuthenticated()")
 	@DeleteMapping("/{eventId}")
 	public ResponseEntity<ResponseDto> deleteEvent(@PathVariable("eventId") Long eventId) {
 		eventService.deleteEvent(eventId);
@@ -125,7 +125,7 @@ public class EventController {
 	// type별로 글 보기
 	@PreAuthorize("permitAll()")
 	@GetMapping("/{type}")
-	public SliceResponse<EventResponseDto> getEventTypeList(@PathVariable String type, @RequestParam(required = false, defaultValue = "", name="keyword") String keyword, @PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
+	public SliceResponse<EventResponseDto> getEventTypeList(@PathVariable("type") String type, @RequestParam(required = false, defaultValue = "", name="keyword") String keyword, @PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
 		return eventService.getEventTypeList(type, keyword, pageable, principal);
 	}
 
@@ -136,6 +136,7 @@ public class EventController {
 		return eventService.getTopPopularEvents(principal);
 	}
 
+	@PreAuthorize("isAuthenticated()")
 	@GetMapping("/subscribed")
 	public SliceResponse<EventResponseDto> getSubscribedEvent(@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
 		return eventService.getSubscribedEvents(pageable, principal);
@@ -143,14 +144,14 @@ public class EventController {
 	// 게시글 찜하기
 	@PreAuthorize("isAuthenticated()")
 	@PostMapping("/like/{eventId}")
-	public ResponseEntity<ResponseDto> likeEvent(@PathVariable Long eventId, Principal principal) {
+	public ResponseEntity<ResponseDto> likeEvent(@PathVariable("eventId") Long eventId, Principal principal) {
 		return eventService.likeEvent(eventId, principal);
 	}
 
 	// 게시글 찜 취소
 	@PreAuthorize("isAuthenticated()")
 	@DeleteMapping("/like/{eventId}")
-	public ResponseEntity<ResponseDto> cancelLikeEvent(@PathVariable Long eventId, Principal principal) {
+	public ResponseEntity<ResponseDto> cancelLikeEvent(@PathVariable("eventId") Long eventId, Principal principal) {
 		return eventService.cancelLikeEvent(eventId, principal);
 	}
 
@@ -164,6 +165,7 @@ public class EventController {
 	}
 
 	// 홈화면에 들어갈 이벤트 배너 추가 API
+	@PreAuthorize("isAuthenticated()")
 	@PostMapping("/addBanner")
 	public ResponseEntity<ResponseDto> addEventBanner(@RequestBody EventBannerRequest eventBannerRequest) {
 		eventService.addEventBanner(eventBannerRequest);
@@ -175,6 +177,7 @@ public class EventController {
 	}
 
 	// 홈화면에 들어갈 이벤트 배너 불러오기
+	@PreAuthorize("permitAll()")
 	@GetMapping("/banner")
 	public List<EventBannerDto> getAllEventBanners() {
 		return eventService.getAllEventBanners();
