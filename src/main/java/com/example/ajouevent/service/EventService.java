@@ -20,7 +20,6 @@ import com.example.ajouevent.dto.EventBannerRequest;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
-import com.example.ajouevent.exception.UserNotFoundException;
 import com.example.ajouevent.logger.AlarmLogger;
 import com.example.ajouevent.logger.CacheLogger;
 import com.example.ajouevent.repository.EventBannerRepository;
@@ -61,6 +60,7 @@ import com.example.ajouevent.repository.AlarmRepository;
 import com.example.ajouevent.repository.ClubEventImageRepository;
 import com.example.ajouevent.repository.EventRepository;
 import com.example.ajouevent.repository.MemberRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
