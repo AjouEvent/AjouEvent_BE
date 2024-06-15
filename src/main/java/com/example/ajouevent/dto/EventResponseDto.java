@@ -5,12 +5,16 @@ import java.time.LocalDateTime;
 import com.example.ajouevent.domain.ClubEvent;
 import com.example.ajouevent.domain.Type;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class EventResponseDto { // 게시글 홈 화면 조회 시에 나오는 이벤트 정보
 	private String title;
