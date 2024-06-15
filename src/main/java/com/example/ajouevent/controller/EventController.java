@@ -125,7 +125,7 @@ public class EventController {
 	// type별로 글 보기
 	@PreAuthorize("permitAll()")
 	@GetMapping("/{type}")
-	public SliceResponse<EventResponseDto> getEventTypeList(@PathVariable String type, @RequestParam(required = false, defaultValue = "", name="keyword") String keyword, @PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
+	public SliceResponse<EventResponseDto> getEventTypeList(@PathVariable("type") String type, @RequestParam(required = false, defaultValue = "", name="keyword") String keyword, @PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
 		return eventService.getEventTypeList(type, keyword, pageable, principal);
 	}
 
@@ -144,14 +144,14 @@ public class EventController {
 	// 게시글 찜하기
 	@PreAuthorize("isAuthenticated()")
 	@PostMapping("/like/{eventId}")
-	public ResponseEntity<ResponseDto> likeEvent(@PathVariable Long eventId, Principal principal) {
+	public ResponseEntity<ResponseDto> likeEvent(@PathVariable("eventId") Long eventId, Principal principal) {
 		return eventService.likeEvent(eventId, principal);
 	}
 
 	// 게시글 찜 취소
 	@PreAuthorize("isAuthenticated()")
 	@DeleteMapping("/like/{eventId}")
-	public ResponseEntity<ResponseDto> cancelLikeEvent(@PathVariable Long eventId, Principal principal) {
+	public ResponseEntity<ResponseDto> cancelLikeEvent(@PathVariable("eventId") Long eventId, Principal principal) {
 		return eventService.cancelLikeEvent(eventId, principal);
 	}
 
