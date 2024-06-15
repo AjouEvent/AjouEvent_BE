@@ -141,7 +141,7 @@ public class FCMService {
 		}
 
 		// 기본 default 이미지는 학교 로고
-		String imageUrl = "https://ajou-event-bucket.s3.ap-northeast-2.amazonaws.com/static/1e7b1dc2-ae1b-4254-ba38-d1a0e7cfa00c.20240307_170436.jpg";
+		String imageUrl = "https://www.ajou.ac.kr/_res/ajou/kr/img/intro/img-symbol.png";
 
 		if (noticeDto.getImages() == null || noticeDto.getImages().isEmpty()) {
 			// images 리스트가 null 이거나 비어있을 경우, 기본 이미지 리스트를 생성하고 설정
