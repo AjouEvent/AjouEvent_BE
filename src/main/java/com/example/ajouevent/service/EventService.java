@@ -10,7 +10,9 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
-import com.example.ajouevent.config.JsonParsingUtil;
+import com.example.ajouevent.util.SecurityUtil;
+import com.example.ajouevent.util.CookieUtil;
+import com.example.ajouevent.util.JsonParsingUtil;
 import com.example.ajouevent.domain.EventBanner;
 import com.example.ajouevent.domain.EventLike;
 import com.example.ajouevent.domain.Topic;
@@ -35,6 +37,7 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
@@ -62,6 +65,9 @@ import com.example.ajouevent.repository.EventRepository;
 import com.example.ajouevent.repository.MemberRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -82,6 +88,9 @@ public class EventService {
 	private final EventBannerRepository eventBannerRepository;
 	private final JsonParsingUtil jsonParsingUtil;
 	private final CacheLogger cacheLogger;
+	private final CookieUtil cookieUtil;
+	private final StringRedisTemplate stringRedisTemplate;
+	private final RedisService redisService;
 
 	// 게시글 생성시 기본 좋아요 수 상수 정의(기본 좋아요 수는 0)
 	final Long DEFAULT_LIKES_COUNT = 0L;
@@ -573,28 +582,56 @@ public class EventService {
 
 	}
 
-	// 게시글 상세 조회
+
+	// 게시글 상세 조회 -> 기존
 	@Transactional
-	public EventDetailResponseDto getEventDetail(Long eventId, Principal principal) {
+	public EventDetailResponseDto getEventDetail(Long eventId, Principal principal, HttpServletRequest request, HttpServletResponse response) {
+
 		ClubEvent clubEvent = eventRepository.findById(eventId)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
 
-		// 조회수 증가
-		clubEvent.increaseViewCount();
+		String userId = SecurityUtil.getCurrentMemberUsernameOrAnonymous();
+		log.info("userId는 : " + userId);
+		boolean isAnonymous = userId.equals("Anonymous");
 
-		if (principal != null) {
-			String userEmail = principal.getName(); // 현재 로그인한 사용자의 이메일 가져오기
+		boolean shouldIncreaseViews = false;
 
-			// 사용자 조회
-			Member member = memberRepository.findByEmail(userEmail)
-				.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+		if (isAnonymous) {
+			Cookie[] cookies = request.getCookies();
+			String currentCookieValue = null;
+			if (cookies != null) {
+				for (Cookie cookie : cookies) {
+					if (cookie.getName().equals("AlreadyView")) {
+						currentCookieValue = cookie.getValue();
+						break;
+					}
+				}
+			}
 
-			boolean isLiked = eventLikeRepository.existsByMemberAndClubEvent(member, clubEvent);
-			return EventDetailResponseDto.toDto(clubEvent, isLiked);
+			if (!cookieUtil.isPostViewed(currentCookieValue, eventId)) {
+				Cookie newCookie = cookieUtil.createOrUpdateCookie(currentCookieValue, eventId);
+				response.addCookie(newCookie);
+				shouldIncreaseViews = true;
+			}
+		} else {
+			if (redisService.isFirstIpRequest(userId, eventId, clubEvent)) {
+				shouldIncreaseViews = true;
+				redisService.writeClientRequest(userId, eventId, clubEvent);
+			}
+		}
+
+		if (shouldIncreaseViews) {
+			increaseViews(clubEvent);  // 이 부분을 트랜잭션 외부로 이동
 		}
 
 		boolean isLiked = false;
-		return EventDetailResponseDto.toDto(clubEvent, isLiked);
+		EventDetailResponseDto responseDto = EventDetailResponseDto.toDto(clubEvent, isLiked);
+
+		if (!isAnonymous) {
+			updateLikeStatusForUser(responseDto, userId); // 이 부분을 별도의 메서드로 이동
+		}
+
+		return responseDto;
 	}
 
 	// 사용자가 구독하고 있는 topic 관련 글 조회(로그인 안하면 기본은 AjouNormal)
@@ -906,6 +943,30 @@ public class EventService {
 		// 각 이벤트 DTO에 사용자의 찜 여부 설정
 		for (EventResponseDto dto : eventResponseDtoList) {
 			dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
+		}
+	}
+
+	// EventDetailResponseDto(상세페이지)에 대한 찜한 상태 업데이트
+	public void updateLikeStatusForUser(EventDetailResponseDto eventDetailResponseDto, String userEmail) {
+		Member member = memberRepository.findByEmail(userEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		// 사용자가 찜한 게시글 목록 조회
+		List<EventLike> likedEventSlice = member.getEventLikeList();
+		Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
+			.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+
+		// 이벤트 DTO에 사용자의 찜 여부 설정
+		eventDetailResponseDto.setStar(likedEventMap.getOrDefault(eventDetailResponseDto.getEventId(), false));
+	}
+
+	// 게시글 상세 조회시 조회수 증가 로직
+	public void increaseViews(ClubEvent clubEvent){
+		String key = "ClubEvent:views:"+clubEvent.getEventId();
+		Boolean exist = stringRedisTemplate.opsForValue().setIfAbsent(key, String.valueOf(clubEvent.getViewCount()+1),4L,TimeUnit.MINUTES);
+		if(Boolean.FALSE.equals(exist)){
+			stringRedisTemplate.opsForValue().increment(key);
+			stringRedisTemplate.expire(key,4L,TimeUnit.MINUTES);
 		}
 	}
 }

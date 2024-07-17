@@ -27,6 +27,8 @@ import com.example.ajouevent.dto.SliceResponse;
 import com.example.ajouevent.dto.UpdateEventRequest;
 import com.example.ajouevent.service.EventService;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -111,8 +113,8 @@ public class EventController {
 	// 게시글 상세 조회
 	@PreAuthorize("permitAll()")
 	@GetMapping("/detail/{eventId}")
-	public EventDetailResponseDto detail(@PathVariable("eventId") Long eventId, Principal principal) {
-		return eventService.getEventDetail(eventId, principal);
+	public EventDetailResponseDto detail(@PathVariable("eventId") Long eventId, Principal principal, HttpServletRequest request, HttpServletResponse response) {
+		return eventService.getEventDetail(eventId, principal, request, response);
 	}
 
 	// 전체 글 보기 페이지(홈) -> 일단 테스트용으로 올린거 전부
