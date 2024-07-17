@@ -209,8 +209,9 @@ public class FCMService {
 				});
 			}
 		} catch (InterruptedException | ExecutionException e) {
-			throw new CustomException(CustomErrorCode.SUBSCRIBE_FAILED);
 			// 구독에 실패한 경우에 대한 처리
+			throw new CustomException(CustomErrorCode.SUBSCRIBE_FAILED);
+
 		}
 	}
 
@@ -227,6 +228,7 @@ public class FCMService {
 				});
 			}
 		} catch (InterruptedException | ExecutionException e) {
+			// 구독 해지에 실패한 경우에 대한 처리
 			throw new CustomException(CustomErrorCode.SUBSCRIBE_CANCEL_FAILED);
 		}
 	}
