@@ -214,10 +214,10 @@ public class FCMService {
 		}
 	}
 
-	public void unsubscribeFromTopic(String topic, List<String> tokens) {
+	public void unsubscribeFromTopic(String topicName, List<String> tokens) {
 		try {
-			TopicManagementResponse response = FirebaseMessaging.getInstance().unsubscribeFromTopicAsync(tokens, topic).get();
-			topicLogger.log("Unsubscribed to topic: " + topic);
+			TopicManagementResponse response = FirebaseMessaging.getInstance().unsubscribeFromTopicAsync(tokens, topicName).get();
+			topicLogger.log("Unsubscribed to topic: " + topicName);
 			topicLogger.log(response.getSuccessCount() + " tokens were unsubscribed successfully");
 			if (response.getFailureCount() > 0) {
 				topicLogger.log(response.getFailureCount() + " tokens failed to unsubscribe");
