@@ -4,7 +4,6 @@ import java.security.Principal;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -12,8 +11,6 @@ import java.util.stream.Collectors;
 import com.example.ajouevent.dto.TopicStatus;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -27,7 +24,6 @@ import com.example.ajouevent.domain.TopicToken;
 import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.dto.TopicRequest;
 import com.example.ajouevent.dto.TopicResponse;
-import com.example.ajouevent.exception.UserNotFoundException;
 import com.example.ajouevent.logger.TopicLogger;
 import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.TokenRepository;
@@ -214,10 +210,6 @@ public class TopicService {
 		// 만료된 토큰 삭제
 		topicTokenRepository.deleteAll(topicTokens); // TopicTokenRepository에서 먼저 삭제하고 TokenRepository에서 삭제
 		tokenRepository.deleteAll(expiredTokens);
-
-		// 쿼리로 조회
-		// @Query("SELECT tt FROM TopicToken tt JOIN FETCH tt.token t WHERE t.expirationDate < :now")
-		// List<TopicToken> findSubscriptionsByExpiredTokens(@Param("now") LocalDateTime now);
 	}
 
 	@Transactional

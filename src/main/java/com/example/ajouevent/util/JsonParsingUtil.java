@@ -1,12 +1,10 @@
 package com.example.ajouevent.config;
 
-import java.io.IOException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
@@ -29,7 +27,6 @@ public class JsonParsingUtil {
 	public String saveData(String key, Object object, long timeout, TimeUnit unit) {
 		try {
 			String jsonData = objectMapper.writeValueAsString(object);
-			// log.info("Redis에 저장하는 jsonData" + jsonData);
 			redisTemplate.opsForValue().set(key, jsonData, timeout, unit);
 			return "Data saved successfully";
 		} catch (JsonProcessingException e) {

@@ -22,7 +22,6 @@ import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import com.example.ajouevent.repository.EmailCheckRedisRepository;
 import com.google.api.client.auth.oauth2.TokenResponse;
-import jakarta.validation.constraints.Email;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;

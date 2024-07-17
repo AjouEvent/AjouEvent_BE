@@ -523,7 +523,6 @@ public class EventService {
 	public SliceResponse<EventResponseDto> getEventTypeList(String type, String keyword, Pageable pageable, Principal principal) {
 
 		String cacheKey = type + ":" + pageable.getPageNumber() + ":" + keyword;
-		// Optional<SliceResponse> cachedData = jsonParsingUtil.getData(cacheKey, SliceResponse.class);
 		Optional<SliceResponse<EventResponseDto>> cachedData = jsonParsingUtil.getData(cacheKey, new TypeReference<SliceResponse<EventResponseDto>>() {});
 
 		if (cachedData.isPresent()) {

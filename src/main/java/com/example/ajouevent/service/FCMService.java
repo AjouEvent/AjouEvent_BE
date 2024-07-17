@@ -2,7 +2,6 @@ package com.example.ajouevent.service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.concurrent.ExecutionException;
 
 import com.example.ajouevent.exception.CustomErrorCode;
@@ -10,7 +9,6 @@ import com.example.ajouevent.exception.CustomException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.servlet.View;
 
 import com.example.ajouevent.domain.Alarm;
 import com.example.ajouevent.domain.AlarmImage;
@@ -21,16 +19,12 @@ import com.example.ajouevent.domain.TopicMember;
 import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.WebhookResponse;
-import com.example.ajouevent.exception.UserNotFoundException;
 import com.example.ajouevent.logger.AlarmLogger;
-import com.example.ajouevent.logger.NotificationLogger;
 import com.example.ajouevent.logger.TopicLogger;
 import com.example.ajouevent.logger.WebhookLogger;
 import com.example.ajouevent.repository.MemberRepository;
-import com.example.ajouevent.repository.TokenRepository;
 import com.example.ajouevent.repository.TopicMemberRepository;
 import com.example.ajouevent.repository.TopicRepository;
-import com.example.ajouevent.repository.TopicTokenRepository;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
@@ -44,16 +38,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class FCMService {
 
-	private final TokenRepository tokenRepository;
 	private final MemberRepository memberRepository;
-	private final TopicTokenRepository topicTokenRepository;
 	private final TopicMemberRepository topicMemberRepository;
 	private final TopicRepository topicRepository;
 	private final WebhookLogger webhookLogger;
 	private final TopicLogger topicLogger;
-	private final NotificationLogger notificationLogger;
 	private final AlarmLogger alarmLogger;
-	private final View error;
 
 	public void sendEventNotification(String email, Alarm alarm) {
 		// 사용자 조회
@@ -191,9 +181,6 @@ public class FCMService {
 			webhookLogger.log("\n");
 		}
 
-
-
-
 		ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
 			.successContent("푸쉬 알림 성공")
@@ -241,61 +228,10 @@ public class FCMService {
 			}
 		} catch (InterruptedException | ExecutionException e) {
 			throw new CustomException(CustomErrorCode.SUBSCRIBE_CANCEL_FAILED);
-			// 구독 해지에 실패한 경우에 대한 처리
 		}
 	}
 
 	public void send(Message message) {
 		FirebaseMessaging.getInstance().sendAsync(message);
 	}
-
-	// public void saveFCMToken(MemberDto.LoginRequest loginRequest) {
-	// 	log.info("saveFCMToken 메서드 호출");
-	// 	Member member = memberRepository.findByEmail(loginRequest.getEmail()).orElseThrow(NoSuchElementException::new);
-	//
-	// 	// Check if the token already exists
-	// 	Optional<Token> existingToken = tokenRepository.findByValueAndMember(loginRequest.getFcmToken(), member);
-	// 	if (existingToken.isPresent()) {
-	// 		log.info("이미 존재하는 토큰: " + existingToken.get().getValue());
-	// 	} else {
-	// 		// Only create and save a new token if it does not exist
-	// 		Token token = Token.builder()
-	// 			.value(loginRequest.getFcmToken())
-	// 			.member(member)
-	// 			.build();
-	// 		log.info("DB에 저장하는 token : " + token.getValue());
-	// 		tokenRepository.save(token);
-	//
-	// 		// 사용자가 구독 중인 모든 토픽을 가져옴
-	// 		List<TopicMember> topicMembers = topicMemberRepository.findByMember(member);
-	// 		List<Topic> subscribedTopics = topicMembers.stream()
-	// 			.map(TopicMember::getTopic)
-	// 			.distinct()
-	// 			.collect(Collectors.toList());
-	//
-	// 		// 새 토큰을 기존에 구독된 모든 토픽과 매핑하여 TopicToken 생성 및 저장
-	// 		List<TopicToken> newSubscriptions = subscribedTopics.stream()
-	// 			.map(topic -> new TopicToken(topic, token))
-	// 			.collect(Collectors.toList());
-	// 		topicTokenRepository.saveAll(newSubscriptions);
-	//
-	// 		// 각 토픽에 대해 새 토큰 구독 처리
-	// 		for (Topic topic : subscribedTopics) {
-	// 			subscribeToTopic(topic.getDepartment(), Collections.singletonList(token.getValue()));
-	// 			log.info("새 토큰으로 " + topic.getDepartment() + " 토픽을 다시 구독합니다.");
-	// 		}
-	// 	}
-	// }
-
-	// public void deleteToken(String email) {
-	// 	topicTokenRepository.deleteToken(email);
-	// }
-	//
-	// private boolean hasKey(String email) {
-	// 	return fcmTokenDao.hasKey(email);
-	// }
-	//
-	// private String getToken(String email) {
-	// 	return fcmTokenDao.getToken(email);
-	// }
 }
