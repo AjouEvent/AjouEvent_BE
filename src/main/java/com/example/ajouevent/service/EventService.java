@@ -2,6 +2,7 @@ package com.example.ajouevent.service;
 
 import java.io.IOException;
 import java.security.Principal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -867,34 +868,45 @@ public class EventService {
 	}
 
 	// 인기글 조회
+	@Transactional
 	public List<EventResponseDto> getTopPopularEvents(Principal principal) {
-		List<ClubEvent> clubEventList = eventRepository.findTop10ByOrderByViewCountDesc();
+
+		String cacheKey = "TopPopular";
+		Optional<List<EventResponseDto>> cachedData = jsonParsingUtil.getData(cacheKey, new TypeReference<List<EventResponseDto>>() {});
+
+		if (cachedData.isPresent()) {
+			List<EventResponseDto> response = cachedData.get();
+			if (principal != null) {
+				// 동기적으로 찜 상태를 업데이트
+				updateLikeStatusForUser(response, principal.getName());
+			}
+			return response;
+		}
+
+		LocalDate now = LocalDate.now();
+		LocalDate startOfWeek = now.with(DayOfWeek.MONDAY);
+		LocalDate endOfWeek = now.with(DayOfWeek.SUNDAY);
+
+		LocalDateTime startOfWeekDateTime = startOfWeek.atStartOfDay();
+		LocalDateTime endOfWeekDateTime = endOfWeek.atTime(LocalTime.MAX);
+
+		List<ClubEvent> clubEventList = eventRepository.findTop10ByCreatedAtBetweenOrderByViewCountDesc(startOfWeekDateTime, endOfWeekDateTime);
 
 		// 조회된 ClubEvent 목록을 이벤트 응답 DTO 목록으로 매핑합니다.
 		List<EventResponseDto> eventResponseDtoList = clubEventList.stream()
 			.map(EventResponseDto::toDto)
 			.collect(Collectors.toList());
 
+		for (EventResponseDto dto : eventResponseDtoList) {
+			dto.setStar(false);
+		}
+
+		// 캐시에는 찜 상태를 전부 false로 설정한 데이터를 저장합니다.
+		jsonParsingUtil.saveData(cacheKey, eventResponseDtoList, 6, TimeUnit.HOURS);
+
 		// 사용자가 로그인한 경우에만 찜한 이벤트 목록을 가져와서 설정합니다.
 		if (principal != null) {
-			log.info("유저 Email" + principal.getName());
-			String userEmail = principal.getName();
-			Member member = memberRepository.findByEmail(userEmail)
-				.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
-			// 사용자가 찜한 게시글 목록 조회
-			List<EventLike> likedEventList = member.getEventLikeList();
-			Map<Long, Boolean> likedEventMap = likedEventList.stream()
-				.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
-
-			// 각 이벤트 DTO에 사용자의 찜 여부 설정
-			for (EventResponseDto dto : eventResponseDtoList) {
-				dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
-			}
-		} else {
-			for (EventResponseDto dto : eventResponseDtoList) {
-				dto.setStar(false);
-			}
+			updateLikeStatusForUser(eventResponseDtoList, principal.getName());
 		}
 
 		// 이벤트를 이벤트 응답 DTO로 변환하여 반환
@@ -931,6 +943,31 @@ public class EventService {
 		eventBannerRepository.deleteByEndDateBefore(now);
 	}
 
+	// 랭킹 1시간마다 업데이트
+	@Scheduled(cron = "0 0 0/1 * * *")
+	public void refreshTopPopularEvents() {
+		LocalDate now = LocalDate.now();
+		LocalDate startOfWeek = now.with(DayOfWeek.MONDAY);
+		LocalDate endOfWeek = now.with(DayOfWeek.SUNDAY);
+
+		LocalDateTime startOfWeekDateTime = startOfWeek.atStartOfDay();
+		LocalDateTime endOfWeekDateTime = endOfWeek.atTime(LocalTime.MAX);
+
+		List<ClubEvent> clubEventList = eventRepository.findTop10ByCreatedAtBetweenOrderByViewCountDesc(startOfWeekDateTime, endOfWeekDateTime);
+		String cacheKey = "TopPopular";
+		// 조회된 ClubEvent 목록을 이벤트 응답 DTO 목록으로 매핑합니다.
+		List<EventResponseDto> eventResponseDtoList = clubEventList.stream()
+			.map(EventResponseDto::toDto)
+			.collect(Collectors.toList());
+
+		for (EventResponseDto dto : eventResponseDtoList) {
+			dto.setStar(false);
+		}
+
+		jsonParsingUtil.saveData(cacheKey, eventResponseDtoList, 6, TimeUnit.HOURS);
+	}
+
+	// EventResponseDtoList에 대한 찜한 상태 업데이트
 	private void updateLikeStatusForUser(List<EventResponseDto> eventResponseDtoList, String userEmail) {
 		Member member = memberRepository.findByEmail(userEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
