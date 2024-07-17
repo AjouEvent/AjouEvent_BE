@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
-import com.example.ajouevent.auth.JwtUtil;
+import com.example.ajouevent.util.JwtUtil;
 import com.example.ajouevent.auth.OAuth;
 import com.example.ajouevent.auth.OAuthDto;
 import com.example.ajouevent.auth.UserInfoGetDto;

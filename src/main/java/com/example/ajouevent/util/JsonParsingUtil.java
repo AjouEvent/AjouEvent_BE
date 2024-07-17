@@ -1,4 +1,4 @@
-package com.example.ajouevent.config;
+package com.example.ajouevent.util;
 
 import java.util.Optional;
 import java.util.Set;

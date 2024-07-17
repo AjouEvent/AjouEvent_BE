@@ -1,4 +1,4 @@
-package com.example.ajouevent.auth;
+package com.example.ajouevent.util;
 
 import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.exception.CustomErrorCode;

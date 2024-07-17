@@ -1,7 +1,8 @@
 package com.example.ajouevent.auth;
 
 import com.example.ajouevent.exception.CustomException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.ajouevent.util.JwtUtil;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

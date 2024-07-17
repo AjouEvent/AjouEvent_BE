@@ -1,6 +1,8 @@
 package com.example.ajouevent.config;
 
 import com.example.ajouevent.auth.*;
+import com.example.ajouevent.util.JwtUtil;
+
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
