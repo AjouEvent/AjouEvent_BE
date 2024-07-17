@@ -531,6 +531,10 @@ public class EventService {
 				// 동기적으로 찜 상태를 업데이트
 				updateLikeStatusForUser(response.getResult(), principal.getName());
 			}
+
+			// 조회수를 실시간으로 반영
+			updateViewCountForEvents(response.getResult());
+
 			return response;
 		}
 
@@ -879,6 +883,10 @@ public class EventService {
 				// 동기적으로 찜 상태를 업데이트
 				updateLikeStatusForUser(response, principal.getName());
 			}
+
+			// 조회수를 실시간으로 반영
+			updateViewCountForEvents(response);
+
 			return response;
 		}
 
@@ -1003,6 +1011,24 @@ public class EventService {
 		if(Boolean.FALSE.equals(exist)){
 			stringRedisTemplate.opsForValue().increment(key);
 			stringRedisTemplate.expire(key,4L,TimeUnit.MINUTES);
+		}
+	}
+
+	// 이벤트 응답 DTO 목록에 조회수 업데이트
+	private void updateViewCountForEvents(List<EventResponseDto> eventResponseDtoList) {
+		List<Long> eventIds = eventResponseDtoList.stream()
+			.map(EventResponseDto::getEventId)
+			.collect(Collectors.toList());
+
+		List<ClubEvent> clubEvents = eventRepository.findAllById(eventIds);
+
+		Map<Long, Long> eventIdToViewCountMap = clubEvents.stream()
+			.collect(Collectors.toMap(ClubEvent::getEventId, ClubEvent::getViewCount));
+
+		for (EventResponseDto dto : eventResponseDtoList) {
+			Long viewCount = eventIdToViewCountMap.get(dto.getEventId());
+			log.info("게시글 id :" + dto.getEventId() + "의 조회수:" + viewCount);
+			dto.setViewCount(viewCount != null ? viewCount : 0);
 		}
 	}
 }
