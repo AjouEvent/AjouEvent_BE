@@ -6,17 +6,16 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 import com.example.ajouevent.domain.ClubEvent;
-import jakarta.servlet.http.Cookie;
 
 @Component
 public class CookieUtil {
 
 	private final static String VIEWCOOKIENAME = "AlreadyView";
 
-	public Cookie createOrUpdateCookie(String currentCookieValue, Long postId) {
+	public ResponseCookie createOrUpdateCookie(String currentCookieValue, Long postId) {
 		Set<Long> viewedPostIds = new HashSet<>();
 		if (currentCookieValue != null) {
 			viewedPostIds = Stream.of(currentCookieValue.split("/"))
@@ -27,19 +26,22 @@ public class CookieUtil {
 		String updatedValue = viewedPostIds.stream()
 			.map(String::valueOf)
 			.collect(Collectors.joining("/"));
-		Cookie cookie = new Cookie(VIEWCOOKIENAME, updatedValue);
-		cookie.setMaxAge(24 * 60 * 60); // 24 hours
-		cookie.setHttpOnly(true); // Server-side only
-		cookie.setPath("/");
-		return cookie;
+
+		return ResponseCookie.from(VIEWCOOKIENAME, updatedValue)
+			.path("/")
+			.sameSite("None")
+			.httpOnly(true)
+			.secure(true) // secure 옵션을 true로 변경한다.
+            .maxAge(24 * 60 * 60)
+			.build();
 	}
 
-	public boolean isPostViewed(String currentCookieValue, Long postId) {
+	public boolean isPostViewed(String currentCookieValue, Long eventId) {
 		if (currentCookieValue == null) return false;
 		Set<Long> viewedPostIds = Stream.of(currentCookieValue.split("/"))
 			.map(Long::parseLong)
 			.collect(Collectors.toSet());
-		return viewedPostIds.contains(postId);
+		return viewedPostIds.contains(eventId);
 	}
 
 

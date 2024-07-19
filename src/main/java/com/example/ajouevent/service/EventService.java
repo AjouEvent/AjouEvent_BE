@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -40,6 +41,7 @@ import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -587,55 +589,65 @@ public class EventService {
 	}
 
 
-	// 게시글 상세 조회 -> 기존
+	// 게시글 상세 조회
 	@Transactional
 	public EventDetailResponseDto getEventDetail(Long eventId, Principal principal, HttpServletRequest request, HttpServletResponse response) {
-
 		ClubEvent clubEvent = eventRepository.findById(eventId)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
 
 		String userId = SecurityUtil.getCurrentMemberUsernameOrAnonymous();
-		log.info("userId는 : " + userId);
-		boolean isAnonymous = userId.equals("Anonymous");
 
-		boolean shouldIncreaseViews = false;
+		EventDetailResponseDto responseDto = EventDetailResponseDto.toDto(clubEvent, false);
 
-		if (isAnonymous) {
-			Cookie[] cookies = request.getCookies();
-			String currentCookieValue = null;
-			if (cookies != null) {
-				for (Cookie cookie : cookies) {
-					if (cookie.getName().equals("AlreadyView")) {
-						currentCookieValue = cookie.getValue();
-						break;
-					}
-				}
-			}
-
-			if (!cookieUtil.isPostViewed(currentCookieValue, eventId)) {
-				Cookie newCookie = cookieUtil.createOrUpdateCookie(currentCookieValue, eventId);
-				response.addCookie(newCookie);
-				shouldIncreaseViews = true;
-			}
+		if (isAnonymous(userId)) {
+			handleAnonymousUser(request, response, clubEvent);
 		} else {
-			if (redisService.isFirstIpRequest(userId, eventId, clubEvent)) {
-				shouldIncreaseViews = true;
-				redisService.writeClientRequest(userId, eventId, clubEvent);
-			}
-		}
-
-		if (shouldIncreaseViews) {
-			increaseViews(clubEvent);  // 이 부분을 트랜잭션 외부로 이동
-		}
-
-		boolean isLiked = false;
-		EventDetailResponseDto responseDto = EventDetailResponseDto.toDto(clubEvent, isLiked);
-
-		if (!isAnonymous) {
-			updateLikeStatusForUser(responseDto, userId); // 이 부분을 별도의 메서드로 이동
+			handleAuthenticatedUser(userId, clubEvent);
+			updateLikeStatusForUser(responseDto, userId);
 		}
 
 		return responseDto;
+	}
+
+	private boolean isAnonymous(String userId) {
+		return "Anonymous".equals(userId);
+	}
+
+	private void handleAnonymousUser(HttpServletRequest request, HttpServletResponse response, ClubEvent clubEvent) {
+		Cookie[] cookies = request.getCookies();
+		log.info("기존 쿠키" + Arrays.toString(cookies));
+		String currentCookieValue = null;
+
+		if (cookies != null) {
+			currentCookieValue = Arrays.stream(cookies)
+				.filter(cookie -> "AlreadyView".equals(cookie.getName()))
+				.map(Cookie::getValue)
+				.findFirst()
+				.orElse(null);
+		}
+
+		if (!cookieUtil.isPostViewed(currentCookieValue, clubEvent.getEventId())) {
+			ResponseCookie newCookie = cookieUtil.createOrUpdateCookie(currentCookieValue, clubEvent.getEventId());
+			log.info("새로운 쿠키" + newCookie);
+			response.addHeader("Set-Cookie", newCookie.toString());
+			increaseViews(clubEvent);
+		}
+	}
+
+	private void handleAuthenticatedUser(String userId, ClubEvent clubEvent) {
+		if (redisService.isFirstIpRequest(userId, clubEvent.getEventId(), clubEvent)) {
+			redisService.writeClientRequest(userId, clubEvent.getEventId(), clubEvent);
+			increaseViews(clubEvent);
+		}
+	}
+
+	private void increaseViews(ClubEvent clubEvent){
+		String key = "ClubEvent:views:"+clubEvent.getEventId();
+		Boolean exist = stringRedisTemplate.opsForValue().setIfAbsent(key, String.valueOf(clubEvent.getViewCount()+1),4L,TimeUnit.MINUTES);
+		if(Boolean.FALSE.equals(exist)){
+			stringRedisTemplate.opsForValue().increment(key);
+			stringRedisTemplate.expire(key,4L,TimeUnit.MINUTES);
+		}
 	}
 
 	// 사용자가 구독하고 있는 topic 관련 글 조회(로그인 안하면 기본은 AjouNormal)
@@ -1004,15 +1016,6 @@ public class EventService {
 		eventDetailResponseDto.setStar(likedEventMap.getOrDefault(eventDetailResponseDto.getEventId(), false));
 	}
 
-	// 게시글 상세 조회시 조회수 증가 로직
-	public void increaseViews(ClubEvent clubEvent){
-		String key = "ClubEvent:views:"+clubEvent.getEventId();
-		Boolean exist = stringRedisTemplate.opsForValue().setIfAbsent(key, String.valueOf(clubEvent.getViewCount()+1),4L,TimeUnit.MINUTES);
-		if(Boolean.FALSE.equals(exist)){
-			stringRedisTemplate.opsForValue().increment(key);
-			stringRedisTemplate.expire(key,4L,TimeUnit.MINUTES);
-		}
-	}
 
 	// 이벤트 응답 DTO 목록에 조회수 업데이트
 	private void updateViewCountForEvents(List<EventResponseDto> eventResponseDtoList) {
@@ -1027,7 +1030,6 @@ public class EventService {
 
 		for (EventResponseDto dto : eventResponseDtoList) {
 			Long viewCount = eventIdToViewCountMap.get(dto.getEventId());
-			log.info("게시글 id :" + dto.getEventId() + "의 조회수:" + viewCount);
 			dto.setViewCount(viewCount != null ? viewCount : 0);
 		}
 	}
