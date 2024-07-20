@@ -13,7 +13,6 @@ import java.util.HashSet;
 import java.util.List;
 
 import com.example.ajouevent.util.SecurityUtil;
-import com.example.ajouevent.util.CookieUtil;
 import com.example.ajouevent.util.JsonParsingUtil;
 import com.example.ajouevent.domain.EventBanner;
 import com.example.ajouevent.domain.EventLike;
@@ -91,7 +90,7 @@ public class EventService {
 	private final EventBannerRepository eventBannerRepository;
 	private final JsonParsingUtil jsonParsingUtil;
 	private final CacheLogger cacheLogger;
-	private final CookieUtil cookieUtil;
+	private final CookieService cookieService;
 	private final StringRedisTemplate stringRedisTemplate;
 	private final RedisService redisService;
 
@@ -614,20 +613,9 @@ public class EventService {
 	}
 
 	private void handleAnonymousUser(HttpServletRequest request, HttpServletResponse response, ClubEvent clubEvent) {
-		Cookie[] cookies = request.getCookies();
-		log.info("기존 쿠키" + Arrays.toString(cookies));
-		String currentCookieValue = null;
-
-		if (cookies != null) {
-			currentCookieValue = Arrays.stream(cookies)
-				.filter(cookie -> "AlreadyView".equals(cookie.getName()))
-				.map(Cookie::getValue)
-				.findFirst()
-				.orElse(null);
-		}
-
-		if (!cookieUtil.isPostViewed(currentCookieValue, clubEvent.getEventId())) {
-			ResponseCookie newCookie = cookieUtil.createOrUpdateCookie(currentCookieValue, clubEvent.getEventId());
+		String currentCookieValue = cookieService.getCookieValue(request, clubEvent);
+		if (!cookieService.isAlreadyViewed(currentCookieValue, clubEvent.getEventId())) {
+			ResponseCookie newCookie = cookieService.createOrUpdateCookie(currentCookieValue, clubEvent);
 			log.info("새로운 쿠키" + newCookie);
 			response.addHeader("Set-Cookie", newCookie.toString());
 			increaseViews(clubEvent);
@@ -642,7 +630,7 @@ public class EventService {
 	}
 
 	private void increaseViews(ClubEvent clubEvent){
-		String key = "ClubEvent:views:"+clubEvent.getEventId();
+		String key = "ClubEvent:views:" + clubEvent.getEventId();
 		Boolean exist = stringRedisTemplate.opsForValue().setIfAbsent(key, String.valueOf(clubEvent.getViewCount()+1),4L,TimeUnit.MINUTES);
 		if(Boolean.FALSE.equals(exist)){
 			stringRedisTemplate.opsForValue().increment(key);
