@@ -1,4 +1,4 @@
-package com.example.ajouevent.util;
+package com.example.ajouevent.service;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import com.example.ajouevent.domain.ClubEvent;
 
 @Component
-public class CookieUtil {
+public class CookieService {
 
 	private final static String VIEWCOOKIENAME = "AlreadyView";
 
