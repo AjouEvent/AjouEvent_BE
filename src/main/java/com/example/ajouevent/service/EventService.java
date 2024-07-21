@@ -23,7 +23,6 @@ import com.example.ajouevent.dto.EventBannerRequest;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
-import com.example.ajouevent.logger.AlarmLogger;
 import com.example.ajouevent.logger.CacheLogger;
 import com.example.ajouevent.repository.EventBannerRepository;
 import com.example.ajouevent.repository.EventLikeRepository;
@@ -49,7 +48,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.example.ajouevent.domain.Alarm;
 import com.example.ajouevent.domain.ClubEvent;
 import com.example.ajouevent.domain.ClubEventImage;
 import com.example.ajouevent.domain.Member;
@@ -58,10 +56,8 @@ import com.example.ajouevent.dto.EventDetailResponseDto;
 import com.example.ajouevent.dto.EventResponseDto;
 import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.PostEventDto;
-import com.example.ajouevent.dto.PostNotificationDto;
 import com.example.ajouevent.dto.SliceResponse;
 import com.example.ajouevent.dto.UpdateEventRequest;
-import com.example.ajouevent.repository.AlarmRepository;
 import com.example.ajouevent.repository.ClubEventImageRepository;
 import com.example.ajouevent.repository.EventRepository;
 import com.example.ajouevent.repository.MemberRepository;
@@ -77,8 +73,6 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class EventService {
-	private final FCMService fcmService;
-	private final AlarmRepository alarmRepository;
 	private final MemberRepository memberRepository;
 	private final EventRepository eventRepository;
 	private final ClubEventImageRepository clubEventImageRepository;
@@ -86,7 +80,6 @@ public class EventService {
 	private final FileService fileService;
 	private final EventLikeRepository eventLikeRepository;
 	private final TopicMemberRepository topicMemberRepository;
-	private final AlarmLogger alarmLogger;
 	private final EventBannerRepository eventBannerRepository;
 	private final JsonParsingUtil jsonParsingUtil;
 	private final CacheLogger cacheLogger;
@@ -97,34 +90,6 @@ public class EventService {
 	// 게시글 생성시 기본 좋아요 수 상수 정의(기본 좋아요 수는 0)
 	final Long DEFAULT_LIKES_COUNT = 0L;
 	final Long DEFAULT_VIEW_COUNT = 0L;
-
-	// 행사, 동아리, 학생회 이벤트와 같은 알림 등록용 메서드
-	// Controller의 호출없이 주기적으로 계속 실행
-	@Scheduled(fixedRate = 60000)
-	@Transactional
-	public void sendEventNotification() {
-		LocalDateTime now = LocalDateTime.now();
-		int nowHour = now.getHour();
-		int nowMinute = now.getMinute();
-
-
-		// 1. 현재 시간에 해당하는 알림을 다 찾음
-		// 2. 이 알림을 등록한 사용자들에게 전부 알림 전송 -> 비동기로
-
-		List<Alarm> alarms = alarmRepository.findAll();
-
-		for (Alarm alarm: alarms) {
-			LocalDate alarmDate = alarm.getAlarmDateTime().toLocalDate();
-			LocalTime alarmTime = alarm.getAlarmDateTime().toLocalTime();
-			alarmLogger.log("알람 날짜: " + alarmDate);
-			alarmLogger.log("알람 시간: " + alarmTime);
-
-			if (alarm.getAlarmDateTime().toLocalDate() == alarmDate && alarm.getAlarmDateTime().getHour() == nowHour && alarm.getAlarmDateTime().getMinute() == nowMinute) {
-				fcmService.sendEventNotification(alarm.getMember().getEmail(), alarm);
-			}
-		}
-	}
-
 
 	// 크롤링한 공지사항 DB에 저장
 	@Transactional
@@ -183,28 +148,6 @@ public class EventService {
 		jsonParsingUtil.clearCacheForType(noticeDto.getEnglishTopic());
 
 		return clubEvent.getEventId();
-	}
-
-	@Transactional
-	public void createNotification(PostNotificationDto postNotificationDTO, Principal principal) {
-		String userEmail = principal.getName();
-		// 사용자 조회
-		Member member = memberRepository.findByEmail(userEmail)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
-		Type type = Type.valueOf(postNotificationDTO.getType().getEnglishTopic().toUpperCase());
-		log.info("저장하는 타입 : " + type.getEnglishTopic());
-
-		Alarm alarm = Alarm.builder()
-			.title(postNotificationDTO.getTitle())
-			.content(postNotificationDTO.getContent())
-			.writer(postNotificationDTO.getWriter())
-			.alarmDateTime(postNotificationDTO.getAlarmDateTime())
-			.subject(postNotificationDTO.getSubject())
-			.type(type)
-			.member(member).build();
-
-		alarmRepository.save(alarm);
 	}
 
 	// 게시글 생성 - S3 스프링부트에서 변환

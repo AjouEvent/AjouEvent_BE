@@ -45,7 +45,7 @@ public class FCMService {
 	private final TopicLogger topicLogger;
 	private final AlarmLogger alarmLogger;
 
-	public void sendEventNotification(String email, Alarm alarm) {
+	public void sendAlarm(String email, Alarm alarm) {
 		// 사용자 조회
 		Member member = memberRepository.findByEmail(email)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));

@@ -5,12 +5,10 @@ import static org.springframework.data.domain.Sort.Direction.*;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.Principal;
-import java.util.Calendar;
 import java.util.List;
 
 import com.example.ajouevent.dto.*;
 import com.example.ajouevent.service.CalendarService;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -21,7 +19,6 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.ajouevent.dto.EventDetailResponseDto;
 import com.example.ajouevent.dto.EventResponseDto;
 import com.example.ajouevent.dto.PostEventDto;
-import com.example.ajouevent.dto.PostNotificationDto;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.SliceResponse;
 import com.example.ajouevent.dto.UpdateEventRequest;
@@ -39,17 +36,6 @@ public class EventController {
 
 	private final EventService eventService;
 	private final CalendarService calendarService;
-
-	// 알림 등록 - 동아리, 학생회 이벤트 + 공지사항 크롤링
-	@PostMapping("/notification")
-	public ResponseEntity<ResponseDto> postNotification(@RequestBody PostNotificationDto postNotificationDTO, Principal principal) {
-		eventService.createNotification(postNotificationDTO, principal);
-		return ResponseEntity.ok().body(ResponseDto.builder()
-			.successStatus(HttpStatus.OK)
-			.successContent(postNotificationDTO.getAlarmDateTime() +" 에 알림 전송을 합니다.")
-			.build()
-		);
-	}
 
 	// 게시글 생성 - S3 스프링부트에서 변환
 	@PostMapping("/new")
