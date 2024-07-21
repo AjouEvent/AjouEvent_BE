@@ -35,25 +35,15 @@ public class AlarmService {
 	@Scheduled(fixedRate = 60000)
 	@Transactional
 	public void sendAlarm() {
-		LocalDateTime now = LocalDateTime.now();
-		int nowHour = now.getHour();
-		int nowMinute = now.getMinute();
-
-
-		// 1. 현재 시간에 해당하는 알림을 다 찾음
-		// 2. 이 알림을 등록한 사용자들에게 전부 알림 전송 -> 비동기로
-
-		List<Alarm> alarms = alarmRepository.findAll();
+		LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
+		List<Alarm> alarms = alarmRepository.findAlarmsByDateTime(now);
 
 		for (Alarm alarm: alarms) {
 			LocalDate alarmDate = alarm.getAlarmDateTime().toLocalDate();
 			LocalTime alarmTime = alarm.getAlarmDateTime().toLocalTime();
 			alarmLogger.log("알람 날짜: " + alarmDate);
 			alarmLogger.log("알람 시간: " + alarmTime);
-
-			if (alarm.getAlarmDateTime().toLocalDate() == alarmDate && alarm.getAlarmDateTime().getHour() == nowHour && alarm.getAlarmDateTime().getMinute() == nowMinute) {
-				fcmService.sendAlarm(alarm.getMember().getEmail(), alarm);
-			}
+			fcmService.sendAlarm(alarm.getMember().getEmail(), alarm);
 		}
 	}
 
