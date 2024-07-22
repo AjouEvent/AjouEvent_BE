@@ -40,7 +40,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RequiredArgsConstructor
 public class TopicService {
-
 	private final TopicRepository topicRepository;
 	private final TokenRepository tokenRepository;
 	private final TopicTokenRepository topicTokenRepository;
@@ -57,20 +56,15 @@ public class TopicService {
 	// 토픽 구독 - 토픽 하나씩
 	@Transactional
 	public void subscribeToTopics(TopicRequest topicRequest) {
+		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 		String topicName = topicRequest.getTopic();
 
-		// 토픽 가져오기 또는 에러처리
 		Topic topic = topicRepository.findByDepartment(topicName)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
-
-		// 사용자 정보는 스프링시큐리티 컨텍스트에서 가져옴
-		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-
-		// 현재 사용자 정보 가져오기
 		Member member = memberRepository.findByEmail(memberEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
-		// 이미 해당 토픽에 구독 중인지 확인
+		// 이미 해당 토픽을 구독 중인지 확인
 		if (topicMemberRepository.existsByTopicAndMember(topic, member)) {
 			throw new CustomException(CustomErrorCode.ALREADY_SUBSCRIBED_TOPIC);
 		}
@@ -78,23 +72,17 @@ public class TopicService {
 		topicLogger.log(topic.getDepartment() + "토픽 구독");
 		topicLogger.log("멤버 이메일 : " + memberEmail);
 
-		// 현재 사용자의 토큰 목록 가져오기
-		// List<Token> memberTokens = tokenRepository.findByMemberEmail(memberEmail);
 		List<Token> memberTokens = member.getTokens();
-
-		// TopicMember 생성 후 Repository에 저장
 		TopicMember topicMember = TopicMember.builder()
 			.topic(topic)
 			.member(member)
 			.build();
-		// topicMemberRepository.save(topicMember);
 		topicMemberBulkRepository.saveAll(List.of(topicMember));
 
 		// 토픽과 토큰을 매핑하여 저장 -> 사용자가 가지고 있는 토큰들이 topic을 구독
 		List<TopicToken> topicTokens = memberTokens.stream()
 			.map(token -> new TopicToken(topic, token))
 			.collect(Collectors.toList());
-		// topicTokenRepository.saveAll(topicTokens);
 		topicTokenBulkRepository.saveAll(topicTokens);
 
 		// FCM 서비스를 사용하여 토픽에 대한 구독 진행
@@ -104,36 +92,30 @@ public class TopicService {
 		fcmService.subscribeToTopic(topicName, tokenValues);
 	}
 
-	// 토픽 구독 취소 - 하나씩
+	// 토픽 구독 취소 - 토픽 하나씩
 	@Transactional
 	public void unsubscribeFromTopics(TopicRequest topicRequest) {
+		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 		String topicName = topicRequest.getTopic();
 
-		// 토픽 가져오기 또는 에러처리
 		Topic topic = topicRepository.findByDepartment(topicName)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
-
-		// 사용자 정보는 스프링시큐리티 컨텍스트에서 가져옴
-		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-		topicLogger.log(topic.getDepartment() + "토픽 구독 취소");
-		topicLogger.log("멤버 이메일 : " + memberEmail);
-
-		// 현재 사용자 정보 가져오기
 		Member member = memberRepository.findByEmail(memberEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		topicLogger.log(topic.getDepartment() + "토픽 구독 취소");
+		topicLogger.log("멤버 이메일 : " + memberEmail);
 
 		// 멤버가 구독하고 있는 해당 토픽을 찾아서 삭제
 		topicMemberRepository.deleteByTopicAndMember(topic, member);
 		// 해당 토픽을 구독하는 모든 TopicToken 삭제
 		topicTokenRepository.deleteByTopic(topic);
-		// 현재 사용자의 토큰 목록 가져오기
-		// List<Token> memberTokens = tokenRepository.findByMemberEmail(memberEmail);
 		List<Token> memberTokens = member.getTokens();
+
 		// FCM 서비스를 사용하여 토픽에 대한 구독 취소 진행
 		List<String> tokenValues = memberTokens.stream()
 			.map(Token::getTokenValue)
 			.collect(Collectors.toList());
-		log.info(topicName + " 구독이 취소 되었습니다.");
 		fcmService.unsubscribeFromTopic(topicName, tokenValues);
 	}
 
