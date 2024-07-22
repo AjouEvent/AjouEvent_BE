@@ -257,7 +257,8 @@ public class TopicService {
 
 	}
 
-	@Transactional
+	// 사용자가 구독하고 있는 토픽 조회
+	@Transactional(readOnly = true)
 	public TopicResponse getSubscribedTopics() {
 		log.info("getSubscribedTopics 입장");
 		// 스프링 시큐리티 컨텍스트에서 현재 사용자의 이메일 가져오기
@@ -281,6 +282,7 @@ public class TopicService {
 	}
 
 	// 전체 topic 조회
+	@Transactional(readOnly = true)
 	public TopicResponse getAllTopics() {
 		List<Topic> topics = topicRepository.findAll();
 		List<String> topicName = topics.stream()
@@ -290,7 +292,8 @@ public class TopicService {
 		return new TopicResponse(topicName);
 	}
 
-	// 사용자가 구독하고 있는 토픽 상태 조회
+	// 사용자가 구독하고 있는 토픽 조회
+	@Transactional(readOnly = true)
 	public List<TopicStatus> getTopicWithUserSubscriptionsStatus(Principal principal) {
 		List<Topic> allTopics = topicRepository.findAll();
 		Member member = memberRepository.findByEmail(principal.getName())
