@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
-import com.example.ajouevent.auth.JwtUtil;
+import com.example.ajouevent.util.JwtUtil;
 import com.example.ajouevent.auth.OAuth;
 import com.example.ajouevent.auth.OAuthDto;
 import com.example.ajouevent.auth.UserInfoGetDto;
@@ -22,7 +22,6 @@ import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import com.example.ajouevent.repository.EmailCheckRedisRepository;
 import com.google.api.client.auth.oauth2.TokenResponse;
-import jakarta.validation.constraints.Email;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
@@ -37,9 +36,6 @@ import com.example.ajouevent.repository.TokenRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import javax.security.auth.login.LoginException;
-
 
 @Service
 @RequiredArgsConstructor
@@ -71,7 +67,7 @@ public class MemberService {
 		Member newMember = Member.builder()
 				.email(registerRequest.getEmail())
 				.major(registerRequest.getMajor())
-				.phone(registerRequest.getPhone())
+				// .phone(registerRequest.getPhone())
 				.name(registerRequest.getName())
 				.password(password)
 				.build();

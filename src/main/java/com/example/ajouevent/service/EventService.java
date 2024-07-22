@@ -2,14 +2,18 @@ package com.example.ajouevent.service;
 
 import java.io.IOException;
 import java.security.Principal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
+import com.example.ajouevent.util.SecurityUtil;
+import com.example.ajouevent.util.JsonParsingUtil;
 import com.example.ajouevent.domain.EventBanner;
 import com.example.ajouevent.domain.EventLike;
 import com.example.ajouevent.domain.Topic;
@@ -19,21 +23,23 @@ import com.example.ajouevent.dto.EventBannerRequest;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
-import com.example.ajouevent.exception.UserNotFoundException;
-import com.example.ajouevent.logger.AlarmLogger;
+import com.example.ajouevent.logger.CacheLogger;
 import com.example.ajouevent.repository.EventBannerRepository;
 import com.example.ajouevent.repository.EventLikeRepository;
 import com.example.ajouevent.repository.TopicMemberRepository;
 
 import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -42,7 +48,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.example.ajouevent.domain.Alarm;
 import com.example.ajouevent.domain.ClubEvent;
 import com.example.ajouevent.domain.ClubEventImage;
 import com.example.ajouevent.domain.Member;
@@ -51,14 +56,16 @@ import com.example.ajouevent.dto.EventDetailResponseDto;
 import com.example.ajouevent.dto.EventResponseDto;
 import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.PostEventDto;
-import com.example.ajouevent.dto.PostNotificationDto;
 import com.example.ajouevent.dto.SliceResponse;
 import com.example.ajouevent.dto.UpdateEventRequest;
-import com.example.ajouevent.repository.AlarmRepository;
 import com.example.ajouevent.repository.ClubEventImageRepository;
 import com.example.ajouevent.repository.EventRepository;
 import com.example.ajouevent.repository.MemberRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -66,8 +73,6 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class EventService {
-	private final FCMService fcmService;
-	private final AlarmRepository alarmRepository;
 	private final MemberRepository memberRepository;
 	private final EventRepository eventRepository;
 	private final ClubEventImageRepository clubEventImageRepository;
@@ -75,40 +80,16 @@ public class EventService {
 	private final FileService fileService;
 	private final EventLikeRepository eventLikeRepository;
 	private final TopicMemberRepository topicMemberRepository;
-	private final AlarmLogger alarmLogger;
 	private final EventBannerRepository eventBannerRepository;
+	private final JsonParsingUtil jsonParsingUtil;
+	private final CacheLogger cacheLogger;
+	private final CookieService cookieService;
+	private final StringRedisTemplate stringRedisTemplate;
+	private final RedisService redisService;
 
 	// 게시글 생성시 기본 좋아요 수 상수 정의(기본 좋아요 수는 0)
 	final Long DEFAULT_LIKES_COUNT = 0L;
 	final Long DEFAULT_VIEW_COUNT = 0L;
-
-	// 행사, 동아리, 학생회 이벤트와 같은 알림 등록용 메서드
-	// Controller의 호출없이 주기적으로 계속 실행
-	@Scheduled(fixedRate = 60000)
-	@Transactional
-	public void sendEventNotification() {
-		LocalDateTime now = LocalDateTime.now();
-		int nowHour = now.getHour();
-		int nowMinute = now.getMinute();
-
-
-		// 1. 현재 시간에 해당하는 알림을 다 찾음
-		// 2. 이 알림을 등록한 사용자들에게 전부 알림 전송 -> 비동기로
-
-		List<Alarm> alarms = alarmRepository.findAll();
-
-		for (Alarm alarm: alarms) {
-			LocalDate alarmDate = alarm.getAlarmDateTime().toLocalDate();
-			LocalTime alarmTime = alarm.getAlarmDateTime().toLocalTime();
-			alarmLogger.log("알람 날짜: " + alarmDate);
-			alarmLogger.log("알람 시간: " + alarmTime);
-
-			if (alarm.getAlarmDateTime().toLocalDate() == alarmDate && alarm.getAlarmDateTime().getHour() == nowHour && alarm.getAlarmDateTime().getMinute() == nowMinute) {
-				fcmService.sendEventNotification(alarm.getMember().getEmail(), alarm);
-			}
-		}
-	}
-
 
 	// 크롤링한 공지사항 DB에 저장
 	@Transactional
@@ -131,7 +112,7 @@ public class EventService {
 		log.info("크롤링한 공지사항 원래 url" + noticeDto.getUrl());
 
 		// 기본 default 이미지는 학교 로고
-		String image = "https://ajou-event-bucket.s3.ap-northeast-2.amazonaws.com/static/1e7b1dc2-ae1b-4254-ba38-d1a0e7cfa00c.20240307_170436.jpg";
+		String image = "https://www.ajou.ac.kr/_res/ajou/kr/img/intro/img-symbol.png";
 
 		if (noticeDto.getImages() == null || noticeDto.getImages().isEmpty()) {
 			log.info("images 리스트가 비어있습니다.");
@@ -163,29 +144,10 @@ public class EventService {
 
 		eventRepository.save(clubEvent);
 
+		// 크롤링 후 해당 타입의 캐시 초기화
+		jsonParsingUtil.clearCacheForType(noticeDto.getEnglishTopic());
+
 		return clubEvent.getEventId();
-	}
-
-	@Transactional
-	public void createNotification(PostNotificationDto postNotificationDTO, Principal principal) {
-		String userEmail = principal.getName();
-		// 사용자 조회
-		Member member = memberRepository.findByEmail(userEmail)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
-		Type type = Type.valueOf(postNotificationDTO.getType().getEnglishTopic().toUpperCase());
-		log.info("저장하는 타입 : " + type.getEnglishTopic());
-
-		Alarm alarm = Alarm.builder()
-			.title(postNotificationDTO.getTitle())
-			.content(postNotificationDTO.getContent())
-			.writer(postNotificationDTO.getWriter())
-			.alarmDateTime(postNotificationDTO.getAlarmDateTime())
-			.subject(postNotificationDTO.getSubject())
-			.type(type)
-			.member(member).build();
-
-		alarmRepository.save(alarm);
 	}
 
 	// 게시글 생성 - S3 스프링부트에서 변환
@@ -503,8 +465,24 @@ public class EventService {
 	// 글 타입별 조회 (동아리, 학생회, 공지사항, 기타)
 	@Transactional
 	public SliceResponse<EventResponseDto> getEventTypeList(String type, String keyword, Pageable pageable, Principal principal) {
-		// 대소문자를 구분하지 않고 입력 받기 위해 입력된 문자열을 대문자로 변환합니다.
 
+		String cacheKey = type + ":" + pageable.getPageNumber() + ":" + keyword;
+		Optional<SliceResponse<EventResponseDto>> cachedData = jsonParsingUtil.getData(cacheKey, new TypeReference<SliceResponse<EventResponseDto>>() {});
+
+		if (cachedData.isPresent()) {
+			SliceResponse<EventResponseDto> response = cachedData.get();
+			if (principal != null) {
+				// 동기적으로 찜 상태를 업데이트
+				updateLikeStatusForUser(response.getResult(), principal.getName());
+			}
+
+			// 조회수를 실시간으로 반영
+			updateViewCountForEvents(response.getResult());
+
+			return response;
+		}
+
+		// 대소문자를 구분하지 않고 입력 받기 위해 입력된 문자열을 대문자로 변환합니다.
 		Type eventType;
 		try {
 			eventType = Type.valueOf(type.toUpperCase());
@@ -521,26 +499,8 @@ public class EventService {
 			.map(EventResponseDto::toDto)
 			.collect(Collectors.toList());
 
-		// 사용자가 로그인한 경우에만 찜한 이벤트 목록을 가져와서 설정합니다.
-		if (principal != null) {
-			log.info("유저 Email" + principal.getName());
-			String userEmail = principal.getName();
-			Member member = memberRepository.findByEmail(userEmail)
-				.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
-			// 사용자가 찜한 게시글 목록 조회
-			List<EventLike> likedEventSlice = member.getEventLikeList();
-			Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
-				.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
-
-			// 각 이벤트 DTO에 사용자의 찜 여부 설정
-			for (EventResponseDto dto : eventResponseDtoList) {
-				dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
-			}
-		} else {
-			for (EventResponseDto dto : eventResponseDtoList) {
-				dto.setStar(false);
-			}
+		for (EventResponseDto dto : eventResponseDtoList) {
+			dto.setStar(false);
 		}
 
 		// SliceResponse 생성
@@ -552,34 +512,73 @@ public class EventService {
 
 		log.info("조회하는 타입 : " + type);
 
+		SliceResponse<EventResponseDto> response = new SliceResponse<>(eventResponseDtoList, clubEventSlice.hasPrevious(),
+			clubEventSlice.hasNext(),
+			clubEventSlice.getNumber(), sortResponse);
+
+		// 캐시에는 찜 상태를 전부 false로 설정한 데이터를 저장합니다.
+		jsonParsingUtil.saveData(cacheKey, response, 6, TimeUnit.HOURS);
+
+		// 동기적으로 찜 상태를 업데이트
+		if (principal != null) {
+			updateLikeStatusForUser(response.getResult(), principal.getName());
+		}
+
 		// 결과를 Slice로 감싸서 반환합니다.
 		return new SliceResponse<>(eventResponseDtoList, clubEventSlice.hasPrevious(), clubEventSlice.hasNext(),
 			clubEventSlice.getNumber(), sortResponse);
 
 	}
 
+
 	// 게시글 상세 조회
 	@Transactional
-	public EventDetailResponseDto getEventDetail(Long eventId, Principal principal) {
+	public EventDetailResponseDto getEventDetail(Long eventId, Principal principal, HttpServletRequest request, HttpServletResponse response) {
 		ClubEvent clubEvent = eventRepository.findById(eventId)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
 
-		// 조회수 증가
-		clubEvent.increaseViewCount();
+		String userId = SecurityUtil.getCurrentMemberUsernameOrAnonymous();
 
-		if (principal != null) {
-			String userEmail = principal.getName(); // 현재 로그인한 사용자의 이메일 가져오기
+		EventDetailResponseDto responseDto = EventDetailResponseDto.toDto(clubEvent, false);
 
-			// 사용자 조회
-			Member member = memberRepository.findByEmail(userEmail)
-				.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
-			boolean isLiked = eventLikeRepository.existsByMemberAndClubEvent(member, clubEvent);
-			return EventDetailResponseDto.toDto(clubEvent, isLiked);
+		if (isAnonymous(userId)) {
+			handleAnonymousUser(request, response, clubEvent);
+		} else {
+			handleAuthenticatedUser(userId, clubEvent);
+			updateLikeStatusForUser(responseDto, userId);
 		}
 
-		boolean isLiked = false;
-		return EventDetailResponseDto.toDto(clubEvent, isLiked);
+		return responseDto;
+	}
+
+	private boolean isAnonymous(String userId) {
+		return "Anonymous".equals(userId);
+	}
+
+	private void handleAnonymousUser(HttpServletRequest request, HttpServletResponse response, ClubEvent clubEvent) {
+		String currentCookieValue = cookieService.getCookieValue(request, clubEvent);
+		if (!cookieService.isAlreadyViewed(currentCookieValue, clubEvent.getEventId())) {
+			ResponseCookie newCookie = cookieService.createOrUpdateCookie(currentCookieValue, clubEvent);
+			log.info("새로운 쿠키" + newCookie);
+			response.addHeader("Set-Cookie", newCookie.toString());
+			increaseViews(clubEvent);
+		}
+	}
+
+	private void handleAuthenticatedUser(String userId, ClubEvent clubEvent) {
+		if (redisService.isFirstIpRequest(userId, clubEvent.getEventId(), clubEvent)) {
+			redisService.writeClientRequest(userId, clubEvent.getEventId(), clubEvent);
+			increaseViews(clubEvent);
+		}
+	}
+
+	private void increaseViews(ClubEvent clubEvent){
+		String key = "ClubEvent:views:" + clubEvent.getEventId();
+		Boolean exist = stringRedisTemplate.opsForValue().setIfAbsent(key, String.valueOf(clubEvent.getViewCount()+1),4L,TimeUnit.MINUTES);
+		if(Boolean.FALSE.equals(exist)){
+			stringRedisTemplate.opsForValue().increment(key);
+			stringRedisTemplate.expire(key,4L,TimeUnit.MINUTES);
+		}
 	}
 
 	// 사용자가 구독하고 있는 topic 관련 글 조회(로그인 안하면 기본은 AjouNormal)
@@ -815,34 +814,49 @@ public class EventService {
 	}
 
 	// 인기글 조회
+	@Transactional
 	public List<EventResponseDto> getTopPopularEvents(Principal principal) {
-		List<ClubEvent> clubEventList = eventRepository.findTop10ByOrderByViewCountDesc();
+
+		String cacheKey = "TopPopular";
+		Optional<List<EventResponseDto>> cachedData = jsonParsingUtil.getData(cacheKey, new TypeReference<List<EventResponseDto>>() {});
+
+		if (cachedData.isPresent()) {
+			List<EventResponseDto> response = cachedData.get();
+			if (principal != null) {
+				// 동기적으로 찜 상태를 업데이트
+				updateLikeStatusForUser(response, principal.getName());
+			}
+
+			// 조회수를 실시간으로 반영
+			updateViewCountForEvents(response);
+
+			return response;
+		}
+
+		LocalDate now = LocalDate.now();
+		LocalDate startOfWeek = now.with(DayOfWeek.MONDAY);
+		LocalDate endOfWeek = now.with(DayOfWeek.SUNDAY);
+
+		LocalDateTime startOfWeekDateTime = startOfWeek.atStartOfDay();
+		LocalDateTime endOfWeekDateTime = endOfWeek.atTime(LocalTime.MAX);
+
+		List<ClubEvent> clubEventList = eventRepository.findTop10ByCreatedAtBetweenOrderByViewCountDesc(startOfWeekDateTime, endOfWeekDateTime);
 
 		// 조회된 ClubEvent 목록을 이벤트 응답 DTO 목록으로 매핑합니다.
 		List<EventResponseDto> eventResponseDtoList = clubEventList.stream()
 			.map(EventResponseDto::toDto)
 			.collect(Collectors.toList());
 
+		for (EventResponseDto dto : eventResponseDtoList) {
+			dto.setStar(false);
+		}
+
+		// 캐시에는 찜 상태를 전부 false로 설정한 데이터를 저장합니다.
+		jsonParsingUtil.saveData(cacheKey, eventResponseDtoList, 6, TimeUnit.HOURS);
+
 		// 사용자가 로그인한 경우에만 찜한 이벤트 목록을 가져와서 설정합니다.
 		if (principal != null) {
-			log.info("유저 Email" + principal.getName());
-			String userEmail = principal.getName();
-			Member member = memberRepository.findByEmail(userEmail)
-				.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
-			// 사용자가 찜한 게시글 목록 조회
-			List<EventLike> likedEventList = member.getEventLikeList();
-			Map<Long, Boolean> likedEventMap = likedEventList.stream()
-				.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
-
-			// 각 이벤트 DTO에 사용자의 찜 여부 설정
-			for (EventResponseDto dto : eventResponseDtoList) {
-				dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
-			}
-		} else {
-			for (EventResponseDto dto : eventResponseDtoList) {
-				dto.setStar(false);
-			}
+			updateLikeStatusForUser(eventResponseDtoList, principal.getName());
 		}
 
 		// 이벤트를 이벤트 응답 DTO로 변환하여 반환
@@ -879,4 +893,75 @@ public class EventService {
 		eventBannerRepository.deleteByEndDateBefore(now);
 	}
 
+	// 랭킹 1시간마다 업데이트
+	@Scheduled(cron = "0 0 0/1 * * *")
+	public void refreshTopPopularEvents() {
+		LocalDate now = LocalDate.now();
+		LocalDate startOfWeek = now.with(DayOfWeek.MONDAY);
+		LocalDate endOfWeek = now.with(DayOfWeek.SUNDAY);
+
+		LocalDateTime startOfWeekDateTime = startOfWeek.atStartOfDay();
+		LocalDateTime endOfWeekDateTime = endOfWeek.atTime(LocalTime.MAX);
+
+		List<ClubEvent> clubEventList = eventRepository.findTop10ByCreatedAtBetweenOrderByViewCountDesc(startOfWeekDateTime, endOfWeekDateTime);
+		String cacheKey = "TopPopular";
+		// 조회된 ClubEvent 목록을 이벤트 응답 DTO 목록으로 매핑합니다.
+		List<EventResponseDto> eventResponseDtoList = clubEventList.stream()
+			.map(EventResponseDto::toDto)
+			.collect(Collectors.toList());
+
+		for (EventResponseDto dto : eventResponseDtoList) {
+			dto.setStar(false);
+		}
+
+		jsonParsingUtil.saveData(cacheKey, eventResponseDtoList, 6, TimeUnit.HOURS);
+	}
+
+	// EventResponseDtoList에 대한 찜한 상태 업데이트
+	private void updateLikeStatusForUser(List<EventResponseDto> eventResponseDtoList, String userEmail) {
+		Member member = memberRepository.findByEmail(userEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		// 사용자가 찜한 게시글 목록 조회
+		List<EventLike> likedEventSlice = member.getEventLikeList();
+		Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
+			.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+
+		// 각 이벤트 DTO에 사용자의 찜 여부 설정
+		for (EventResponseDto dto : eventResponseDtoList) {
+			dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
+		}
+	}
+
+	// EventDetailResponseDto(상세페이지)에 대한 찜한 상태 업데이트
+	public void updateLikeStatusForUser(EventDetailResponseDto eventDetailResponseDto, String userEmail) {
+		Member member = memberRepository.findByEmail(userEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		// 사용자가 찜한 게시글 목록 조회
+		List<EventLike> likedEventSlice = member.getEventLikeList();
+		Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
+			.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+
+		// 이벤트 DTO에 사용자의 찜 여부 설정
+		eventDetailResponseDto.setStar(likedEventMap.getOrDefault(eventDetailResponseDto.getEventId(), false));
+	}
+
+
+	// 이벤트 응답 DTO 목록에 조회수 업데이트
+	private void updateViewCountForEvents(List<EventResponseDto> eventResponseDtoList) {
+		List<Long> eventIds = eventResponseDtoList.stream()
+			.map(EventResponseDto::getEventId)
+			.collect(Collectors.toList());
+
+		List<ClubEvent> clubEvents = eventRepository.findAllById(eventIds);
+
+		Map<Long, Long> eventIdToViewCountMap = clubEvents.stream()
+			.collect(Collectors.toMap(ClubEvent::getEventId, ClubEvent::getViewCount));
+
+		for (EventResponseDto dto : eventResponseDtoList) {
+			Long viewCount = eventIdToViewCountMap.get(dto.getEventId());
+			dto.setViewCount(viewCount != null ? viewCount : 0);
+		}
+	}
 }

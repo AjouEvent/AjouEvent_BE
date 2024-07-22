@@ -28,6 +28,7 @@ public class TopicController {
 
 	private final TopicService topicService;
 
+	@PreAuthorize("isAuthenticated()")
 	@PostMapping("/subscribe")
 	public ResponseEntity<ResponseDto> subscribeToTopic(@RequestBody TopicRequest topicRequest) {
 		topicService.subscribeToTopics(topicRequest);
@@ -38,6 +39,7 @@ public class TopicController {
 		);
 	}
 
+	@PreAuthorize("isAuthenticated()")
 	@PostMapping("/unsubscribe")
 	public ResponseEntity<ResponseDto> unsubscribeFromTopic(@RequestBody TopicRequest topicRequest) {
 		topicService.unsubscribeFromTopics(topicRequest);

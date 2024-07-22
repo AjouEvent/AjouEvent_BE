@@ -87,10 +87,10 @@ public class ClubEvent {
         this.likesCount--;
     }
 
-    // 게시글의 조회수 증가
-    public void increaseViewCount() {
-        this.viewCount++;
-    }
+    // // 게시글의 조회수 증가
+    // public void increaseViewCount() {
+    //     this.viewCount++; // 조회수 증가
+    // }
 
 
 }

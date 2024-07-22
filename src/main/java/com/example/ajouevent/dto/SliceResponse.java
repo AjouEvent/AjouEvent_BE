@@ -1,12 +1,21 @@
 package com.example.ajouevent.dto;
 
+import java.io.Serializable;
 import java.util.List;
+
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Data
-public class SliceResponse<T> {
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class SliceResponse<T> implements Serializable {
+
+	// private static final long serialVersionUID = 1L;
 
 	protected List<T> result;
 	protected boolean hasPrevious;
@@ -14,15 +23,9 @@ public class SliceResponse<T> {
 	protected Integer currentPage;
 	protected SortResponse sort;
 
-	public SliceResponse(List<T> result, boolean hasPrevious, boolean hasNext, Integer currentPage, SortResponse sort) {
-		this.hasPrevious = hasPrevious;
-		this.hasNext = hasNext;
-		this.result = result;
-		this.currentPage = currentPage;
-		this.sort = sort;
-	}
-
 	@Getter
+	@NoArgsConstructor
+	@AllArgsConstructor
 	@Builder
 	public static class SortResponse {
 		protected boolean sorted;

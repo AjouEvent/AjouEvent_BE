@@ -2,12 +2,15 @@ package com.example.ajouevent.dto;
 
 import java.time.LocalDateTime;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class LoginResponse {
 
 	private Long id;
@@ -17,15 +20,4 @@ public class LoginResponse {
 	private String name;
 	private String major;
 	private String email;
-
-	@Builder
-	public LoginResponse(Long id, String grantType, String accessToken, String refreshToken, String name, String major, String email) {
-		this.id = id;
-		this.grantType = grantType;
-		this.accessToken = accessToken;
-		this.refreshToken = refreshToken;
-		this.name = name;
-		this.major = major;
-		this.email = email;
-	}
 }
