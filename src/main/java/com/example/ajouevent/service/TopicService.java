@@ -52,7 +52,7 @@ public class TopicService {
 	private final TopicLogger topicLogger;
 
 	// 토큰 만료 기간 상수 정의
-	final int TOKEN_EXPIRATION_WEEKS = 4;
+	private static final int TOKEN_EXPIRATION_WEEKS = 10;
 
 	// 토픽 구독 - 토픽 하나씩
 	@Transactional
@@ -150,7 +150,7 @@ public class TopicService {
 		if (existingToken.isPresent()) {
 			Token token = existingToken.get();
 			log.info("이미 존재하는 토큰: " + existingToken.get().getTokenValue());
-			token.setExpirationDate(LocalDate.now().plusWeeks(4));
+			token.setExpirationDate(LocalDate.now().plusWeeks(TOKEN_EXPIRATION_WEEKS));
 			tokenRepository.save(token);
 		} else {
 			// Only create and save a new token if it does not exist
