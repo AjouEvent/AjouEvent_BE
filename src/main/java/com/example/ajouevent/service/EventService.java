@@ -100,7 +100,7 @@ public class EventService {
 		ClubEvent clubEvent = ClubEvent.builder()
 			.title(noticeDto.getTitle())
 			.content(noticeDto.getContent())
-			.createdAt(noticeDto.getDate())
+			.createdAt(LocalDateTime.now()) // 크롤링한 공지사항의 게시글 시간은 크롤링하는 당시 시간으로 설정
 			.url(noticeDto.getUrl())
 			.subject(noticeDto.getKoreanTopic())
 			.writer(noticeDto.getDepartment())
