@@ -816,37 +816,20 @@ public class EventService {
 	// 인기글 조회
 	@Transactional
 	public List<EventResponseDto> getTopPopularEvents(Principal principal) {
-
 		String cacheKey = "TopPopular";
 		Optional<List<EventResponseDto>> cachedData = jsonParsingUtil.getData(cacheKey, new TypeReference<List<EventResponseDto>>() {});
-
 		if (cachedData.isPresent()) {
 			List<EventResponseDto> response = cachedData.get();
 			if (principal != null) {
 				// 동기적으로 찜 상태를 업데이트
 				updateLikeStatusForUser(response, principal.getName());
 			}
-
 			// 조회수를 실시간으로 반영
 			updateViewCountForEvents(response);
-
 			return response;
 		}
 
-		LocalDate now = LocalDate.now();
-		LocalDate startOfWeek = now.with(DayOfWeek.MONDAY);
-		LocalDate endOfWeek = now.with(DayOfWeek.SUNDAY);
-
-		LocalDateTime startOfWeekDateTime = startOfWeek.atStartOfDay();
-		LocalDateTime endOfWeekDateTime = endOfWeek.atTime(LocalTime.MAX);
-
-		List<ClubEvent> clubEventList = eventRepository.findTop10ByCreatedAtBetweenOrderByViewCountDesc(startOfWeekDateTime, endOfWeekDateTime);
-
-		// 조회된 ClubEvent 목록을 이벤트 응답 DTO 목록으로 매핑합니다.
-		List<EventResponseDto> eventResponseDtoList = clubEventList.stream()
-			.map(EventResponseDto::toDto)
-			.collect(Collectors.toList());
-
+		List<EventResponseDto> eventResponseDtoList = getTop10EventsForCurrentWeek();
 		for (EventResponseDto dto : eventResponseDtoList) {
 			dto.setStar(false);
 		}
@@ -861,6 +844,24 @@ public class EventService {
 
 		// 이벤트를 이벤트 응답 DTO로 변환하여 반환
 		return eventResponseDtoList;
+	}
+
+	// 이번주에 생성된 게시글 중 조회수 탑10 게시글 조회 후 DTO 반환
+	private List<EventResponseDto> getTop10EventsForCurrentWeek() {
+		LocalDate now = LocalDate.now();
+		LocalDate startOfWeek = now.with(DayOfWeek.MONDAY);
+		LocalDate endOfWeek = now.with(DayOfWeek.SUNDAY);
+
+		LocalDateTime startOfWeekDateTime = startOfWeek.atStartOfDay();
+		LocalDateTime endOfWeekDateTime = endOfWeek.atTime(LocalTime.MAX);
+
+		// 이번주의 이벤트를 조회수 기준으로 정렬하여 가져옴
+		List<ClubEvent> clubEventList = eventRepository.findTop10ByCreatedAtBetweenOrderByViewCountDesc(startOfWeekDateTime, endOfWeekDateTime);
+
+		// ClubEvent 목록을 EventResponseDto 목록으로 변환
+		return clubEventList.stream()
+			.map(EventResponseDto::toDto)
+			.collect(Collectors.toList());
 	}
 
 	// 홈화면에 들어갈 이벤트 배너 추가
@@ -896,24 +897,11 @@ public class EventService {
 	// 랭킹 1시간마다 업데이트
 	@Scheduled(cron = "0 0 0/1 * * *")
 	public void refreshTopPopularEvents() {
-		LocalDate now = LocalDate.now();
-		LocalDate startOfWeek = now.with(DayOfWeek.MONDAY);
-		LocalDate endOfWeek = now.with(DayOfWeek.SUNDAY);
-
-		LocalDateTime startOfWeekDateTime = startOfWeek.atStartOfDay();
-		LocalDateTime endOfWeekDateTime = endOfWeek.atTime(LocalTime.MAX);
-
-		List<ClubEvent> clubEventList = eventRepository.findTop10ByCreatedAtBetweenOrderByViewCountDesc(startOfWeekDateTime, endOfWeekDateTime);
 		String cacheKey = "TopPopular";
-		// 조회된 ClubEvent 목록을 이벤트 응답 DTO 목록으로 매핑합니다.
-		List<EventResponseDto> eventResponseDtoList = clubEventList.stream()
-			.map(EventResponseDto::toDto)
-			.collect(Collectors.toList());
-
+		List<EventResponseDto> eventResponseDtoList = getTop10EventsForCurrentWeek();
 		for (EventResponseDto dto : eventResponseDtoList) {
 			dto.setStar(false);
 		}
-
 		jsonParsingUtil.saveData(cacheKey, eventResponseDtoList, 6, TimeUnit.HOURS);
 	}
 
