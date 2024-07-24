@@ -1,6 +1,5 @@
 package com.example.ajouevent.auth;
 
-import com.example.ajouevent.domain.Member;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import com.example.ajouevent.repository.MemberRepository;
@@ -9,6 +8,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.auth.oauth2.StoredCredential;
 import com.google.api.client.auth.oauth2.TokenResponse;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
@@ -16,6 +16,7 @@ import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.client.util.store.DataStore;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.calendar.CalendarScopes;
 import lombok.extern.slf4j.Slf4j;
@@ -28,16 +29,16 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.security.auth.login.LoginException;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.StringReader;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.Collections;
 import java.util.List;
-
+import java.util.regex.Pattern;
 
 
 @Component
@@ -57,16 +58,13 @@ public class OAuth {
 
     Credential credential;
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
-    private final MemberRepository memberRepository;
 
 
     private static final String TOKENS_DIRECTORY_PATH = "tokens";
     private static final List<String> SCOPES =
             Collections.singletonList(CalendarScopes.CALENDAR);
 
-    public OAuth(MemberRepository memberRepository) {
-        this.memberRepository = memberRepository;
-    }
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("[^a-zA-Z0-9_-]");
 
     public TokenResponse requestGoogleAccessToken(OAuthDto oAuthDto) throws LoginException, JsonProcessingException {
         String code = oAuthDto.getAuthorizationCode();
@@ -103,6 +101,7 @@ public class OAuth {
         // 응답 헤더 출력
         HttpHeaders responseHeaders = responseEntity.getHeaders();
         ObjectMapper objectMapper = new ObjectMapper();
+        log.info("hel \n"+ responseEntity.getBody());
 
         try {
             JsonNode rootNode = objectMapper.readTree(responseEntity.getBody());
@@ -111,8 +110,13 @@ public class OAuth {
             tokenResponse.setAccessToken(rootNode.get("access_token").asText());
             tokenResponse.setExpiresInSeconds(Long.valueOf(rootNode.get("expires_in").asText()));
             tokenResponse.setTokenType(rootNode.get("token_type").asText());
-            tokenResponse.setRefreshToken(null);
+            if (rootNode.has("refresh_token") && rootNode.get("refresh_token").asText() != null)
+                tokenResponse.setRefreshToken(rootNode.get("refresh_token").asText());
+            else
+                tokenResponse.setRefreshToken(null);
+
             tokenResponse.setScope(rootNode.get("scope").asText());
+
             return tokenResponse;
         } catch (Exception e) {
             System.out.println("Error parsing JSON response: " + e.getMessage());
@@ -163,7 +167,7 @@ public class OAuth {
         return null;
     }
 
-    public String addCalendarCredentials(TokenResponse tokenResponse, String userId) throws IOException, GeneralSecurityException {
+    public void addCalendarCredentials(TokenResponse tokenResponse, String userId) throws IOException, GeneralSecurityException {
         final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
 
         String keyFileName = "/credentials.json";
@@ -176,15 +180,19 @@ public class OAuth {
                 GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
 
 
+        FileDataStoreFactory dataStoreFactory = new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH));
+        DataStore<StoredCredential> dataStore = dataStoreFactory.getDataStore(getSafeUserId(userId));
+
         GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-                .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH+"/"+userId)))
-                .setAccessType("offline")
-                .build();
+                .setCredentialDataStore(dataStore).build();
 
         credential = flow.createAndStoreCredential(tokenResponse, userId);
 
-        return "성공";
+    }
+
+    private static String getSafeUserId(String userId) {
+        return EMAIL_PATTERN.matcher(userId).replaceAll("_");
     }
 
 

@@ -174,7 +174,8 @@ public class MemberService {
 	public LoginResponse socialLogin (OAuthDto oAuthDto) throws GeneralSecurityException, IOException {
 		TokenResponse googleToken = oAuth.requestGoogleAccessToken(oAuthDto);
 		UserInfoGetDto userInfoGetDto = oAuth.printUserResource(googleToken);
-		String res = oAuth.addCalendarCredentials(googleToken, userInfoGetDto.getEmail());
+		if (googleToken.getRefreshToken() != null)
+			oAuth.addCalendarCredentials(googleToken, userInfoGetDto.getEmail());
 
 		Member member = memberRepository.findByEmail(userInfoGetDto.getEmail()).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
