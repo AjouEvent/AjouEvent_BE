@@ -29,7 +29,8 @@ public enum CustomErrorCode {
     SUBSCRIBE_CANCEL_FAILED("구독을 취소하는 도중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR.value()),
     EMAIL_CHECK_FAILED("이메일을 인증하는 도중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR.value()),
     NO_SUCH_ALGORITHM("이메일 인증에서 해당하는 알고리즘을 찾을 수 없습니다.", HttpStatus.INTERNAL_SERVER_ERROR.value()),
-    CODE_FAILED("코드가 일치하지 않습니다.", HttpStatus.BAD_REQUEST.value());
+    CODE_FAILED("코드가 일치하지 않습니다.", HttpStatus.BAD_REQUEST.value()),
+    TOPIC_NOTIFICATION_FAILED("토픽으로 FCM 메시지를 보내는 도중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR.value());
 
 
     private final String message;

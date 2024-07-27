@@ -2,6 +2,7 @@ package com.example.ajouevent.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
 import com.example.ajouevent.exception.CustomErrorCode;
@@ -44,6 +45,10 @@ public class FCMService {
 	private final WebhookLogger webhookLogger;
 	private final TopicLogger topicLogger;
 	private final AlarmLogger alarmLogger;
+
+	private static final String DEFAULT_IMAGE_URL = "https://www.ajou.ac.kr/_res/ajou/kr/img/intro/img-symbol.png";
+	private static final String REDIRECTION_URL_PREFIX = "https://ajou-event.vercel.app/event/";
+	private static final String DEFAULT_CLICK_ACTION_URL =  "https://ajou-event.vercel.app";
 
 	public void sendAlarm(String email, Alarm alarm) {
 		// 사용자 조회
@@ -100,54 +105,68 @@ public class FCMService {
 	}
 
 	public ResponseEntity<WebhookResponse> sendNoticeNotification(NoticeDto noticeDto, Long eventId) {
+		try {
+			// FCM 메시지 구성
+			String messageTitle = composeMessageTitle(noticeDto);
+			String topic = noticeDto.getEnglishTopic();
+			String body = composeBody(noticeDto);
+			String imageUrl = getFirstImageUrl(noticeDto);
+			String url = getRedirectionUrl(noticeDto, eventId);
 
-		log.info("크롤링한 공지사항 date: " + noticeDto.getDate());
-		log.info("크롤링한 공지사항 title: " + noticeDto.getTitle());
-		log.info("크롤링한 공지사항 englishTopic: " + noticeDto.getEnglishTopic());
-		log.info("크롤링한 공지사항 url: " + noticeDto.getUrl());
+			// FCM 메시지 생성
+			Message message = createFcmMessage(noticeDto, messageTitle, body, imageUrl, url);
+			send(message);
 
-		// 알람에서 꺼낼지 vs payload에서 꺼낼지
-		String koreanTopic = noticeDto.getKoreanTopic();
-		String title = noticeDto.getTitle(); // ex) 아주대학교 경영학과 공지사항
-
-		// FCM 메시지 구성
-		String messageTitle = "[" + koreanTopic + "]" + " " + title;
-
-		String url = "https://ajou-event.vercel.app"; // 실제 학교 홈페이지 공지사항으로 이동 (default는 우리 웹사이트)
-
-		String topic = noticeDto.getEnglishTopic();
-
-		String body = noticeDto.getKoreanTopic() + "공지사항입니다.";
-
-		if (!noticeDto.getContent().isEmpty()) {
-			body = noticeDto.getContent(); // ex) 경영인의 밤 행사 안내
+			WebhookResponse webhookResponse = WebhookResponse.builder()
+				.result("Webhook 요청이 성공적으로 처리되었습니다.")
+				.topic(topic)
+				.build();
+			return ResponseEntity.ok().body(webhookResponse);
+		} catch (Exception e) {
+			log.error("공지사항 알림 전송 중 오류 발생", e);
+			return ResponseEntity.status(CustomErrorCode.TOPIC_NOTIFICATION_FAILED.getStatusCode()).body(
+				WebhookResponse.builder()
+					.result("Webhook 요청 처리 중 오류가 발생했습니다.")
+					.build()
+			);
 		}
+	}
 
-		log.info("body 정보: " + body);
+	private String composeMessageTitle(NoticeDto noticeDto) {
+		return String.format("[%s] %s", noticeDto.getKoreanTopic(), noticeDto.getTitle());
+	}
 
-		if (noticeDto.getUrl() != null) {
-			url = "https://ajou-event.vercel.app/event/" + eventId;
-			webhookLogger.log("리다이렉션하는 url : " + url);
-		}
+	private String composeBody(NoticeDto noticeDto) {
+		return Optional.ofNullable(noticeDto.getContent())
+			.filter(content -> !content.isEmpty())
+			.orElseGet(() -> noticeDto.getKoreanTopic() + " 공지사항입니다.");
+	}
 
-		// 기본 default 이미지는 학교 로고
-		String imageUrl = "https://www.ajou.ac.kr/_res/ajou/kr/img/intro/img-symbol.png";
+	private String getFirstImageUrl(NoticeDto noticeDto) {
+		List<String> images = Optional.ofNullable(noticeDto.getImages())
+			.filter(imgs -> !imgs.isEmpty())
+			.orElseGet(() -> {
+				List<String> defaultImages = new ArrayList<>();
+				defaultImages.add(DEFAULT_IMAGE_URL);
+				return defaultImages;
+			});
+		return images.get(0);
+	}
 
-		if (noticeDto.getImages() == null || noticeDto.getImages().isEmpty()) {
-			// images 리스트가 null 이거나 비어있을 경우, 기본 이미지 리스트를 생성하고 설정
+	private String getRedirectionUrl(NoticeDto noticeDto, Long eventId) {
+		String url = Optional.ofNullable(noticeDto.getUrl())
+			.filter(u -> !u.isEmpty())
+			.map(u -> REDIRECTION_URL_PREFIX + eventId) // 크롤링 후 DB에 저장된, 우리 앱 상세페이지로 이동
+			.orElse(DEFAULT_CLICK_ACTION_URL);
+		webhookLogger.log("리다이렉션하는 URL: " + url);
+		return url;
+	}
 
-			List<String> defaultImages = new ArrayList<>();
-			defaultImages.add(imageUrl);
-			noticeDto.setImages(defaultImages);
-		}
 
-		// 이미지 URL을 첫 번째 이미지로 설정
-		imageUrl = noticeDto.getImages().get(0);
-
-		log.info("가져온 이미지 URL: " + imageUrl);
-
-		Message message = Message.builder()
-			.setTopic(topic)
+	private Message createFcmMessage(NoticeDto noticeDto, String messageTitle, String body,
+		String imageUrl, String url) {
+		return Message.builder()
+			.setTopic(noticeDto.getEnglishTopic())
 			.setNotification(Notification.builder()
 				.setTitle(messageTitle)
 				.setBody(body)
@@ -155,44 +174,6 @@ public class FCMService {
 				.build())
 			.putData("click_action", url) // 동아리, 학생회 이벤트는 post한 이벤트 상세 페이지로 redirection "https://ajou-event.shop/event/{eventId}
 			.build();
-
-		send(message);
-
-		webhookLogger.log("크롤링 한 제목 : " + title);
-		webhookLogger.log(topic + "을 구독한 사람에게 알림 전송 완료");
-
-		// englishTopic 값을 사용하여 해당하는 Topic 객체를 가져옴
-		Topic topicEntity = topicRepository.findByDepartment(noticeDto.getEnglishTopic())
-			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
-
-
-		// TopicMemberRepository를 사용하여 해당 topic을 구독하는 멤버 목록을 가져옴
-		List<TopicMember> topicMembers = topicMemberRepository.findByTopic(topicEntity);
-
-		// 멤버 목록에서 각 멤버의 토큰을 가져와 로그로 출력
-		for (TopicMember topicMember : topicMembers) {
-			Member member = topicMember.getMember();
-			List<Token> tokens = member.getTokens();
-			webhookLogger.log("해당 " + topic + "을 구독하는 유저 이메일 " + member.getEmail());
-
-			for (Token token : tokens) {
-				webhookLogger.log(token.getTokenValue());
-			}
-			webhookLogger.log("\n");
-		}
-
-		ResponseEntity.ok().body(ResponseDto.builder()
-			.successStatus(HttpStatus.OK)
-			.successContent("푸쉬 알림 성공")
-			.Data(topic)
-			.build()
-		);
-
-		WebhookResponse webhookResponse = WebhookResponse.builder()
-			.result("Webhook 요청이 성공적으로 처리되었습니다.")
-			.topic(topic)
-			.build();
-		return ResponseEntity.ok().body(webhookResponse);
 	}
 
 
