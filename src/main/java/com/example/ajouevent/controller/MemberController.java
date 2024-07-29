@@ -1,11 +1,9 @@
 package com.example.ajouevent.controller;
 
-import com.example.ajouevent.auth.GoogleAccessTokenRequest;
-import com.example.ajouevent.auth.GoogleAccessTokenResponse;
-import com.example.ajouevent.auth.OAuth;
-import com.example.ajouevent.auth.OAuthDto;
+import com.example.ajouevent.auth.*;
 import com.example.ajouevent.dto.*;
 import com.example.ajouevent.dto.ReissueTokenDto;
+import com.google.api.Http;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,10 +29,8 @@ import java.util.List;
 @Slf4j
 public class MemberController {
 
-	private final FCMService fcmService;
 	private final MemberService memberService;
 	private final TopicService topicService;
-	private final OAuth oAuth;
 
 	@PostMapping("/register")
 	public String register(@RequestBody RegisterRequest request) throws IOException {
@@ -98,6 +94,13 @@ public class MemberController {
 	public ResponseEntity<String> emailCheck (@RequestParam(name="email") String email, @RequestParam(name="code") String code) {
 		String res = memberService.EmailCheck(email, code);
 		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
+	// 캘린더 연동
+	@PostMapping("/calendar")
+	public ResponseEntity<String> ConnectCalendar (@RequestBody OAuthDto oAuthDto) throws GeneralSecurityException, IOException {
+		UserInfoGetDto userInfoGetDto = memberService.connectCalendar(oAuthDto);
+		return ResponseEntity.status(HttpStatus.OK).body(userInfoGetDto.getEmail());
 	}
 
 }

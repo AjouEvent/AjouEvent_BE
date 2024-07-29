@@ -22,6 +22,8 @@ import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import com.example.ajouevent.repository.EmailCheckRedisRepository;
 import com.google.api.client.auth.oauth2.TokenResponse;
+import com.google.firebase.auth.UserInfo;
+import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
@@ -37,6 +39,8 @@ import com.example.ajouevent.repository.TokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import javax.security.auth.login.LoginException;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -51,8 +55,8 @@ public class MemberService {
 	private final DiscordMessageProvider discordMessageProvider;
 	private final JavaMailSender javaMailSender;
 	private final EmailCheckRedisRepository emailCheckRedisRepository;
-	@Autowired
-	private RedisTemplate<String, Object> redisTemplate;
+	private final CalendarService calendarService;
+
 
 	private static final String REDIS_HASH = "EmailCheck";
 	@Transactional
@@ -172,12 +176,10 @@ public class MemberService {
 	}
 
 	public LoginResponse socialLogin (OAuthDto oAuthDto) throws GeneralSecurityException, IOException {
-		TokenResponse googleToken = oAuth.requestGoogleAccessToken(oAuthDto);
-		UserInfoGetDto userInfoGetDto = oAuth.printUserResource(googleToken);
-		if (googleToken.getRefreshToken() != null)
-			oAuth.addCalendarCredentials(googleToken, userInfoGetDto.getEmail());
+		UserInfoGetDto userInfoGetDto = connectCalendar(oAuthDto);
 
-		Member member = memberRepository.findByEmail(userInfoGetDto.getEmail()).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+		Member member = memberRepository.findByEmail(userInfoGetDto.getEmail())
+				.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		MemberDto.MemberInfoDto memberInfoDto = MemberDto.MemberInfoDto.builder()
 				.memberId(member.getId())
@@ -210,6 +212,17 @@ public class MemberService {
 				.major(member.getMajor())
 				.email(member.getEmail())
 				.build();
+	}
+
+	// 캘린더 연동
+	public UserInfoGetDto connectCalendar(OAuthDto oAuthDto) throws GeneralSecurityException, IOException {
+		TokenResponse googleToken = oAuth.requestGoogleAccessToken(oAuthDto);
+
+		UserInfoGetDto userInfoGetDto = oAuth.printUserResource(googleToken);
+		if (googleToken.getRefreshToken() != null)
+			CalendarService.getCredentials(googleToken, userInfoGetDto.getEmail());
+
+		return userInfoGetDto;
 	}
 
 	public boolean duplicateEmail (String email) {
