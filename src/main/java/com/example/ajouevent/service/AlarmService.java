@@ -32,7 +32,7 @@ public class AlarmService {
 	private final AlarmLogger alarmLogger;
 	private final FCMService fcmService;
 
-	@Scheduled(fixedRate = 60000)
+	// @Scheduled(fixedRate = 60000)
 	@Transactional
 	public void sendAlarm() {
 		LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
