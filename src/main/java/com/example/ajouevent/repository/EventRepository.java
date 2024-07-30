@@ -32,6 +32,4 @@ public interface EventRepository extends JpaRepository<ClubEvent, Long> {
 	@Modifying
 	@Query("UPDATE ClubEvent e SET e.viewCount = :viewCount WHERE e.eventId = :eventId")
 	void updateViews(@Param("viewCount") Long viewCount, @Param("eventId") Long eventId);
-
-	List<ClubEvent> findTop10ByOrderByViewCountDesc();
 }

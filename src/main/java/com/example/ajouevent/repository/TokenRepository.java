@@ -11,15 +11,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface TokenRepository extends JpaRepository<Token, Long> {
-	Optional<Token> findByTokenValue(String value);
 	Optional<Token> findByTokenValueAndMember(String value, Member member);
-	boolean existsByTokenValue(String value);
-	List<Token> findByMemberEmail(String Email);
-
-	void deleteByMember(Member m);
-
 	List<Token> findByExpirationDate(LocalDate now);
-
-	List<Token> findByMember(Member m);
 }
 
