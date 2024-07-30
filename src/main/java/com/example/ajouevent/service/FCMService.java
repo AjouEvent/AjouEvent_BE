@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
+import com.example.ajouevent.domain.Keyword;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import org.springframework.http.HttpStatus;
@@ -21,8 +22,10 @@ import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.WebhookResponse;
 import com.example.ajouevent.logger.AlarmLogger;
+import com.example.ajouevent.logger.KeywordLogger;
 import com.example.ajouevent.logger.TopicLogger;
 import com.example.ajouevent.logger.WebhookLogger;
+import com.example.ajouevent.repository.KeywordRepository;
 import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.TopicMemberRepository;
 import com.example.ajouevent.repository.TopicRepository;
@@ -44,11 +47,14 @@ public class FCMService {
 	private final TopicRepository topicRepository;
 	private final WebhookLogger webhookLogger;
 	private final TopicLogger topicLogger;
+	private final KeywordLogger keywordLogger;
 	private final AlarmLogger alarmLogger;
 
 	private static final String DEFAULT_IMAGE_URL = "https://www.ajou.ac.kr/_res/ajou/kr/img/intro/img-symbol.png";
 	private static final String REDIRECTION_URL_PREFIX = "https://ajou-event.vercel.app/event/";
 	private static final String DEFAULT_CLICK_ACTION_URL =  "https://ajou-event.vercel.app";
+	private final KeywordRepository keywordRepository;
+	private final TopicRepository topicRepository;
 
 	public void sendAlarm(String email, Alarm alarm) {
 		// 사용자 조회
@@ -116,6 +122,27 @@ public class FCMService {
 			// FCM 메시지 생성
 			Message message = createFcmMessage(noticeDto, messageTitle, body, imageUrl, url);
 			send(message);
+
+			// 공지사항에 해당하는 토픽을 구독 중인 모든 키워드 찾기
+			Topic topic = topicRepository.findByDepartment(topicName)
+				.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
+
+			List<Keyword> keywords = keywordRepository.findByTopic(topic);
+
+			for (Keyword keyword : keywords) {
+				String koreanKeyword = keyword.getKoreanKeyword();
+
+				// 공지사항의 제목이나 본문에 키워드가 포함되어 있는지 확인
+				if (noticeDto.getTitle().contains(koreanKeyword)) {
+					messageTitle = koreanKeyword + "-" + messageTitle;
+					String englishKeyword = keyword.getEnglishKeyword();
+					// FCM 메시지 생성 - keyword
+					Message keywordMessage = createFcmMessage(englishKeyword, messageTitle, body, imageUrl, url);
+					send(keywordMessage);
+
+					keywordLogger.log("키워드 '영어 : " + englishKeyword + " 한글 : " + koreanKeyword + "에 대한 공지사항이 전송되었습니다.");
+				}
+			}
 
 			WebhookResponse webhookResponse = WebhookResponse.builder()
 				.result("Webhook 요청이 성공적으로 처리되었습니다.")
