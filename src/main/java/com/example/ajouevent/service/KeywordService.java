@@ -126,10 +126,9 @@ public class KeywordService {
 		// 유저가 설정한 키워드를 찾아서 삭제
 		keywordMemberRepository.deleteByKeywordAndMember(keyword, member);
 
-		// 해당 키워드를 구독하는 token들 삭제
-		keywordTokenRepository.deleteByKeyword(keyword);
-
+		// 해당 키워드에 관련된 토큰을 찾아서 삭제
 		List<Token> memberTokens = member.getTokens();
+		keywordTokenRepository.deleteByKeywordAndTokens(keyword, memberTokens);
 
 		// FCM 서비스를 사용하여 키워드에 대한 구독 취소 진행
 		List<String> tokenValues = memberTokens.stream()
