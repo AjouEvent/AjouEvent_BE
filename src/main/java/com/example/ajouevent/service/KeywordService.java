@@ -19,6 +19,7 @@ import com.example.ajouevent.dto.KeywordResponse;
 import com.example.ajouevent.dto.UnsubscribeKeywordRequest;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
+import com.example.ajouevent.logger.KeywordLogger;
 import com.example.ajouevent.repository.KeywordMemberRepository;
 import com.example.ajouevent.repository.KeywordRepository;
 import com.example.ajouevent.repository.KeywordTokenBulkRepository;
@@ -36,6 +37,8 @@ public class KeywordService {
 	private final TopicRepository topicRepository;
 	private final MemberRepository memberRepository;
 	private final FCMService fcmService;
+
+	private final KeywordLogger keywordLogger;
 
 	private final KeywordRepository keywordRepository;
 	private final KeywordMemberRepository keywordMemberRepository;
@@ -94,7 +97,7 @@ public class KeywordService {
 			.collect(Collectors.toList());
 		fcmService.subscribeToTopic(formattedKeyword, tokenValues);
 
-		log.info("키워드 구독 : " + keyword.getKoreanKeyword());
+		keywordLogger.log("키워드 구독 : " + keyword.getKoreanKeyword());
 	}
 
 	// 새로운 키워드 생성 메서드
@@ -107,7 +110,7 @@ public class KeywordService {
 			.build();
 		keywordRepository.save(newKeyword);
 
-		log.info("새로운 키워드 생성 : " + newKeyword.getKoreanKeyword());
+		keywordLogger.log("새로운 키워드 생성 : " + newKeyword.getKoreanKeyword());
 		return newKeyword;
 	}
 
@@ -118,7 +121,7 @@ public class KeywordService {
 		String englishKeyword = unsubscribeKeywordRequest.getEnglishKeyword();
 
 		Keyword keyword = keywordRepository.findByEnglishKeyword(englishKeyword)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.KEYWORD_NOT_FOUND));
 
 		Member member = memberRepository.findByEmail(memberEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
@@ -143,7 +146,7 @@ public class KeywordService {
 	public List<KeywordResponse> getUserKeyword(Principal principal) {
 		String memberEmail = principal.getName();
 		Member member = memberRepository.findByEmail(memberEmail)
-			.orElseThrow(() -> new RuntimeException("User not found"));
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		List<KeywordMember> keywordMembers = keywordMemberRepository.findByMember(member);
 
