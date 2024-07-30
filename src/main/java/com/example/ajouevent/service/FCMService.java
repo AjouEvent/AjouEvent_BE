@@ -17,7 +17,6 @@ import com.example.ajouevent.domain.AlarmImage;
 import com.example.ajouevent.domain.Member;
 import com.example.ajouevent.domain.Token;
 import com.example.ajouevent.domain.Topic;
-import com.example.ajouevent.domain.TopicMember;
 import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.WebhookResponse;
@@ -27,7 +26,6 @@ import com.example.ajouevent.logger.TopicLogger;
 import com.example.ajouevent.logger.WebhookLogger;
 import com.example.ajouevent.repository.KeywordRepository;
 import com.example.ajouevent.repository.MemberRepository;
-import com.example.ajouevent.repository.TopicMemberRepository;
 import com.example.ajouevent.repository.TopicRepository;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
@@ -43,8 +41,6 @@ import lombok.extern.slf4j.Slf4j;
 public class FCMService {
 
 	private final MemberRepository memberRepository;
-	private final TopicMemberRepository topicMemberRepository;
-	private final TopicRepository topicRepository;
 	private final WebhookLogger webhookLogger;
 	private final TopicLogger topicLogger;
 	private final KeywordLogger keywordLogger;
@@ -114,13 +110,13 @@ public class FCMService {
 		try {
 			// FCM 메시지 구성
 			String messageTitle = composeMessageTitle(noticeDto);
-			String topic = noticeDto.getEnglishTopic();
+			String topicName = noticeDto.getEnglishTopic();
 			String body = composeBody(noticeDto);
 			String imageUrl = getFirstImageUrl(noticeDto);
 			String url = getRedirectionUrl(noticeDto, eventId);
 
-			// FCM 메시지 생성
-			Message message = createFcmMessage(noticeDto, messageTitle, body, imageUrl, url);
+			// FCM 메시지 생성 - topic
+			Message message = createFcmMessage(topicName, messageTitle, body, imageUrl, url);
 			send(message);
 
 			// 공지사항에 해당하는 토픽을 구독 중인 모든 키워드 찾기
@@ -146,7 +142,7 @@ public class FCMService {
 
 			WebhookResponse webhookResponse = WebhookResponse.builder()
 				.result("Webhook 요청이 성공적으로 처리되었습니다.")
-				.topic(topic)
+				.topic(topicName)
 				.build();
 			return ResponseEntity.ok().body(webhookResponse);
 		} catch (Exception e) {
@@ -160,13 +156,11 @@ public class FCMService {
 	}
 
 	private String composeMessageTitle(NoticeDto noticeDto) {
-		return String.format("[%s] %s", noticeDto.getKoreanTopic(), noticeDto.getTitle());
+		return String.format("[%s]", noticeDto.getKoreanTopic());
 	}
 
 	private String composeBody(NoticeDto noticeDto) {
-		return Optional.ofNullable(noticeDto.getContent())
-			.filter(content -> !content.isEmpty())
-			.orElseGet(() -> noticeDto.getKoreanTopic() + " 공지사항입니다.");
+		return noticeDto.getTitle();
 	}
 
 	private String getFirstImageUrl(NoticeDto noticeDto) {
@@ -190,10 +184,10 @@ public class FCMService {
 	}
 
 
-	private Message createFcmMessage(NoticeDto noticeDto, String messageTitle, String body,
+	private Message createFcmMessage(String englishTopic, String messageTitle, String body,
 		String imageUrl, String url) {
 		return Message.builder()
-			.setTopic(noticeDto.getEnglishTopic())
+			.setTopic(englishTopic)
 			.setNotification(Notification.builder()
 				.setTitle(messageTitle)
 				.setBody(body)
