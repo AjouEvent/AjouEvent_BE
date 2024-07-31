@@ -148,11 +148,13 @@ public class KeywordService {
 		Member member = memberRepository.findByEmail(memberEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
-		List<KeywordMember> keywordMembers = keywordMemberRepository.findByMember(member);
+		List<KeywordMember> keywordMembers = keywordMemberRepository.findByMemberWithKeywordAndTopic(member);
 
 		return keywordMembers.stream()
 			.map(km -> KeywordResponse.builder()
 				.koreanKeyword(km.getKeyword().getKoreanKeyword())
+				.englishKeyword(km.getKeyword().getEnglishKeyword())
+				.topicName(km.getKeyword().getTopic().getKoreanTopic())
 				.build())
 			.collect(Collectors.toList());
 	}

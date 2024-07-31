@@ -11,5 +11,6 @@ import lombok.NoArgsConstructor;
 @Builder
 public class KeywordResponse {
 	private String koreanKeyword;
+	private String englishKeyword;
 	private String topicName;
 }
