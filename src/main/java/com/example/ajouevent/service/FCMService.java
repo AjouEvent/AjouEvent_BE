@@ -2,8 +2,10 @@ package com.example.ajouevent.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
+import com.example.ajouevent.domain.Keyword;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import org.springframework.http.HttpStatus;
@@ -15,15 +17,15 @@ import com.example.ajouevent.domain.AlarmImage;
 import com.example.ajouevent.domain.Member;
 import com.example.ajouevent.domain.Token;
 import com.example.ajouevent.domain.Topic;
-import com.example.ajouevent.domain.TopicMember;
 import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.WebhookResponse;
 import com.example.ajouevent.logger.AlarmLogger;
+import com.example.ajouevent.logger.KeywordLogger;
 import com.example.ajouevent.logger.TopicLogger;
 import com.example.ajouevent.logger.WebhookLogger;
+import com.example.ajouevent.repository.KeywordRepository;
 import com.example.ajouevent.repository.MemberRepository;
-import com.example.ajouevent.repository.TopicMemberRepository;
 import com.example.ajouevent.repository.TopicRepository;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
@@ -39,11 +41,16 @@ import lombok.extern.slf4j.Slf4j;
 public class FCMService {
 
 	private final MemberRepository memberRepository;
-	private final TopicMemberRepository topicMemberRepository;
-	private final TopicRepository topicRepository;
 	private final WebhookLogger webhookLogger;
 	private final TopicLogger topicLogger;
+	private final KeywordLogger keywordLogger;
 	private final AlarmLogger alarmLogger;
+
+	private static final String DEFAULT_IMAGE_URL = "https://www.ajou.ac.kr/_res/ajou/kr/img/intro/img-symbol.png";
+	private static final String REDIRECTION_URL_PREFIX = "https://ajou-event.vercel.app/event/";
+	private static final String DEFAULT_CLICK_ACTION_URL =  "https://ajou-event.vercel.app";
+	private final KeywordRepository keywordRepository;
+	private final TopicRepository topicRepository;
 
 	public void sendAlarm(String email, Alarm alarm) {
 		// 사용자 조회
@@ -100,54 +107,87 @@ public class FCMService {
 	}
 
 	public ResponseEntity<WebhookResponse> sendNoticeNotification(NoticeDto noticeDto, Long eventId) {
+		try {
+			// FCM 메시지 구성
+			String messageTitle = composeMessageTitle(noticeDto);
+			String topicName = noticeDto.getEnglishTopic();
+			String body = composeBody(noticeDto);
+			String imageUrl = getFirstImageUrl(noticeDto);
+			String url = getRedirectionUrl(noticeDto, eventId);
 
-		log.info("크롤링한 공지사항 date: " + noticeDto.getDate());
-		log.info("크롤링한 공지사항 title: " + noticeDto.getTitle());
-		log.info("크롤링한 공지사항 englishTopic: " + noticeDto.getEnglishTopic());
-		log.info("크롤링한 공지사항 url: " + noticeDto.getUrl());
+			// FCM 메시지 생성 - topic
+			Message message = createFcmMessage(topicName, messageTitle, body, imageUrl, url);
+			send(message);
 
-		// 알람에서 꺼낼지 vs payload에서 꺼낼지
-		String koreanTopic = noticeDto.getKoreanTopic();
-		String title = noticeDto.getTitle(); // ex) 아주대학교 경영학과 공지사항
+			// 공지사항에 해당하는 토픽을 구독 중인 모든 키워드 찾기
+			Topic topic = topicRepository.findByDepartment(topicName)
+				.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
 
-		// FCM 메시지 구성
-		String messageTitle = "[" + koreanTopic + "]" + " " + title;
+			List<Keyword> keywords = keywordRepository.findByTopic(topic);
 
-		String url = "https://ajou-event.vercel.app"; // 실제 학교 홈페이지 공지사항으로 이동 (default는 우리 웹사이트)
+			for (Keyword keyword : keywords) {
+				String koreanKeyword = keyword.getKoreanKeyword();
 
-		String topic = noticeDto.getEnglishTopic();
+				// 공지사항의 제목이나 본문에 키워드가 포함되어 있는지 확인
+				if (noticeDto.getTitle().contains(koreanKeyword)) {
+					messageTitle = koreanKeyword + "-" + messageTitle;
+					String englishKeyword = keyword.getEnglishKeyword();
+					// FCM 메시지 생성 - keyword
+					Message keywordMessage = createFcmMessage(englishKeyword, messageTitle, body, imageUrl, url);
+					send(keywordMessage);
 
-		String body = noticeDto.getKoreanTopic() + "공지사항입니다.";
+					keywordLogger.log("키워드 '영어 : " + englishKeyword + " 한글 : " + koreanKeyword + "에 대한 공지사항이 전송되었습니다.");
+				}
+			}
 
-		if (!noticeDto.getContent().isEmpty()) {
-			body = noticeDto.getContent(); // ex) 경영인의 밤 행사 안내
+			WebhookResponse webhookResponse = WebhookResponse.builder()
+				.result("Webhook 요청이 성공적으로 처리되었습니다.")
+				.topic(topicName)
+				.build();
+			return ResponseEntity.ok().body(webhookResponse);
+		} catch (Exception e) {
+			log.error("공지사항 알림 전송 중 오류 발생", e);
+			return ResponseEntity.status(CustomErrorCode.TOPIC_NOTIFICATION_FAILED.getStatusCode()).body(
+				WebhookResponse.builder()
+					.result("Webhook 요청 처리 중 오류가 발생했습니다.")
+					.build()
+			);
 		}
+	}
 
-		log.info("body 정보: " + body);
+	private String composeMessageTitle(NoticeDto noticeDto) {
+		return String.format("[%s]", noticeDto.getKoreanTopic());
+	}
 
-		if (noticeDto.getUrl() != null) {
-			url = "https://ajou-event.vercel.app/event/" + eventId;
-			webhookLogger.log("리다이렉션하는 url : " + url);
-		}
+	private String composeBody(NoticeDto noticeDto) {
+		return noticeDto.getTitle();
+	}
 
-		// 기본 default 이미지는 학교 로고
-		String imageUrl = "https://www.ajou.ac.kr/_res/ajou/kr/img/intro/img-symbol.png";
+	private String getFirstImageUrl(NoticeDto noticeDto) {
+		List<String> images = Optional.ofNullable(noticeDto.getImages())
+			.filter(imgs -> !imgs.isEmpty())
+			.orElseGet(() -> {
+				List<String> defaultImages = new ArrayList<>();
+				defaultImages.add(DEFAULT_IMAGE_URL);
+				return defaultImages;
+			});
+		return images.get(0);
+	}
 
-		if (noticeDto.getImages() == null || noticeDto.getImages().isEmpty()) {
-			// images 리스트가 null 이거나 비어있을 경우, 기본 이미지 리스트를 생성하고 설정
+	private String getRedirectionUrl(NoticeDto noticeDto, Long eventId) {
+		String url = Optional.ofNullable(noticeDto.getUrl())
+			.filter(u -> !u.isEmpty())
+			.map(u -> REDIRECTION_URL_PREFIX + eventId) // 크롤링 후 DB에 저장된, 우리 앱 상세페이지로 이동
+			.orElse(DEFAULT_CLICK_ACTION_URL);
+		webhookLogger.log("리다이렉션하는 URL: " + url);
+		return url;
+	}
 
-			List<String> defaultImages = new ArrayList<>();
-			defaultImages.add(imageUrl);
-			noticeDto.setImages(defaultImages);
-		}
 
-		// 이미지 URL을 첫 번째 이미지로 설정
-		imageUrl = noticeDto.getImages().get(0);
-
-		log.info("가져온 이미지 URL: " + imageUrl);
-
-		Message message = Message.builder()
-			.setTopic(topic)
+	private Message createFcmMessage(String englishTopic, String messageTitle, String body,
+		String imageUrl, String url) {
+		return Message.builder()
+			.setTopic(englishTopic)
 			.setNotification(Notification.builder()
 				.setTitle(messageTitle)
 				.setBody(body)
@@ -155,44 +195,6 @@ public class FCMService {
 				.build())
 			.putData("click_action", url) // 동아리, 학생회 이벤트는 post한 이벤트 상세 페이지로 redirection "https://ajou-event.shop/event/{eventId}
 			.build();
-
-		send(message);
-
-		webhookLogger.log("크롤링 한 제목 : " + title);
-		webhookLogger.log(topic + "을 구독한 사람에게 알림 전송 완료");
-
-		// englishTopic 값을 사용하여 해당하는 Topic 객체를 가져옴
-		Topic topicEntity = topicRepository.findByDepartment(noticeDto.getEnglishTopic())
-			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
-
-
-		// TopicMemberRepository를 사용하여 해당 topic을 구독하는 멤버 목록을 가져옴
-		List<TopicMember> topicMembers = topicMemberRepository.findByTopic(topicEntity);
-
-		// 멤버 목록에서 각 멤버의 토큰을 가져와 로그로 출력
-		for (TopicMember topicMember : topicMembers) {
-			Member member = topicMember.getMember();
-			List<Token> tokens = member.getTokens();
-			webhookLogger.log("해당 " + topic + "을 구독하는 유저 이메일 " + member.getEmail());
-
-			for (Token token : tokens) {
-				webhookLogger.log(token.getTokenValue());
-			}
-			webhookLogger.log("\n");
-		}
-
-		ResponseEntity.ok().body(ResponseDto.builder()
-			.successStatus(HttpStatus.OK)
-			.successContent("푸쉬 알림 성공")
-			.Data(topic)
-			.build()
-		);
-
-		WebhookResponse webhookResponse = WebhookResponse.builder()
-			.result("Webhook 요청이 성공적으로 처리되었습니다.")
-			.topic(topic)
-			.build();
-		return ResponseEntity.ok().body(webhookResponse);
 	}
 
 

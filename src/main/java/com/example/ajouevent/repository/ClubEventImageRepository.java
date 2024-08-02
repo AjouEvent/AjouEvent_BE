@@ -15,10 +15,6 @@ import io.lettuce.core.dynamic.annotation.Param;
 
 @Repository
 public interface ClubEventImageRepository extends JpaRepository<ClubEventImage, Long> {
-	List<ClubEventImage> findByClubEvent(ClubEvent clubEvent);
-
-	void deleteByUrl(String url);
-
 	@Modifying
 	@Transactional
 	@Query("DELETE FROM ClubEventImage c WHERE c.url IN :urls")

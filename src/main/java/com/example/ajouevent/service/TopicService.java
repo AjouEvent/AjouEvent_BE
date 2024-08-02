@@ -27,7 +27,6 @@ import com.example.ajouevent.dto.TopicResponse;
 import com.example.ajouevent.logger.TopicLogger;
 import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.TokenRepository;
-import com.example.ajouevent.repository.TopicMemberBulkRepository;
 import com.example.ajouevent.repository.TopicMemberRepository;
 import com.example.ajouevent.repository.TopicRepository;
 import com.example.ajouevent.repository.TopicTokenBulkRepository;
@@ -46,7 +45,6 @@ public class TopicService {
 	private final TopicMemberRepository topicMemberRepository;
 	private final MemberRepository memberRepository;
 	private final FCMService fcmService;
-	private final TopicMemberBulkRepository topicMemberBulkRepository;
 	private final TopicTokenBulkRepository topicTokenBulkRepository;
 	private final TopicLogger topicLogger;
 
@@ -77,7 +75,7 @@ public class TopicService {
 			.topic(topic)
 			.member(member)
 			.build();
-		topicMemberBulkRepository.saveAll(List.of(topicMember));
+		topicMemberRepository.save(topicMember);
 
 		// 토픽과 토큰을 매핑하여 저장 -> 사용자가 가지고 있는 토큰들이 topic을 구독
 		List<TopicToken> topicTokens = memberTokens.stream()
@@ -106,10 +104,6 @@ public class TopicService {
 		topicLogger.log(topic.getDepartment() + "토픽 구독 취소");
 		topicLogger.log("멤버 이메일 : " + memberEmail);
 
-		// 멤버가 구독하고 있는 해당 토픽을 찾아서 삭제
-		topicMemberRepository.deleteByTopicAndMember(topic, member);
-		// 해당 토픽을 구독하는 모든 TopicToken 삭제
-		topicTokenRepository.deleteByTopic(topic);
 		List<Token> memberTokens = member.getTokens();
 
 		// FCM 서비스를 사용하여 토픽에 대한 구독 취소 진행
@@ -117,6 +111,12 @@ public class TopicService {
 			.map(Token::getTokenValue)
 			.collect(Collectors.toList());
 		fcmService.unsubscribeFromTopic(topicName, tokenValues);
+
+		// 사용자가 구독하고 있는 토픽에 대한 TopicToken만 삭제
+		topicTokenRepository.deleteByTopicAndTokens(topic, memberTokens);
+
+		// 멤버가 구독하고 있는 해당 토픽을 찾아서 삭제
+		topicMemberRepository.deleteByTopicAndMember(topic, member);
 	}
 
 	@Transactional

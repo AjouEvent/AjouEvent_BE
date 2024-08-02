@@ -18,16 +18,10 @@ import io.lettuce.core.dynamic.annotation.Param;
 public interface TopicMemberRepository extends JpaRepository<TopicMember, Long> {
 	List<TopicMember> findByMember(Member member);
 
-	void deleteByMember(Member member);
-
 	boolean existsByTopicAndMember(Topic topic, Member member);
 
 	// Member와 Topic으로 TopicMember 삭제
 	void deleteByTopicAndMember(Topic topic, Member member);
-
-	List<TopicMember> findByTopic(Topic topic);
-
-
 
 	@Modifying
 	@Query("delete from TopicMember c where c.id in :ids")

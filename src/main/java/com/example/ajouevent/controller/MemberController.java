@@ -103,6 +103,7 @@ public class MemberController {
 		return ResponseEntity.status(HttpStatus.OK).body(userInfoGetDto.getEmail());
 	}
 
+
 	@PatchMapping("/change-password")
 	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<String> changePassword (@RequestBody PasswordDto passwordDto, Principal principal) {
