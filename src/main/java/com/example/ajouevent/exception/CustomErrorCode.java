@@ -32,7 +32,9 @@ public enum CustomErrorCode {
     CODE_FAILED("코드가 일치하지 않습니다.", HttpStatus.BAD_REQUEST.value()),
     TOPIC_NOTIFICATION_FAILED("토픽으로 FCM 메시지를 보내는 도중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR.value()),
     MAX_KEYWORD_LIMIT_EXCEEDED("최대 10개의 키워드를 구독할 수 있습니다.", HttpStatus.BAD_REQUEST.value()),
-    KEYWORD_NOT_FOUND("키워드를 찾을 수 없습니다.", HttpStatus.NOT_FOUND.value());
+    KEYWORD_NOT_FOUND("키워드를 찾을 수 없습니다.", HttpStatus.NOT_FOUND.value()),
+    PASSWORD_FAILED("비밀번호가 잘못되었습니다.", HttpStatus.BAD_REQUEST.value()),
+    REISSUE_PASSWORD_FAILED("비밀번호를 재발급하던 도중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR.value());
 
     private final String message;
     private final int statusCode;

@@ -285,4 +285,47 @@ public class MemberService {
 		return "인증 성공";
 	}
 
+
+	@Transactional
+	public String changePassword (PasswordDto passwordDto, Principal principal) {
+		Member member = memberRepository.findByEmail(principal.getName())
+				.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		if (!BCryptEncoder.matches(passwordDto.getPassword(), member.getPassword())) {
+			throw new CustomException(CustomErrorCode.PASSWORD_FAILED);
+		}
+
+		String newPassword = BCryptEncoder.encode(passwordDto.getNewPassword());
+		member.setPassword(newPassword);
+		memberRepository.save(member);
+		return "비밀번호 변경 완료";
+	}
+
+	@Transactional
+	public String reissuePassword(ReissuePasswordDto reissuePasswordDto) throws Exception {
+		String newPw = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+		Member member = memberRepository.findMemberByEmailAndPhone(reissuePasswordDto.getEmail(), reissuePasswordDto.getPhone());
+		if (member == null)
+			throw new CustomException(CustomErrorCode.EVENT_NOT_FOUND);
+
+		member.setPassword(BCryptEncoder.encode(newPw));
+
+		try {
+			SMTPMsgDto smtpMsgDto = SMTPMsgDto.builder()
+					.address(member.getEmail())
+					.title(member.getName() + "님의 [ajou event] 임시비밀번호 안내 이메일 입니다.")
+					.message("안녕하세요. [ajou event] 임시 비밀번호 안내 관련 이메일 입니다. \n" + "[" + member.getName() + "]" + "님의 임시 비밀번호는 "
+							+ newPw + " 입니다.").build();
+			SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
+			simpleMailMessage.setTo(smtpMsgDto.getAddress());
+			simpleMailMessage.setSubject(smtpMsgDto.getTitle());
+			simpleMailMessage.setText(smtpMsgDto.getMessage());
+			javaMailSender.send(simpleMailMessage);
+		} catch (Exception exception) {
+			log.error("PW Reissue ::{} ", exception.getMessage());
+			throw new CustomException(CustomErrorCode.REISSUE_PASSWORD_FAILED);
+		}
+		return "비밀번호 재설정 완료";
+	}
+
 }

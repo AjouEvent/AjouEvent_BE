@@ -103,4 +103,19 @@ public class MemberController {
 		return ResponseEntity.status(HttpStatus.OK).body(userInfoGetDto.getEmail());
 	}
 
+
+	@PatchMapping("/change-password")
+	@PreAuthorize("isAuthenticated()")
+	public ResponseEntity<String> changePassword (@RequestBody PasswordDto passwordDto, Principal principal) {
+		String res = memberService.changePassword(passwordDto, principal);
+		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
+	// 비밀번호 재발급
+	@PostMapping("/reissue-password")
+	public ResponseEntity<String> reissuePassword (@RequestBody ReissuePasswordDto reissuePasswordDto) throws Exception {
+		String res = memberService.reissuePassword(reissuePasswordDto);
+		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
 }
