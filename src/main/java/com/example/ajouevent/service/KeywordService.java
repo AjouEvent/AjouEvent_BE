@@ -158,4 +158,34 @@ public class KeywordService {
 				.build())
 			.collect(Collectors.toList());
 	}
+
+	// 사용자의 Keyword 구독 목록 초기화
+	@Transactional
+	public void resetAllSubscriptions() {
+		String email = SecurityContextHolder.getContext().getAuthentication().getName();
+		Member member = memberRepository.findByEmail(email)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		List<KeywordMember> keywordMembers = keywordMemberRepository.findByMemberWithKeyword(member);
+		List<Token> tokens = member.getTokens();
+		List<String> tokenValues = tokens.stream()
+			.map(Token::getTokenValue)
+			.toList();
+
+		keywordMembers.forEach(keywordMember -> {
+			fcmService.unsubscribeFromTopic(keywordMember.getKeyword().getEnglishKeyword(), tokenValues);
+			keywordLogger.log("Keyword 구독 초기화 - Member: " + keywordMember.getMember().getEmail() + ", Keyword: "
+				+ keywordMember.getKeyword().getKoreanKeyword() + " - " + keywordMember.getKeyword().getEnglishKeyword());
+		});
+
+		List<Long> tokenIds = tokens.stream()
+			.map(Token::getId)
+			.collect(Collectors.toList());
+		keywordTokenRepository.deleteAllByTokenIds(tokenIds);
+
+		List<Long> keywordMemberIds = keywordMembers.stream()
+			.map(KeywordMember::getId)
+			.collect(Collectors.toList());
+		keywordMemberRepository.deleteAllByIds(keywordMemberIds);
+	}
 }
