@@ -233,7 +233,7 @@ public class TopicService {
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 회원이 구독하는 토픽 목록 조회
-		List<TopicMember> topicMembers = topicMemberRepository.findByMember(member);
+		List<TopicMember> topicMembers = topicMemberRepository.findByMemberWithTopic(member);
 
 		// TopicMember 목록에서 토픽의 이름만 추출하여 반환
 		List<String> topics = topicMembers.stream()
