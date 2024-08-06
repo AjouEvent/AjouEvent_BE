@@ -57,10 +57,10 @@ public class TopicService {
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 		String topicName = topicRequest.getTopic();
 
+		Member member = memberRepository.findByEmailWithTokens(memberEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 		Topic topic = topicRepository.findByDepartment(topicName)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
-		Member member = memberRepository.findByEmail(memberEmail)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 이미 해당 토픽을 구독 중인지 확인
 		if (topicMemberRepository.existsByTopicAndMember(topic, member)) {
@@ -96,17 +96,16 @@ public class TopicService {
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 		String topicName = topicRequest.getTopic();
 
+		Member member = memberRepository.findByEmailWithTokens(memberEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
 		Topic topic = topicRepository.findByDepartment(topicName)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
-		Member member = memberRepository.findByEmail(memberEmail)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		topicLogger.log(topic.getDepartment() + "토픽 구독 취소");
 		topicLogger.log("멤버 이메일 : " + memberEmail);
 
 		List<Token> memberTokens = member.getTokens();
-
-		// FCM 서비스를 사용하여 토픽에 대한 구독 취소 진행
 		List<String> tokenValues = memberTokens.stream()
 			.map(Token::getTokenValue)
 			.collect(Collectors.toList());
