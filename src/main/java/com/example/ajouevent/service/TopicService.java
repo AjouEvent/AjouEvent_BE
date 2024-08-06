@@ -196,7 +196,7 @@ public class TopicService {
 	@Transactional
 	public void resetAllSubscriptions() {
 		String email = SecurityContextHolder.getContext().getAuthentication().getName();
-		Member member = memberRepository.findByEmail(email)
+		Member member = memberRepository.findByEmailWithTokens(email)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		List<TopicMember> topicMembers = topicMemberRepository.findByMemberWithTopic(member);
