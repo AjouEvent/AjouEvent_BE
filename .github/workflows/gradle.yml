@@ -6,11 +6,10 @@ on:
       - main
 
 env:
-  AWS_REGION: ap-northeast-2
   PROJECT_NAME: ajouevent-be
-  AWS_S3_BUCKET: ajouevent-cicd
-  AWS_CODE_DEPLOY_APPLICATION: ajouevent-be
-  AWS_CODE_DEPLOY_GROUP: ajouevent-be
+  BUCKET_NAME: ajouevent-cicd
+  CODE_DEPLOY_APP_NAME: ajouevent-be
+  DEPLOYMENT_GROUP_NAME: ajouevent-be
 
 jobs:
   build-with-gradle:
@@ -60,11 +59,11 @@ jobs:
         aws-region: ap-northeast-2
 
     - name: Upload to S3
-      run: aws s3 cp --region ap-northeast-2 ./$GITHUB_SHA.zip s3://$AWS_S3_BUCKET/$PROJECT_NAME/$GITHUB_SHA.zip
+      run: aws s3 cp --region ap-northeast-2 ./$GITHUB_SHA.zip s3://$BUCKET_NAME/$PROJECT_NAME/$GITHUB_SHA.zip
 
     - name: Code Deploy To EC2 instance
       run: aws deploy create-deployment
-        --application-name $AWS_CODE_DEPLOY_APPLICATION
+        --application-name $CODE_DEPLOY_APP_NAME
         --deployment-config-name CodeDeployDefault.AllAtOnce
-        --deployment-group-name $AWS_CODE_DEPLOY_GROUP
-        --s3-location bucket=$AWS_S3_BUCKET,bundleType=zip,key=$PROJECT_NAME/$GITHUB_SHA.zip
+        --deployment-group-name $DEPLOYMENT_GROUP_NAME
+        --s3-location bucket=$BUCKET_NAME,bundleType=zip,key=$PROJECT_NAME/$GITHUB_SHA.zip
