@@ -2,8 +2,10 @@ name: deploy
 run-name: Running
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+    types: [ "closed" ]
 
 env:
   PROJECT_NAME: ajouevent-be
