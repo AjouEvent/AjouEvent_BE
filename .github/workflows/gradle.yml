@@ -7,6 +7,7 @@ on:
 
 env:
   AWS_REGION: ap-northeast-2
+  PROJECT_NAME: ajouevent-be
   AWS_S3_BUCKET: ajouevent-cicd
   AWS_CODE_DEPLOY_APPLICATION: ajouevent-be
   AWS_CODE_DEPLOY_GROUP: ajouevent-be
