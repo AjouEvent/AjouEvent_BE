@@ -29,10 +29,10 @@ jobs:
       run:
         echo "${{secrets.APPLICATION_YML}}" > ./src/main/resources/application.yml
         echo "${{secrets.APPLICATION_DEV_YML}}" > ./src/main/resources/application-dev.yml
-        echo "${{secrets.CREDENTIAL_JSON}" > ./src/main/resources/credentials.json
-        echo "${{secrets.DOCKER_COMPOSE}" > ./src/main/resources/docker-compose.yml
+        echo "${{secrets.CREDENTIAL_JSON}}" > ./src/main/resources/credentials.json
+        echo "${{secrets.DOCKER_COMPOSE}}" > ./src/main/resources/docker-compose.yml
         echo "${{secrets.PRO_YML}}" > ./src/main/resources/prometheus.yml
-        echo "${{secrets.FIREBASE_JSON}" > ./src/main/resources/firebase/ajou-event-firebase-adminsdk-aeken-655a7eca6d.json
+        echo "${{secrets.FIREBASE_JSON}}" > ./src/main/resources/firebase/ajou-event-firebase-adminsdk-aeken-655a7eca6d.json
 
     - name: Build with Gradle Wrapper
       run: ./gradlew build
