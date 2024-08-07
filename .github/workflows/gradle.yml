@@ -15,6 +15,8 @@ env:
 jobs:
   build-with-gradle:
     runs-on: self-hosted
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v4
     - name: Set up JDK 21
@@ -37,6 +39,10 @@ jobs:
         echo "${{secrets.DOCKER_COMPOSE}}" > ./src/main/resources/docker-compose.yml
         echo "${{secrets.PRO_YML}}" > ./src/main/resources/prometheus.yml
         echo "${{secrets.FIREBASE_JSON}}" > ./src/main/resources/firebase/ajou-event-firebase-adminsdk-aeken-655a7eca6d.json
+
+    - name: Permission for gradlew
+      run: chmod +x ./gradlew
+      shell: bash
 
     - name: Build with Gradle Wrapper
       run: ./gradlew build
