@@ -13,7 +13,7 @@ env:
 
 jobs:
   build-with-gradle:
-    runs-on: ubuntu-20.04
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
     - name: Set up JDK 21
@@ -21,21 +21,30 @@ jobs:
       with:
         java-version: '21'
         distribution: 'temurin'
+
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@417ae3ccd767c252f5661f1ace9f835f9654f2b5
+
+    - name: secret properties add
+      run: echo "${{secrets.APPLICATION_YML}}" > ./src/main/resources/application.yml
+
     - name: Build with Gradle Wrapper
       run: ./gradlew build
+
     - name: Make Zip File
       run: zip -qq -r ./$GITHUB_SHA.zip .
       shell: bash
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_PRIVATE_ACCESS_KEY }}
         aws-region: ap-northeast-2
+
     - name: Upload to S3
       run: aws s3 cp --region ap-northeast-2 ./$GITHUB_SHA.zip s3://$BUCKET_NAME/$PROJECT_NAME/$GITHUB_SHA.zip
+
     - name: Code Deploy To EC2 instance
       run: aws deploy create-deployment
         --application-name $CODE_DEPLOY_APP_NAME
