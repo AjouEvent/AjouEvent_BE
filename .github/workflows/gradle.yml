@@ -32,7 +32,7 @@ jobs:
       run: mkdir ./src/main/resources/firebase
 
     - name: secret properties add
-      run: |
+      run:
         echo '${{secrets.APPLICATION_YML}}' > ./src/main/resources/application.yml
         echo '${{secrets.APPLICATION_DEV_YML}}' > ./src/main/resources/application-dev.yml
         echo '${{secrets.CREDENTIAL_JSON}}' > ./src/main/resources/credentials.json
