@@ -32,6 +32,7 @@ jobs:
         echo "${{secrets.CREDENTIAL_JSON}}" > ./src/main/resources/credentials.json
         echo "${{secrets.DOCKER_COMPOSE}}" > ./src/main/resources/docker-compose.yml
         echo "${{secrets.PRO_YML}}" > ./src/main/resources/prometheus.yml
+        mkdir ./src/main/resources/firebase
         echo "${{secrets.FIREBASE_JSON}}" > ./src/main/resources/firebase/ajou-event-firebase-adminsdk-aeken-655a7eca6d.json
 
     - name: Build with Gradle Wrapper
