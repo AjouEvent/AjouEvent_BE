@@ -3,7 +3,7 @@ os: linux
 
 files:
   - source: /
-    destination: /home/ubuntu/ajouevent-bes
+    destination: /home/ubuntu/ajouevent-be
 permissions:
   - object: /home/ubuntu/ajouevent-be/
     owner: ubuntu
