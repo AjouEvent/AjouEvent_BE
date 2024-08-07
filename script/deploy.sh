@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-REPOSITORY=/home/ubuntu/ajouevent-be
+REPOSITORY=/home/ubuntu/AjouEvent
 cd $REPOSITORY
 
-APP_NAME=ajouevent-be
+APP_NAME=AjouEvent
 JAR_NAME=$(ls $REPOSITORY/build/libs/ | grep 'SNAPSHOT.jar' | tail -n 1)
 JAR_PATH=$REPOSITORY/build/libs/$JAR_NAME
 
