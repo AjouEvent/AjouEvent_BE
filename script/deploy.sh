@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-REPOSITORY=/home/ubuntu/ajouevent-be
+REPOSITORY=/home/ubuntu/AjouEvent_BE
 cd $REPOSITORY
 
 APP_NAME=ajouevent-be
