@@ -226,24 +226,23 @@ public class TopicService {
 
 	// 사용자가 구독하고 있는 토픽 조회
 	@Transactional(readOnly = true)
-	public TopicResponse getSubscribedTopics() {
-		// 스프링 시큐리티 컨텍스트에서 현재 사용자의 이메일 가져오기
+	public List<TopicResponse> getSubscribedTopics() {
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-		log.info("가져온 이메일 : " + memberEmail);
-		// 이메일을 기반으로 회원 정보 조회
 		Member member = memberRepository.findByEmail(memberEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 회원이 구독하는 토픽 목록 조회
 		List<TopicMember> topicMembers = topicMemberRepository.findByMemberWithTopic(member);
 
-		// TopicMember 목록에서 토픽의 이름만 추출하여 반환
-		List<String> topics = topicMembers.stream()
-			.map(topicMember -> topicMember.getTopic().getKoreanTopic())
+		List<TopicResponse> topicResponseList = topicMembers.stream()
+			.map(topicMember -> new TopicResponse(
+				topicMember.getId(),
+				topicMember.getTopic().getKoreanTopic(),
+				topicMember.getTopic().getDepartment()
+			))
+			.sorted(Comparator.comparing(TopicResponse::getId).reversed())
 			.collect(Collectors.toList());
-
-		// TopicResponse 객체 생성하여 반환
-		return new TopicResponse(topics);
+		return topicResponseList;
 	}
 
 
