@@ -182,4 +182,10 @@ public class EventController {
 	public String testGetMethod() {
 		return "get";
 	}
+
+	@PreAuthorize("isAuthenticated()")
+	@GetMapping("/getSubscribedPostsByKeyword")
+	public List<EventWithKeywordDto> getAllCLubEventsBySubscribedKeywords(Principal principal) {
+		return eventService.getAllCLubEventsBySubscribedKeywords(principal);
+	}
 }

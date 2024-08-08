@@ -7,11 +7,15 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 
+import com.example.ajouevent.domain.Keyword;
+import com.example.ajouevent.domain.KeywordMember;
+import com.example.ajouevent.dto.EventWithKeywordDto;
+import com.example.ajouevent.repository.KeywordMemberRepository;
 import com.example.ajouevent.util.SecurityUtil;
 import com.example.ajouevent.util.JsonParsingUtil;
 import com.example.ajouevent.domain.EventBanner;
@@ -81,6 +85,7 @@ public class EventService {
 	private final EventLikeRepository eventLikeRepository;
 	private final TopicMemberRepository topicMemberRepository;
 	private final EventBannerRepository eventBannerRepository;
+	private final KeywordMemberRepository keywordMemberRepository;
 	private final JsonParsingUtil jsonParsingUtil;
 	private final CacheLogger cacheLogger;
 	private final CookieService cookieService;
@@ -951,5 +956,49 @@ public class EventService {
 			Long viewCount = eventIdToViewCountMap.get(dto.getEventId());
 			dto.setViewCount(viewCount != null ? viewCount : 0);
 		}
+	}
+
+	// 사용자가 구독한 키워드 글 모음 조회
+	@Transactional(readOnly = true)
+	public List<EventWithKeywordDto> getAllCLubEventsBySubscribedKeywords(Principal principal) {
+		// 사용자가 로그인하지 않은 경우
+		if (principal == null) {
+			throw new CustomException(CustomErrorCode.LOGIN_NEEDED);
+		}
+
+		String userEmail = principal.getName();
+		Member member = memberRepository.findByEmail(userEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		List<KeywordMember> keywordMembers = keywordMemberRepository.findByMemberWithKeywordAndTopic(member);
+		List<Keyword> keywords = keywordMembers.stream()
+			.map(KeywordMember::getKeyword)
+			.toList();
+
+		List<EventWithKeywordDto> eventWithKeywordDtos = new ArrayList<>();
+		// 각 키워드에 대해 게시글을 검색하고 결과를 리스트에 추가합니다.
+		for (Keyword keyword : keywords) {
+			Type type = keyword.getTopic().getType();
+			List<ClubEvent> clubEventSlice = eventRepository.findByTypeAndTitleContaining(type, keyword.getKoreanKeyword());
+			// 검색된 게시글을 리스트에 추가합니다.
+			List<EventWithKeywordDto> eventWithKeywordDtoList = clubEventSlice.stream()
+				.map(clubEvent -> EventWithKeywordDto.toDto(clubEvent, keyword.getKoreanKeyword()))
+				.toList();
+			eventWithKeywordDtos.addAll(eventWithKeywordDtoList);
+		}
+
+		// 사용자가 찜한 게시글 목록 조회
+		List<EventLike> likedEventSlice = member.getEventLikeList();
+		Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
+			.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+
+		// 각 이벤트 DTO에 사용자의 찜 여부 설정
+		for (EventWithKeywordDto dto : eventWithKeywordDtos) {
+			dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
+		}
+
+		return eventWithKeywordDtos.stream()
+			.sorted(Comparator.comparing(EventWithKeywordDto::getCreatedAt).reversed())
+			.toList();
 	}
 }
