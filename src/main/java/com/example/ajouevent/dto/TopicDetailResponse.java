@@ -5,8 +5,8 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public class TopicResponse {
-	private final Long id;
+public class TopicDetailResponse {
+	private final String classification;
+	private final Long koreanOrder;
 	private final String koreanTopic;
-	private final String englishTopic;
 }

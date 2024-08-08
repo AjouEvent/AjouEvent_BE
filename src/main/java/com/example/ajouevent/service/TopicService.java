@@ -3,11 +3,13 @@ package com.example.ajouevent.service;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.example.ajouevent.dto.TopicDetailResponse;
 import com.example.ajouevent.dto.TopicStatus;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
@@ -224,37 +226,29 @@ public class TopicService {
 
 	// 사용자가 구독하고 있는 토픽 조회
 	@Transactional(readOnly = true)
-	public TopicResponse getSubscribedTopics() {
-		// 스프링 시큐리티 컨텍스트에서 현재 사용자의 이메일 가져오기
+	public List<TopicResponse> getSubscribedTopics() {
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-		log.info("가져온 이메일 : " + memberEmail);
-		// 이메일을 기반으로 회원 정보 조회
 		Member member = memberRepository.findByEmail(memberEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 회원이 구독하는 토픽 목록 조회
 		List<TopicMember> topicMembers = topicMemberRepository.findByMemberWithTopic(member);
 
-		// TopicMember 목록에서 토픽의 이름만 추출하여 반환
-		List<String> topics = topicMembers.stream()
-			.map(topicMember -> topicMember.getTopic().getKoreanTopic())
+		List<TopicResponse> topicResponseList = topicMembers.stream()
+			.map(topicMember -> new TopicResponse(
+				topicMember.getId(),
+				topicMember.getTopic().getKoreanTopic(),
+				topicMember.getTopic().getDepartment()
+			))
+			.sorted(Comparator.comparing(TopicResponse::getId).reversed())
 			.collect(Collectors.toList());
-
-		// TopicResponse 객체 생성하여 반환
-		return new TopicResponse(topics);
+		return topicResponseList;
 	}
 
-	// 전체 topic 조회
-	@Transactional(readOnly = true)
-	public TopicResponse getAllTopics() {
-		List<Topic> topics = topicRepository.findAll();
-		List<String> topicName = topics.stream()
-			.map(Topic::getKoreanTopic)
-			.toList();
-		return new TopicResponse(topicName);
-	}
 
-	// 사용자가 구독하고 있는 토픽 조회
+
+
+	// 전체 Topic에 대해 사용자의 구독 여부 조회
 	@Transactional(readOnly = true)
 	public List<TopicStatus> getTopicWithUserSubscriptionsStatus(Principal principal) {
 		List<Topic> allTopics = topicRepository.findAll();
@@ -266,8 +260,33 @@ public class TopicService {
 			.map(subscription -> subscription.getTopic().getId())
 			.collect(Collectors.toSet());
 
-		return allTopics.stream()
-			.map(topic -> new TopicStatus(topic, subscribedTopicIds.contains(topic.getId())))
-			.collect(Collectors.toList());
+		List<TopicStatus> topicStatusList = allTopics.stream()
+			.map(topic -> TopicStatus.builder()
+				.id(topic.getId())
+				.koreanTopic(topic.getKoreanTopic())
+				.englishTopic(topic.getDepartment())
+				.classification(topic.getClassification())
+				.subscribed(subscribedTopicIds.contains(topic.getId()))
+				.koreanOrder(topic.getKoreanOrder())
+				.build())
+			.sorted(Comparator.comparingLong(TopicStatus::getKoreanOrder))
+			.toList();
+		return topicStatusList;
+	}
+
+	// 전체 topic 조회
+	@Transactional(readOnly = true)
+	public List<TopicDetailResponse> getAllTopics() {
+		List<Topic> topics = topicRepository.findAll();
+
+		List<TopicDetailResponse> topicDetailResponseList = topics.stream()
+			.map(topic -> new TopicDetailResponse(
+				topic.getClassification(),
+				topic.getKoreanOrder(),
+				topic.getKoreanTopic()
+			))
+			.sorted(Comparator.comparingLong(TopicDetailResponse::getKoreanOrder))
+			.toList();
+		return topicDetailResponseList;
 	}
 }
