@@ -59,6 +59,7 @@ public enum Type {
     SOFTWARE("Software", "소프트웨어학과"),
     SPORTSLEISURESTUDIES("SportsLeisureStudies", "스포츠레저학과"),
     TRANSPORTATIONSYSTEMSENGINEERING("TransportationSystemsEngineering", "교통시스템공학과"),
+    DORMITORY("Dormitory", "기숙사"),
     TEST("Test", "테스트");
 
 

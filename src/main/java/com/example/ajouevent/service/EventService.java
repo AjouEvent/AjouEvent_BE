@@ -598,7 +598,7 @@ public class EventService {
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 사용자가 구독하는 모든 토픽 가져오기
-		List<TopicMember> subscribedTopicMembers = topicMemberRepository.findByMember(member);
+		List<TopicMember> subscribedTopicMembers = topicMemberRepository.findByMemberWithTopic(member);
 
 		if (subscribedTopicMembers.isEmpty()) {
 			log.info("사용자가 구독하는 토픽이 없습니다.");

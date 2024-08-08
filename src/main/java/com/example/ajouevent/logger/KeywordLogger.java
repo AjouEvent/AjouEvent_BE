@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class KeywordLogger {
 
-	private static final String LOG_FILE_PATH = "alarm_log.txt";
+	private static final String LOG_FILE_PATH = "keyword_log.txt";
 
 	public void log(String message) {
 		try {

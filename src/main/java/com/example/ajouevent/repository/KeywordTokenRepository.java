@@ -18,4 +18,9 @@ public interface KeywordTokenRepository extends JpaRepository<KeywordToken, Long
 	@Modifying
 	@Query("DELETE FROM KeywordToken kt WHERE kt.keyword = :keyword AND kt.token IN :tokens")
 	void deleteByKeywordAndTokens(@Param("keyword") Keyword keyword, @Param("tokens") List<Token> tokens);
+
+	@Modifying
+	@Query("DELETE FROM KeywordToken kt WHERE kt.token.id IN :tokenIds")
+	void deleteAllByTokenIds(@Param("tokenIds") List<Long> tokenIds);
+
 }

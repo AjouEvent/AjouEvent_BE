@@ -26,4 +26,7 @@ public interface TopicMemberRepository extends JpaRepository<TopicMember, Long> 
 	@Modifying
 	@Query("delete from TopicMember c where c.id in :ids")
 	void deleteAllByIds(@Param("ids") List<Long> ids);
+
+	@Query("SELECT tm FROM TopicMember tm JOIN FETCH tm.topic WHERE tm.member = :member")
+	List<TopicMember> findByMemberWithTopic(@Param("member") Member member);
 }

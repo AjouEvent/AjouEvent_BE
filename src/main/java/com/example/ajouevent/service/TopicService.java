@@ -57,10 +57,10 @@ public class TopicService {
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 		String topicName = topicRequest.getTopic();
 
+		Member member = memberRepository.findByEmailWithTokens(memberEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 		Topic topic = topicRepository.findByDepartment(topicName)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
-		Member member = memberRepository.findByEmail(memberEmail)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 이미 해당 토픽을 구독 중인지 확인
 		if (topicMemberRepository.existsByTopicAndMember(topic, member)) {
@@ -96,17 +96,16 @@ public class TopicService {
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 		String topicName = topicRequest.getTopic();
 
+		Member member = memberRepository.findByEmailWithTokens(memberEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
 		Topic topic = topicRepository.findByDepartment(topicName)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
-		Member member = memberRepository.findByEmail(memberEmail)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		topicLogger.log(topic.getDepartment() + "토픽 구독 취소");
 		topicLogger.log("멤버 이메일 : " + memberEmail);
 
 		List<Token> memberTokens = member.getTokens();
-
-		// FCM 서비스를 사용하여 토픽에 대한 구독 취소 진행
 		List<String> tokenValues = memberTokens.stream()
 			.map(Token::getTokenValue)
 			.collect(Collectors.toList());
@@ -193,46 +192,34 @@ public class TopicService {
 		tokenRepository.deleteAll(expiredTokens);
 	}
 
-	// 사용자의 구독 목록 초기화
+	// 사용자의 Topic 구독 목록 초기화
 	@Transactional
 	public void resetAllSubscriptions() {
 		String email = SecurityContextHolder.getContext().getAuthentication().getName();
-		Member member = memberRepository.findByEmail(email)
+		Member member = memberRepository.findByEmailWithTokens(email)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
-		// Member가 구독하고 있는 Topic과 Member가 가지고 있는 토큰을 가져옴
-		List<TopicMember> topicMembers = member.getTopicMembers();
+		List<TopicMember> topicMembers = topicMemberRepository.findByMemberWithTopic(member);
 		List<Token> tokens = member.getTokens();
-
 		List<String> tokenValues = tokens.stream()
 			.map(Token::getTokenValue)
 			.toList();
 
-		// 사용자 구독하고 있는 topic 로그 출력
-		topicLogger.log(email + " 가 구독하고 있는 토픽 목록 : ");
-		topicMembers.forEach(topicMember -> {
-			topicLogger.log("Topic: " + topicMember.getTopic().getDepartment());
-			System.out.println(topicMember);
-		});
-
-		// FcmService를 호출해서 Member가 가지고 있는 Token과 Member가 구독하고 있는 Topic을 1대1로 매핑하여 구독 취소
-		// TopicMemberRepository, TopicTokenRepository에서도 삭제
 		topicMembers.forEach(topicMember -> {
 			fcmService.unsubscribeFromTopic(topicMember.getTopic().getDepartment(), tokenValues);
-			topicLogger.log("Deleting TopicMember - Member: " + topicMember.getMember().getEmail() + ", Topic: "
+			topicLogger.log("Topic 구독 초기화 - Member: " + topicMember.getMember().getEmail() + ", Topic: "
 				+ topicMember.getTopic().getDepartment());
 		});
 
-		List<Long> topicIds = topicMembers.stream()
-			.map(tm -> tm.getTopic().getId())
+		List<Long> tokenIds = tokens.stream()
+			.map(Token::getId)
 			.collect(Collectors.toList());
-		topicTokenRepository.deleteAllByIds(topicIds);
+		topicTokenRepository.deleteAllByTokenIds(tokenIds);
 
 		List<Long> topicMemberIds = topicMembers.stream()
 			.map(TopicMember::getId)
 			.collect(Collectors.toList());
 		topicMemberRepository.deleteAllByIds(topicMemberIds);
-
 	}
 
 	// 사용자가 구독하고 있는 토픽 조회
@@ -246,7 +233,7 @@ public class TopicService {
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 회원이 구독하는 토픽 목록 조회
-		List<TopicMember> topicMembers = topicMemberRepository.findByMember(member);
+		List<TopicMember> topicMembers = topicMemberRepository.findByMemberWithTopic(member);
 
 		// TopicMember 목록에서 토픽의 이름만 추출하여 반환
 		List<String> topics = topicMembers.stream()
