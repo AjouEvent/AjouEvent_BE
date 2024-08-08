@@ -3,11 +3,13 @@ package com.example.ajouevent.service;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.example.ajouevent.dto.TopicDetailResponse;
 import com.example.ajouevent.dto.TopicStatus;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
@@ -244,15 +246,7 @@ public class TopicService {
 		return new TopicResponse(topics);
 	}
 
-	// 전체 topic 조회
-	@Transactional(readOnly = true)
-	public TopicResponse getAllTopics() {
-		List<Topic> topics = topicRepository.findAll();
-		List<String> topicName = topics.stream()
-			.map(Topic::getKoreanTopic)
-			.toList();
-		return new TopicResponse(topicName);
-	}
+
 
 	// 사용자가 구독하고 있는 토픽 조회
 	@Transactional(readOnly = true)
@@ -269,5 +263,21 @@ public class TopicService {
 		return allTopics.stream()
 			.map(topic -> new TopicStatus(topic, subscribedTopicIds.contains(topic.getId())))
 			.collect(Collectors.toList());
+	}
+
+	// 전체 topic 조회
+	@Transactional(readOnly = true)
+	public List<TopicDetailResponse> getAllTopics() {
+		List<Topic> topics = topicRepository.findAll();
+
+		List<TopicDetailResponse> topicDetailResponseList = topics.stream()
+			.map(topic -> new TopicDetailResponse(
+				topic.getClassification(),
+				topic.getKoreanOrder(),
+				topic.getKoreanTopic()
+			))
+			.sorted(Comparator.comparingLong(TopicDetailResponse::getKoreanOrder))
+			.toList();
+		return topicDetailResponseList;
 	}
 }

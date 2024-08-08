@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.ajouevent.dto.ResponseDto;
+import com.example.ajouevent.dto.TopicDetailResponse;
 import com.example.ajouevent.dto.TopicRequest;
 import com.example.ajouevent.dto.TopicResponse;
 import com.example.ajouevent.dto.TopicStatus;
@@ -61,6 +62,11 @@ public class TopicController {
 		);
 	}
 
+	@GetMapping("/all")
+	public List<TopicDetailResponse> getAllTopics() {
+		return topicService.getAllTopics();
+	}
+
 	@PreAuthorize("isAuthenticated()")
 	@GetMapping("/subscriptions")
 	public TopicResponse getUserSubscriptions() {
@@ -72,10 +78,5 @@ public class TopicController {
 	@GetMapping("/subscriptionsStatus")
 	public List<TopicStatus> getTopicWithUserSubscriptionsStatus(Principal principal) {
 		return topicService.getTopicWithUserSubscriptionsStatus(principal);
-	}
-
-	@GetMapping("/all")
-	public TopicResponse getAllTopics() {
-		return topicService.getAllTopics();
 	}
 }
