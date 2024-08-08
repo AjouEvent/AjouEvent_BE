@@ -248,7 +248,8 @@ public class TopicService {
 
 
 
-	// 사용자가 구독하고 있는 토픽 조회
+
+	// 전체 Topic에 대해 사용자의 구독 여부 조회
 	@Transactional(readOnly = true)
 	public List<TopicStatus> getTopicWithUserSubscriptionsStatus(Principal principal) {
 		List<Topic> allTopics = topicRepository.findAll();
@@ -260,9 +261,18 @@ public class TopicService {
 			.map(subscription -> subscription.getTopic().getId())
 			.collect(Collectors.toSet());
 
-		return allTopics.stream()
-			.map(topic -> new TopicStatus(topic, subscribedTopicIds.contains(topic.getId())))
-			.collect(Collectors.toList());
+		List<TopicStatus> topicStatusList = allTopics.stream()
+			.map(topic -> TopicStatus.builder()
+				.id(topic.getId())
+				.koreanTopic(topic.getKoreanTopic())
+				.englishTopic(topic.getDepartment())
+				.classification(topic.getClassification())
+				.subscribed(subscribedTopicIds.contains(topic.getId()))
+				.koreanOrder(topic.getKoreanOrder())
+				.build())
+			.sorted(Comparator.comparingLong(TopicStatus::getKoreanOrder))
+			.toList();
+		return topicStatusList;
 	}
 
 	// 전체 topic 조회
