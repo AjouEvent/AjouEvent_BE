@@ -16,6 +16,7 @@ import com.example.ajouevent.domain.Keyword;
 import com.example.ajouevent.domain.KeywordMember;
 import com.example.ajouevent.dto.EventWithKeywordDto;
 import com.example.ajouevent.repository.KeywordMemberRepository;
+import com.example.ajouevent.repository.KeywordRepository;
 import com.example.ajouevent.util.SecurityUtil;
 import com.example.ajouevent.util.JsonParsingUtil;
 import com.example.ajouevent.domain.EventBanner;
@@ -958,7 +959,7 @@ public class EventService {
 		}
 	}
 
-	// 사용자가 구독한 키워드 글 모음 조회
+	// 사용자가 구독한 키워드 선택해서 해당 키워드 글만 조회
 	@Transactional(readOnly = true)
 	public List<EventWithKeywordDto> getAllCLubEventsBySubscribedKeywords(Principal principal) {
 		// 사용자가 로그인하지 않은 경우
@@ -986,6 +987,45 @@ public class EventService {
 				.toList();
 			eventWithKeywordDtos.addAll(eventWithKeywordDtoList);
 		}
+
+		// 사용자가 찜한 게시글 목록 조회
+		List<EventLike> likedEventSlice = member.getEventLikeList();
+		Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
+			.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+
+		// 각 이벤트 DTO에 사용자의 찜 여부 설정
+		for (EventWithKeywordDto dto : eventWithKeywordDtos) {
+			dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
+		}
+
+		return eventWithKeywordDtos.stream()
+			.sorted(Comparator.comparing(EventWithKeywordDto::getCreatedAt).reversed())
+			.toList();
+	}
+
+	// 사용자가 구독한 키워드 중 단일 키워드에 대한 글 조회
+	@Transactional(readOnly = true)
+	public List<EventWithKeywordDto> getClubEventsByKeyword(String englishKeyword, Principal principal) {
+		if (principal == null) {
+			throw new CustomException(CustomErrorCode.LOGIN_NEEDED);
+		}
+
+		String userEmail = principal.getName();
+		Member member = memberRepository.findByEmail(userEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		Keyword keyword = keywordRepository.findByEnglishKeyword(englishKeyword)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.KEYWORD_NOT_FOUND));
+
+		List<EventWithKeywordDto> eventWithKeywordDtos = new ArrayList<>();
+
+		Type type = keyword.getTopic().getType();
+		List<ClubEvent> clubEventSlice = eventRepository.findByTypeAndTitleContaining(type, keyword.getKoreanKeyword());
+
+		List<EventWithKeywordDto> eventWithKeywordDtoList = clubEventSlice.stream()
+			.map(clubEvent -> EventWithKeywordDto.toDto(clubEvent, keyword.getKoreanKeyword()))
+			.toList();
+		eventWithKeywordDtos.addAll(eventWithKeywordDtoList);
 
 		// 사용자가 찜한 게시글 목록 조회
 		List<EventLike> likedEventSlice = member.getEventLikeList();

@@ -188,4 +188,10 @@ public class EventController {
 	public List<EventWithKeywordDto> getAllCLubEventsBySubscribedKeywords(Principal principal) {
 		return eventService.getAllCLubEventsBySubscribedKeywords(principal);
 	}
+
+	@PreAuthorize("isAuthenticated()")
+	@GetMapping("/getSubscribedPostsByKeyword/{keyword}")
+	public List<EventWithKeywordDto> getClubEventsByKeyword(@PathVariable("keyword") String englishKeyword, @PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
+		return eventService.getClubEventsByKeyword(englishKeyword, principal);
+	}
 }
