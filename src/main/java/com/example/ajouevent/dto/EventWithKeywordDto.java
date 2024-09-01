@@ -34,7 +34,7 @@ public class EventWithKeywordDto {
 	public static EventWithKeywordDto toDto(ClubEvent clubEvent, String keyword) {
 		return EventWithKeywordDto.builder()
 			.eventId(clubEvent.getEventId())
-			.title(keyword + "-" + clubEvent.getTitle())
+			.title(clubEvent.getTitle())
 			.content(clubEvent.getContent())
 			.imgUrl(clubEvent.getClubEventImageList().get(0).getUrl())
 			.url(clubEvent.getUrl())
