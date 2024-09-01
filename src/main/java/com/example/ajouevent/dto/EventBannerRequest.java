@@ -14,8 +14,9 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class EventBannerRequest {
-	private Long eventId;
-	private Long imgOrder;
+	private Long bannerOrder;
+	private String imgUrl;
+	private String siteUrl;
 	private LocalDate startDate;
 	private LocalDate endDate;
 }

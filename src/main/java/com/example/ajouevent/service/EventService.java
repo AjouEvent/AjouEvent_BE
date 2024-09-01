@@ -872,23 +872,19 @@ public class EventService {
 
 	// 홈화면에 들어갈 이벤트 배너 추가
 	public void addEventBanner(EventBannerRequest eventBannerRequest) {
-		ClubEvent clubEvent = eventRepository.findById(eventBannerRequest.getEventId())
-			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
-
 		EventBanner eventBanner = EventBanner.builder()
-			.clubEvent(clubEvent)
-			.imgOrder(eventBannerRequest.getImgOrder())
+			.imgUrl(eventBannerRequest.getImgUrl())
+			.siteUrl(eventBannerRequest.getSiteUrl())
+			.bannerOrder(eventBannerRequest.getBannerOrder())
 			.startDate(eventBannerRequest.getStartDate())
 			.endDate(eventBannerRequest.getEndDate())
 			.build();
-
 		eventBannerRepository.save(eventBanner);
-
 	}
 
 	// 홈화면에 들어갈 이벤트 배너 불러오기
 	public List<EventBannerDto> getAllEventBanners() {
-		return eventBannerRepository.findAllByOrderByImgOrderAsc().stream()
+		return eventBannerRepository.findAllByOrderByBannerOrderAsc().stream()
 			.map(EventBannerDto::toDto)
 			.collect(Collectors.toList());
 	}
