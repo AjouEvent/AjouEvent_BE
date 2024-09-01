@@ -86,6 +86,7 @@ public class EventService {
 	private final EventLikeRepository eventLikeRepository;
 	private final TopicMemberRepository topicMemberRepository;
 	private final EventBannerRepository eventBannerRepository;
+	private final KeywordRepository keywordRepository;
 	private final KeywordMemberRepository keywordMemberRepository;
 	private final JsonParsingUtil jsonParsingUtil;
 	private final CacheLogger cacheLogger;
