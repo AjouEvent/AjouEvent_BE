@@ -881,11 +881,26 @@ public class EventService {
 			.endDate(eventBannerRequest.getEndDate())
 			.build();
 		eventBannerRepository.save(eventBanner);
+
+		//캐시 초기화
+		jsonParsingUtil.clearCache("Banners");
 	}
 
 	// 홈화면에 들어갈 이벤트 배너 불러오기
 	public List<EventBannerDto> getAllEventBanners() {
-		return eventBannerRepository.findAllByOrderByBannerOrderAsc().stream()
+		String cacheKey = "Banners";
+		Optional<List<EventBannerDto>> cachedData = jsonParsingUtil.getData(cacheKey, new TypeReference<List<EventBannerDto>>() {});
+
+		if (cachedData.isPresent()) {
+			List<EventBannerDto> response = cachedData.get();
+			return response;
+		}
+
+		List<EventBanner> eventBannerDtoList = eventBannerRepository.findAllByOrderByBannerOrderAsc();
+
+		jsonParsingUtil.saveData(cacheKey, eventBannerDtoList, 6, TimeUnit.HOURS);
+
+		return eventBannerDtoList.stream()
 			.map(EventBannerDto::toDto)
 			.collect(Collectors.toList());
 	}
@@ -895,6 +910,9 @@ public class EventService {
 	public void deleteExpiredBanners() {
 		LocalDate now = LocalDate.now();
 		eventBannerRepository.deleteByEndDateBefore(now);
+
+		//캐시 초기화
+		jsonParsingUtil.clearCache("Banners");
 	}
 
 	// 랭킹 1시간마다 업데이트
