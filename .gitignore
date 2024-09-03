@@ -60,3 +60,5 @@ out/
 /notification_log.txt
 /src/main/resources/docker-compose.yml
 /src/main/resources/prometheus.yml
+
+/src/main/.DS_Store
