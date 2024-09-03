@@ -80,7 +80,6 @@ import lombok.extern.slf4j.Slf4j;
 public class EventService {
 	private final MemberRepository memberRepository;
 	private final EventRepository eventRepository;
-	private final KeywordRepository keywordRepository;
 	private final ClubEventImageRepository clubEventImageRepository;
 	private final S3Upload s3Upload;
 	private final FileService fileService;
