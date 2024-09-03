@@ -72,4 +72,11 @@ public class JsonParsingUtil {
 			redisTemplate.delete(keys);
 		}
 	}
+
+	public void clearCache(String name) {
+		Set<String> keys = redisTemplate.keys(name);
+		if (keys != null) {
+			redisTemplate.delete(keys);
+		}
+	}
 }
