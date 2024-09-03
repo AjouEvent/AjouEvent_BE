@@ -22,10 +22,6 @@ import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import com.example.ajouevent.repository.EmailCheckRedisRepository;
 import com.google.api.client.auth.oauth2.TokenResponse;
-import com.google.firebase.auth.UserInfo;
-import org.apache.catalina.User;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -34,19 +30,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.ajouevent.repository.MemberRepository;
-import com.example.ajouevent.repository.TokenRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import javax.security.auth.login.LoginException;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class MemberService {
 	private final MemberRepository memberRepository;
-	private final TokenRepository tokenRepository;
 	private final PasswordEncoder encoder;
 	private final JwtUtil jwtUtil;
 	private final BCryptPasswordEncoder BCryptEncoder;
@@ -229,7 +221,6 @@ public class MemberService {
 		return !memberRepository.existsByEmail(email);
 	}
 
-	@Transactional
 	public String EmailCheckRequest(String email) {
 		String authCode = this.createCode();
 		EmailCheck existingEmailCheck = emailCheckRedisRepository.findByEmail(email);
