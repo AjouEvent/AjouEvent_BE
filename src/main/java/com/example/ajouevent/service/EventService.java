@@ -87,6 +87,7 @@ public class EventService {
 	private final EventLikeRepository eventLikeRepository;
 	private final TopicMemberRepository topicMemberRepository;
 	private final EventBannerRepository eventBannerRepository;
+	private final KeywordRepository keywordRepository;
 	private final KeywordMemberRepository keywordMemberRepository;
 	private final JsonParsingUtil jsonParsingUtil;
 	private final CacheLogger cacheLogger;
@@ -873,23 +874,34 @@ public class EventService {
 
 	// 홈화면에 들어갈 이벤트 배너 추가
 	public void addEventBanner(EventBannerRequest eventBannerRequest) {
-		ClubEvent clubEvent = eventRepository.findById(eventBannerRequest.getEventId())
-			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
-
 		EventBanner eventBanner = EventBanner.builder()
-			.clubEvent(clubEvent)
-			.imgOrder(eventBannerRequest.getImgOrder())
+			.imgUrl(eventBannerRequest.getImgUrl())
+			.siteUrl(eventBannerRequest.getSiteUrl())
+			.bannerOrder(eventBannerRequest.getBannerOrder())
 			.startDate(eventBannerRequest.getStartDate())
 			.endDate(eventBannerRequest.getEndDate())
 			.build();
-
 		eventBannerRepository.save(eventBanner);
 
+		//캐시 초기화
+		jsonParsingUtil.clearCache("Banners");
 	}
 
 	// 홈화면에 들어갈 이벤트 배너 불러오기
 	public List<EventBannerDto> getAllEventBanners() {
-		return eventBannerRepository.findAllByOrderByImgOrderAsc().stream()
+		String cacheKey = "Banners";
+		Optional<List<EventBannerDto>> cachedData = jsonParsingUtil.getData(cacheKey, new TypeReference<List<EventBannerDto>>() {});
+
+		if (cachedData.isPresent()) {
+			List<EventBannerDto> response = cachedData.get();
+			return response;
+		}
+
+		List<EventBanner> eventBannerDtoList = eventBannerRepository.findAllByOrderByBannerOrderAsc();
+
+		jsonParsingUtil.saveData(cacheKey, eventBannerDtoList, 6, TimeUnit.HOURS);
+
+		return eventBannerDtoList.stream()
 			.map(EventBannerDto::toDto)
 			.collect(Collectors.toList());
 	}
@@ -899,6 +911,9 @@ public class EventService {
 	public void deleteExpiredBanners() {
 		LocalDate now = LocalDate.now();
 		eventBannerRepository.deleteByEndDateBefore(now);
+
+		//캐시 초기화
+		jsonParsingUtil.clearCache("Banners");
 	}
 
 	// 랭킹 1시간마다 업데이트
