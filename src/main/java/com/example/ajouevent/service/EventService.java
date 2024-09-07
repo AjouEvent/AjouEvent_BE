@@ -886,6 +886,16 @@ public class EventService {
 		jsonParsingUtil.clearCache("Banners");
 	}
 
+	// 이벤트 배너 삭제
+	public void deleteEventBanner(Long eventBannerId) {
+		EventBanner eventBanner = eventBannerRepository.findById(eventBannerId)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.BANNER_NOT_FOUND));
+		eventBannerRepository.delete(eventBanner);
+
+		//캐시 초기화
+		jsonParsingUtil.clearCache("Banners");
+	}
+
 	// 홈화면에 들어갈 이벤트 배너 불러오기
 	public List<EventBannerDto> getAllEventBanners() {
 		String cacheKey = "Banners";
