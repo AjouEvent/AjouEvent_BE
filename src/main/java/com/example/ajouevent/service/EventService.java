@@ -854,7 +854,8 @@ public class EventService {
 	}
 
 	// 이번주에 생성된 게시글 중 조회수 탑10 게시글 조회 후 DTO 반환
-	private List<EventResponseDto> getTop10EventsForCurrentWeek() {
+	@Transactional
+	public List<EventResponseDto> getTop10EventsForCurrentWeek() {
 		LocalDate now = LocalDate.now();
 		LocalDate startOfWeek = now.with(DayOfWeek.MONDAY);
 		LocalDate endOfWeek = now.with(DayOfWeek.SUNDAY);
