@@ -10,10 +10,12 @@ public class WebhookResponse {
 
 	private String result;
 	private String topic;
+	private Long eventId;
 
 	@Builder
-	public WebhookResponse(String result, String topic) {
+	public WebhookResponse(String result, String topic, Long eventId) {
 		this.result = result;
 		this.topic = topic;
+		this.eventId = eventId;
 	}
 }

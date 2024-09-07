@@ -854,7 +854,8 @@ public class EventService {
 	}
 
 	// 이번주에 생성된 게시글 중 조회수 탑10 게시글 조회 후 DTO 반환
-	private List<EventResponseDto> getTop10EventsForCurrentWeek() {
+	@Transactional
+	public List<EventResponseDto> getTop10EventsForCurrentWeek() {
 		LocalDate now = LocalDate.now();
 		LocalDate startOfWeek = now.with(DayOfWeek.MONDAY);
 		LocalDate endOfWeek = now.with(DayOfWeek.SUNDAY);
@@ -881,6 +882,16 @@ public class EventService {
 			.endDate(eventBannerRequest.getEndDate())
 			.build();
 		eventBannerRepository.save(eventBanner);
+
+		//캐시 초기화
+		jsonParsingUtil.clearCache("Banners");
+	}
+
+	// 이벤트 배너 삭제
+	public void deleteEventBanner(Long eventBannerId) {
+		EventBanner eventBanner = eventBannerRepository.findById(eventBannerId)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.BANNER_NOT_FOUND));
+		eventBannerRepository.delete(eventBanner);
 
 		//캐시 초기화
 		jsonParsingUtil.clearCache("Banners");

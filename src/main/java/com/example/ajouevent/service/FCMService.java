@@ -143,6 +143,7 @@ public class FCMService {
 			WebhookResponse webhookResponse = WebhookResponse.builder()
 				.result("Webhook 요청이 성공적으로 처리되었습니다.")
 				.topic(topicName)
+				.eventId(eventId)
 				.build();
 			return ResponseEntity.ok().body(webhookResponse);
 		} catch (Exception e) {
