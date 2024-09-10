@@ -918,6 +918,7 @@ public class EventService {
 
 	// 기간 지난 배너 삭제
 	@Scheduled(cron = "0 0 0 * * ?")
+	@Transactional
 	public void deleteExpiredBanners() {
 		LocalDate now = LocalDate.now();
 		eventBannerRepository.deleteByEndDateBefore(now);
@@ -928,6 +929,7 @@ public class EventService {
 
 	// 랭킹 1시간마다 업데이트
 	@Scheduled(cron = "0 0 0/1 * * *")
+	@Transactional
 	public void refreshTopPopularEvents() {
 		String cacheKey = "TopPopular";
 		List<EventResponseDto> eventResponseDtoList = getTop10EventsForCurrentWeek();
