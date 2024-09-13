@@ -425,7 +425,12 @@ public class EventService {
 	// 게시글 삭제
 	@Transactional
 	public void deleteEvent(Long eventId) {
+		ClubEvent clubEvent = eventRepository.findById(eventId)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
 		eventRepository.deleteById(eventId);
+
+		// 게시글 삭제 후 해당 타입의 캐시 초기화
+		jsonParsingUtil.clearCacheForType(clubEvent.getType().getEnglishTopic());
 	}
 
 	// 글 전체 조회 (동아리, 학생회, 공지사항, 기타)
