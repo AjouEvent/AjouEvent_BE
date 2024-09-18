@@ -240,8 +240,19 @@ public class MemberService {
 		return userInfoGetDto;
 	}
 
+	@Transactional
 	public boolean duplicateEmail (String email) {
 		return !memberRepository.existsByEmail(email);
+	}
+
+	@Transactional
+	public boolean emailExists (String email) {
+		return memberRepository.existsByEmail(email);
+	}
+
+	@Transactional
+	public boolean accountExists(String email, String name) {
+		return memberRepository.existsByEmailAndName(email, name);
 	}
 
 	public String EmailCheckRequest(String email) {
