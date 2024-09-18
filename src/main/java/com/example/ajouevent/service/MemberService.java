@@ -5,11 +5,16 @@ import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Principal;
 import java.security.SecureRandom;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
+import com.example.ajouevent.domain.EventLike;
+import com.example.ajouevent.domain.Token;
+import com.example.ajouevent.repository.EventLikeRepository;
+import com.example.ajouevent.repository.TokenRepository;
 import com.example.ajouevent.util.JwtUtil;
 import com.example.ajouevent.auth.OAuth;
 import com.example.ajouevent.auth.OAuthDto;
@@ -51,6 +56,9 @@ public class MemberService {
 
 
 	private static final String REDIS_HASH = "EmailCheck";
+	private final TokenRepository tokenRepository;
+	private final EventLikeRepository eventLikeRepository;
+
 	@Transactional
 	public String register(RegisterRequest registerRequest) throws IOException {
 		Optional<Member> member = memberRepository.findByEmail(registerRequest.getEmail());
@@ -163,6 +171,21 @@ public class MemberService {
 	@Transactional
 	public String deleteMember (Principal principal) {
 		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		// 해당 멤버의 찜한 게시글(EventLike) 목록 삭제
+		List<EventLike> eventLikes = eventLikeRepository.findByMember(member);
+		List<Long> eventLikeIds = eventLikes.stream()
+			.map(EventLike::getEventLikeId)
+			.toList();
+		eventLikeRepository.deleteAllByIds(eventLikeIds);
+
+		// 해당 멤버의 토큰 삭제
+		List<Token> memberTokens = tokenRepository.findByMember(member);
+		List<Long> memberTokensIds = memberTokens.stream()
+			.map(Token::getId)
+			.toList();
+		tokenRepository.deleteAllByTokenIds(memberTokensIds);
+
 		memberRepository.delete(member);
 		return "삭제 완료";
 	}
