@@ -84,6 +84,18 @@ public class MemberController {
 		return ResponseEntity.status(HttpStatus.OK).body(res);
 	}
 
+	@GetMapping("/emailExists")
+	public ResponseEntity<Boolean> emailExists (@RequestParam(name="email") String email) {
+		Boolean res = memberService.emailExists(email);
+		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
+	@GetMapping("/accountExists")
+	public ResponseEntity<Boolean> accountExists (@RequestParam(name="email") String email, @RequestParam(name="name") String name) {
+		Boolean res = memberService.accountExists(email, name);
+		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
 	@PostMapping("/emailCheckRequest")
 	public ResponseEntity<String> emailCheckRequest (@RequestParam(name="email") String email) {
 		String res = memberService.EmailCheckRequest(email);
