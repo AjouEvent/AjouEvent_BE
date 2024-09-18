@@ -5,11 +5,16 @@ import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Principal;
 import java.security.SecureRandom;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
+import com.example.ajouevent.domain.EventLike;
+import com.example.ajouevent.domain.Token;
+import com.example.ajouevent.repository.EventLikeRepository;
+import com.example.ajouevent.repository.TokenRepository;
 import com.example.ajouevent.util.JwtUtil;
 import com.example.ajouevent.auth.OAuth;
 import com.example.ajouevent.auth.OAuthDto;
@@ -51,6 +56,9 @@ public class MemberService {
 
 
 	private static final String REDIS_HASH = "EmailCheck";
+	private final TokenRepository tokenRepository;
+	private final EventLikeRepository eventLikeRepository;
+
 	@Transactional
 	public String register(RegisterRequest registerRequest) throws IOException {
 		Optional<Member> member = memberRepository.findByEmail(registerRequest.getEmail());
@@ -163,6 +171,21 @@ public class MemberService {
 	@Transactional
 	public String deleteMember (Principal principal) {
 		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		// 해당 멤버의 찜한 게시글(EventLike) 목록 삭제
+		List<EventLike> eventLikes = eventLikeRepository.findByMember(member);
+		List<Long> eventLikeIds = eventLikes.stream()
+			.map(EventLike::getEventLikeId)
+			.toList();
+		eventLikeRepository.deleteAllByIds(eventLikeIds);
+
+		// 해당 멤버의 토큰 삭제
+		List<Token> memberTokens = tokenRepository.findByMember(member);
+		List<Long> memberTokensIds = memberTokens.stream()
+			.map(Token::getId)
+			.toList();
+		tokenRepository.deleteAllByTokenIds(memberTokensIds);
+
 		memberRepository.delete(member);
 		return "삭제 완료";
 	}
@@ -217,8 +240,31 @@ public class MemberService {
 		return userInfoGetDto;
 	}
 
+	@Transactional
 	public boolean duplicateEmail (String email) {
 		return !memberRepository.existsByEmail(email);
+	}
+
+	@Transactional
+	public boolean emailExists (String email) {
+		return memberRepository.existsByEmail(email);
+	}
+
+	@Transactional
+	public boolean accountExists(String email, String name) {
+		return memberRepository.existsByEmailAndName(email, name);
+	}
+
+	@Transactional
+	public boolean verifyCurrentPassword(CurrentPasswordDto currentPasswordDto, Principal principal) {
+		Member member = memberRepository.findByEmail(principal.getName())
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		if (!BCryptEncoder.matches(currentPasswordDto.getCurrentPassword(), member.getPassword())) {
+			throw new CustomException(CustomErrorCode.PASSWORD_FAILED);
+		}
+
+		return true; // 비밀번호가 일치하면 true 반환
 	}
 
 	public String EmailCheckRequest(String email) {
@@ -290,6 +336,17 @@ public class MemberService {
 		member.setPassword(newPassword);
 		memberRepository.save(member);
 		return "비밀번호 변경 완료";
+	}
+
+	@Transactional
+	public String resetPassword(ResetPasswordDto resetPasswordDto) {
+		Member member = memberRepository.findByEmail(resetPasswordDto.getEmail())
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		String newPassword = BCryptEncoder.encode(resetPasswordDto.getNewPassword());
+		member.setPassword(newPassword);
+		memberRepository.save(member);
+		return "비밀번호 재설정 완료";
 	}
 
 	@Transactional

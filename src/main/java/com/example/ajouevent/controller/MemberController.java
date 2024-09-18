@@ -84,6 +84,25 @@ public class MemberController {
 		return ResponseEntity.status(HttpStatus.OK).body(res);
 	}
 
+	@GetMapping("/emailExists")
+	public ResponseEntity<Boolean> emailExists (@RequestParam(name="email") String email) {
+		Boolean res = memberService.emailExists(email);
+		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
+	@GetMapping("/accountExists")
+	public ResponseEntity<Boolean> accountExists (@RequestParam(name="email") String email, @RequestParam(name="name") String name) {
+		Boolean res = memberService.accountExists(email, name);
+		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
+	@PostMapping("/verify-current-password")
+	@PreAuthorize("isAuthenticated()")
+	public ResponseEntity<Boolean> verifyCurrentPassword(@RequestBody CurrentPasswordDto currentPasswordDto, Principal principal) {
+		boolean isPasswordValid = memberService.verifyCurrentPassword(currentPasswordDto, principal);
+		return ResponseEntity.status(HttpStatus.OK).body(isPasswordValid);
+	}
+
 	@PostMapping("/emailCheckRequest")
 	public ResponseEntity<String> emailCheckRequest (@RequestParam(name="email") String email) {
 		String res = memberService.EmailCheckRequest(email);
@@ -108,6 +127,12 @@ public class MemberController {
 	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<String> changePassword (@RequestBody PasswordDto passwordDto, Principal principal) {
 		String res = memberService.changePassword(passwordDto, principal);
+		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
+	@PatchMapping("/reset-password")
+	public ResponseEntity<String> changePassword (@RequestBody ResetPasswordDto resetPasswordDto) {
+		String res = memberService.resetPassword(resetPasswordDto);
 		return ResponseEntity.status(HttpStatus.OK).body(res);
 	}
 

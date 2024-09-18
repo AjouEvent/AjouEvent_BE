@@ -85,7 +85,7 @@ public class EventController {
 
 
 	// 게시글 삭제
-	@PreAuthorize("isAuthenticated()")
+	@PreAuthorize("hasRole('ADMIN')")
 	@DeleteMapping("/{eventId}")
 	public ResponseEntity<ResponseDto> deleteEvent(@PathVariable("eventId") Long eventId) {
 		eventService.deleteEvent(eventId);
@@ -129,6 +129,7 @@ public class EventController {
 	public SliceResponse<EventResponseDto> getSubscribedEvent(@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
 		return eventService.getSubscribedEvents(pageable, principal);
 	}
+
 	// 게시글 찜하기
 	@PreAuthorize("isAuthenticated()")
 	@PostMapping("/like/{eventId}")
@@ -153,7 +154,7 @@ public class EventController {
 	}
 
 	// 홈화면에 들어갈 이벤트 배너 추가 API
-	@PreAuthorize("isAuthenticated()")
+	@PreAuthorize("hasRole('ADMIN')")  // ADMIN 권한만 접근 가능
 	@PostMapping("/addBanner")
 	public ResponseEntity<ResponseDto> addEventBanner(@RequestBody EventBannerRequest eventBannerRequest) {
 		eventService.addEventBanner(eventBannerRequest);
@@ -165,7 +166,7 @@ public class EventController {
 	}
 
 	// 이벤트 배너 삭제 API
-	@PreAuthorize("isAuthenticated()")
+	@PreAuthorize("hasRole('ADMIN')")  // ADMIN 권한만 접근 가능
 	@DeleteMapping("/deleteBanner/{eventBannerId}")
 	public ResponseEntity<ResponseDto> deleteEventBanner(@PathVariable("eventBannerId") Long eventBannerId) {
 		eventService.deleteEventBanner(eventBannerId);
@@ -183,7 +184,6 @@ public class EventController {
 		return eventService.getAllEventBanners();
 	}
 
-	// 홈화면에 들어갈 이벤트 배너 추가 API
 	@PreAuthorize("isAuthenticated()")
 	@PostMapping("/calendar")
 	public void testGetMethod(@RequestBody CalendarStoreDto calendarStoreDto, Principal principal) throws GeneralSecurityException, IOException {

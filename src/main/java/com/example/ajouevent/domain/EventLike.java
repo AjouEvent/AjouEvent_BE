@@ -29,21 +29,11 @@ public class EventLike {
 
 	@Id // pk 지정
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private int eventLikeId;
-
-	// 찜한 이벤트 카테고리 -> 동아리 / 학생회 / 크롤링 공지사항 / 기타
-	@Column
-	@NotNull
-	private int categoryNumber;
-
+	private Long eventLikeId;
 
 	@ManyToOne
 	@JoinColumn(name = "club_event_id")
 	private ClubEvent clubEvent;
-
-	// @Column
-	// @NotNull
-	// private int eventId; // 게시글 ID
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "member_id")

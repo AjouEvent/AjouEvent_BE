@@ -425,7 +425,12 @@ public class EventService {
 	// 게시글 삭제
 	@Transactional
 	public void deleteEvent(Long eventId) {
+		ClubEvent clubEvent = eventRepository.findById(eventId)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
 		eventRepository.deleteById(eventId);
+
+		// 게시글 삭제 후 해당 타입의 캐시 초기화
+		jsonParsingUtil.clearCacheForType(clubEvent.getType().getEnglishTopic());
 	}
 
 	// 글 전체 조회 (동아리, 학생회, 공지사항, 기타)
@@ -918,6 +923,7 @@ public class EventService {
 
 	// 기간 지난 배너 삭제
 	@Scheduled(cron = "0 0 0 * * ?")
+	@Transactional
 	public void deleteExpiredBanners() {
 		LocalDate now = LocalDate.now();
 		eventBannerRepository.deleteByEndDateBefore(now);
@@ -928,6 +934,7 @@ public class EventService {
 
 	// 랭킹 1시간마다 업데이트
 	@Scheduled(cron = "0 0 0/1 * * *")
+	@Transactional
 	public void refreshTopPopularEvents() {
 		String cacheKey = "TopPopular";
 		List<EventResponseDto> eventResponseDtoList = getTop10EventsForCurrentWeek();

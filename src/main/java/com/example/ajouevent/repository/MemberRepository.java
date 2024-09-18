@@ -22,6 +22,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 	@Query("SELECT m FROM Member m LEFT JOIN FETCH m.tokens WHERE m.email = :email")
 	Optional<Member> findByEmailWithTokens(@Param("email") String email);
 
+	boolean existsByEmailAndName(@Param("email") String email, @Param("name") String name);
+
 	boolean existsByEmail(String email);
 
 	boolean existsByEmailAndPassword(String email, String password);
