@@ -327,6 +327,17 @@ public class MemberService {
 	}
 
 	@Transactional
+	public String resetPassword(ResetPasswordDto resetPasswordDto) {
+		Member member = memberRepository.findByEmail(resetPasswordDto.getEmail())
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		String newPassword = BCryptEncoder.encode(resetPasswordDto.getNewPassword());
+		member.setPassword(newPassword);
+		memberRepository.save(member);
+		return "비밀번호 재설정 완료";
+	}
+
+	@Transactional
 	public String reissuePassword(ReissuePasswordDto reissuePasswordDto) throws Exception {
 		String newPw = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 		Member member = memberRepository.findMemberByEmailAndPhone(reissuePasswordDto.getEmail(), reissuePasswordDto.getPhone());

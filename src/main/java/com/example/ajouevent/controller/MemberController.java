@@ -123,6 +123,12 @@ public class MemberController {
 		return ResponseEntity.status(HttpStatus.OK).body(res);
 	}
 
+	@PatchMapping("/reset-password")
+	public ResponseEntity<String> changePassword (@RequestBody ResetPasswordDto resetPasswordDto) {
+		String res = memberService.resetPassword(resetPasswordDto);
+		return ResponseEntity.status(HttpStatus.OK).body(res);
+	}
+
 	// 비밀번호 재발급
 	@PostMapping("/reissue-password")
 	public ResponseEntity<String> reissuePassword (@RequestBody ReissuePasswordDto reissuePasswordDto) throws Exception {
