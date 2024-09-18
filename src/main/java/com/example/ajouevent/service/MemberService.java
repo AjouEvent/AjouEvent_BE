@@ -255,6 +255,18 @@ public class MemberService {
 		return memberRepository.existsByEmailAndName(email, name);
 	}
 
+	@Transactional
+	public boolean verifyCurrentPassword(CurrentPasswordDto currentPasswordDto, Principal principal) {
+		Member member = memberRepository.findByEmail(principal.getName())
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		if (!BCryptEncoder.matches(currentPasswordDto.getCurrentPassword(), member.getPassword())) {
+			throw new CustomException(CustomErrorCode.PASSWORD_FAILED);
+		}
+
+		return true; // 비밀번호가 일치하면 true 반환
+	}
+
 	public String EmailCheckRequest(String email) {
 		String authCode = this.createCode();
 		EmailCheck existingEmailCheck = emailCheckRedisRepository.findByEmail(email);

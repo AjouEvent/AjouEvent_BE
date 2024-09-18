@@ -96,6 +96,13 @@ public class MemberController {
 		return ResponseEntity.status(HttpStatus.OK).body(res);
 	}
 
+	@PostMapping("/verify-current-password")
+	@PreAuthorize("isAuthenticated()")
+	public ResponseEntity<Boolean> verifyCurrentPassword(@RequestBody CurrentPasswordDto currentPasswordDto, Principal principal) {
+		boolean isPasswordValid = memberService.verifyCurrentPassword(currentPasswordDto, principal);
+		return ResponseEntity.status(HttpStatus.OK).body(isPasswordValid);
+	}
+
 	@PostMapping("/emailCheckRequest")
 	public ResponseEntity<String> emailCheckRequest (@RequestParam(name="email") String email) {
 		String res = memberService.EmailCheckRequest(email);
