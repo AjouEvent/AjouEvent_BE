@@ -488,8 +488,8 @@ public class EventService {
 				updateLikeStatusForUser(response.getResult(), principal.getName());
 			}
 
-			// 조회수를 실시간으로 반영
-			updateViewCountForEvents(response.getResult());
+			// 조회수, 좋아요수를 실시간으로 반영
+			updateViewCountAndLikesCountForEvents(response.getResult());
 
 			return response;
 		}
@@ -836,8 +836,8 @@ public class EventService {
 				// 동기적으로 찜 상태를 업데이트
 				updateLikeStatusForUser(response, principal.getName());
 			}
-			// 조회수를 실시간으로 반영
-			updateViewCountForEvents(response);
+			// 조회수, 좋아요수를 실시간으로 반영
+			updateViewCountAndLikesCountForEvents(response);
 			return response;
 		}
 
@@ -974,9 +974,8 @@ public class EventService {
 		eventDetailResponseDto.setStar(likedEventMap.getOrDefault(eventDetailResponseDto.getEventId(), false));
 	}
 
-
-	// 이벤트 응답 DTO 목록에 조회수 업데이트
-	private void updateViewCountForEvents(List<EventResponseDto> eventResponseDtoList) {
+	// 이벤트 응답 DTO 목록에 조회수, 좋아요 수 업데이트
+	private void updateViewCountAndLikesCountForEvents(List<EventResponseDto> eventResponseDtoList) {
 		List<Long> eventIds = eventResponseDtoList.stream()
 			.map(EventResponseDto::getEventId)
 			.collect(Collectors.toList());
@@ -986,9 +985,15 @@ public class EventService {
 		Map<Long, Long> eventIdToViewCountMap = clubEvents.stream()
 			.collect(Collectors.toMap(ClubEvent::getEventId, ClubEvent::getViewCount));
 
+		Map<Long, Long> eventIdToLikesCountMap = clubEvents.stream()
+			.collect(Collectors.toMap(ClubEvent::getEventId, ClubEvent::getLikesCount));
+
 		for (EventResponseDto dto : eventResponseDtoList) {
 			Long viewCount = eventIdToViewCountMap.get(dto.getEventId());
 			dto.setViewCount(viewCount != null ? viewCount : 0);
+
+			Long likesCount = eventIdToLikesCountMap.get(dto.getEventId());
+			dto.setLikesCount(likesCount != null ? likesCount : 0);
 		}
 	}
 
