@@ -197,13 +197,16 @@ public class EventController {
 
 	@PreAuthorize("isAuthenticated()")
 	@GetMapping("/getSubscribedPostsByKeyword")
-	public List<EventWithKeywordDto> getAllCLubEventsBySubscribedKeywords(Principal principal) {
-		return eventService.getAllCLubEventsBySubscribedKeywords(principal);
+	public SliceResponse<EventWithKeywordDto> getAllClubEventsBySubscribedKeywords(Principal principal,
+		@PageableDefault(size = 10, sort = "createdAt", direction = DESC) Pageable pageable) {
+		return eventService.getAllClubEventsBySubscribedKeywords(principal, pageable);
 	}
 
 	@PreAuthorize("isAuthenticated()")
 	@GetMapping("/getSubscribedPostsByKeyword/{keyword}")
-	public List<EventWithKeywordDto> getClubEventsByKeyword(@PathVariable("keyword") String englishKeyword, @PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
-		return eventService.getClubEventsByKeyword(englishKeyword, principal);
+	public SliceResponse<EventWithKeywordDto> getClubEventsByKeyword(@PathVariable("keyword") String englishKeyword,
+		Principal principal,
+		@PageableDefault(size = 10, sort = "createdAt", direction = DESC) Pageable pageable) {
+		return eventService.getClubEventsByKeyword(englishKeyword, principal, pageable);
 	}
 }

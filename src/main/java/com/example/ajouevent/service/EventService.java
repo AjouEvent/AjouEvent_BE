@@ -997,9 +997,9 @@ public class EventService {
 		}
 	}
 
-	// 사용자가 구독한 키워드 선택해서 해당 키워드 글만 조회
+	// 구독하는 키워드를 포함한 게시글 조회
 	@Transactional(readOnly = true)
-	public List<EventWithKeywordDto> getAllCLubEventsBySubscribedKeywords(Principal principal) {
+	public SliceResponse<EventWithKeywordDto> getAllClubEventsBySubscribedKeywords(Principal principal, Pageable pageable) {
 		// 사용자가 로그인하지 않은 경우
 		if (principal == null) {
 			throw new CustomException(CustomErrorCode.LOGIN_NEEDED);
@@ -1015,15 +1015,21 @@ public class EventService {
 			.toList();
 
 		List<EventWithKeywordDto> eventWithKeywordDtos = new ArrayList<>();
+		boolean hasNext = false;
+
 		// 각 키워드에 대해 게시글을 검색하고 결과를 리스트에 추가합니다.
 		for (Keyword keyword : keywords) {
 			Type type = keyword.getTopic().getType();
-			List<ClubEvent> clubEventSlice = eventRepository.findByTypeAndTitleContaining(type, keyword.getKoreanKeyword());
+			Slice<ClubEvent> clubEventSlice = eventRepository.findByTypeAndTitleContaining(type, keyword.getKoreanKeyword(), pageable);
+
 			// 검색된 게시글을 리스트에 추가합니다.
-			List<EventWithKeywordDto> eventWithKeywordDtoList = clubEventSlice.stream()
+			List<EventWithKeywordDto> eventWithKeywordDtoList = clubEventSlice.getContent().stream()
 				.map(clubEvent -> EventWithKeywordDto.toDto(clubEvent, keyword.getKoreanKeyword()))
 				.toList();
 			eventWithKeywordDtos.addAll(eventWithKeywordDtoList);
+
+			// Slice의 hasNext 값 업데이트
+			hasNext = clubEventSlice.hasNext();
 		}
 
 		// 사용자가 찜한 게시글 목록 조회
@@ -1036,14 +1042,29 @@ public class EventService {
 			dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
 		}
 
-		return eventWithKeywordDtos.stream()
+		// 정렬 및 SliceResponse로 반환
+		List<EventWithKeywordDto> sortedDtos = eventWithKeywordDtos.stream()
 			.sorted(Comparator.comparing(EventWithKeywordDto::getCreatedAt).reversed())
 			.toList();
+
+		SliceResponse<EventWithKeywordDto> response = SliceResponse.<EventWithKeywordDto>builder()
+			.result(sortedDtos)
+			.hasPrevious(pageable.getPageNumber() > 0)
+			.hasNext(hasNext)
+			.currentPage(pageable.getPageNumber())
+			.sort(SliceResponse.SortResponse.builder()
+				.sorted(pageable.getSort().isSorted())
+				.direction(pageable.getSort().getOrderFor("createdAt").getDirection().name())
+				.orderProperty("createdAt")
+				.build())
+			.build();
+
+		return response;
 	}
 
-	// 사용자가 구독한 키워드 중 단일 키워드에 대한 글 조회
+	// 단일 키워드 대상 글 조회
 	@Transactional(readOnly = true)
-	public List<EventWithKeywordDto> getClubEventsByKeyword(String englishKeyword, Principal principal) {
+	public SliceResponse<EventWithKeywordDto> getClubEventsByKeyword(String englishKeyword, Principal principal, Pageable pageable) {
 		if (principal == null) {
 			throw new CustomException(CustomErrorCode.LOGIN_NEEDED);
 		}
@@ -1055,15 +1076,13 @@ public class EventService {
 		Keyword keyword = keywordRepository.findByEnglishKeyword(englishKeyword)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.KEYWORD_NOT_FOUND));
 
-		List<EventWithKeywordDto> eventWithKeywordDtos = new ArrayList<>();
-
+		// 키워드에 해당하는 이벤트 페이징 조회
 		Type type = keyword.getTopic().getType();
-		List<ClubEvent> clubEventSlice = eventRepository.findByTypeAndTitleContaining(type, keyword.getKoreanKeyword());
+		Slice<ClubEvent> clubEventSlice = eventRepository.findByTypeAndTitleContaining(type, keyword.getKoreanKeyword(), pageable);
 
-		List<EventWithKeywordDto> eventWithKeywordDtoList = clubEventSlice.stream()
+		List<EventWithKeywordDto> eventWithKeywordDtos = clubEventSlice.getContent().stream()
 			.map(clubEvent -> EventWithKeywordDto.toDto(clubEvent, keyword.getKoreanKeyword()))
 			.toList();
-		eventWithKeywordDtos.addAll(eventWithKeywordDtoList);
 
 		// 사용자가 찜한 게시글 목록 조회
 		List<EventLike> likedEventSlice = member.getEventLikeList();
@@ -1075,8 +1094,27 @@ public class EventService {
 			dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
 		}
 
-		return eventWithKeywordDtos.stream()
+		// 정렬된 결과 반환
+		List<EventWithKeywordDto> sortedDtos = eventWithKeywordDtos.stream()
 			.sorted(Comparator.comparing(EventWithKeywordDto::getCreatedAt).reversed())
 			.toList();
+
+		// SliceResponse 변환
+		SliceResponse<EventWithKeywordDto> response = SliceResponse.<EventWithKeywordDto>builder()
+			.result(sortedDtos)
+			.hasPrevious(pageable.getPageNumber() > 0)
+			.hasNext(clubEventSlice.hasNext())
+			.currentPage(pageable.getPageNumber())
+			.sort(SliceResponse.SortResponse.builder()
+				.sorted(pageable.getSort().isSorted())
+				.direction(pageable.getSort().getOrderFor("createdAt") != null
+					? pageable.getSort().getOrderFor("createdAt").getDirection().name()
+					: "DESC")
+				.orderProperty("createdAt")
+				.build())
+			.build();
+
+		return response;
 	}
+
 }
