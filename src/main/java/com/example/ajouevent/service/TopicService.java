@@ -9,6 +9,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.example.ajouevent.domain.Keyword;
+import com.example.ajouevent.domain.KeywordMember;
+import com.example.ajouevent.domain.KeywordToken;
 import com.example.ajouevent.dto.TopicDetailResponse;
 import com.example.ajouevent.dto.TopicStatus;
 import com.example.ajouevent.exception.CustomErrorCode;
@@ -27,6 +30,9 @@ import com.example.ajouevent.dto.MemberDto;
 import com.example.ajouevent.dto.TopicRequest;
 import com.example.ajouevent.dto.TopicResponse;
 import com.example.ajouevent.logger.TopicLogger;
+import com.example.ajouevent.repository.KeywordMemberRepository;
+import com.example.ajouevent.repository.KeywordTokenBulkRepository;
+import com.example.ajouevent.repository.KeywordTokenRepository;
 import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.TokenRepository;
 import com.example.ajouevent.repository.TopicMemberRepository;
@@ -41,13 +47,16 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RequiredArgsConstructor
 public class TopicService {
-	private final TopicRepository topicRepository;
+	private final FCMService fcmService;
 	private final TokenRepository tokenRepository;
+	private final MemberRepository memberRepository;
+	private final TopicRepository topicRepository;
 	private final TopicTokenRepository topicTokenRepository;
 	private final TopicMemberRepository topicMemberRepository;
-	private final MemberRepository memberRepository;
-	private final FCMService fcmService;
 	private final TopicTokenBulkRepository topicTokenBulkRepository;
+	private final KeywordTokenRepository keywordTokenRepository;
+	private final KeywordMemberRepository keywordMemberRepository;
+	private final KeywordTokenBulkRepository keywordTokenBulkRepository;
 	private final TopicLogger topicLogger;
 
 	// 토큰 만료 기간 상수 정의
@@ -146,22 +155,41 @@ public class TopicService {
 			tokenRepository.save(token);
 
 			// 사용자가 구독 중인 모든 토픽을 가져옴
-			List<TopicMember> topicMembers = topicMemberRepository.findByMember(member);
+			List<TopicMember> topicMembers = topicMemberRepository.findByMemberWithTopic(member);
 			List<Topic> subscribedTopics = topicMembers.stream()
 				.map(TopicMember::getTopic)
 				.distinct()
 				.toList();
 
+			// 사용자가 구독 중인 모든 키워드를 가져옴
+			List<KeywordMember> keywordMembers = keywordMemberRepository.findByMemberWithKeyword(member);
+			List<Keyword> subscribedKeywords = keywordMembers.stream()
+				.map(KeywordMember::getKeyword)
+				.distinct()
+				.toList();
+
 			// 새 토큰을 기존에 구독된 모든 토픽과 매핑하여 TopicToken 생성 및 저장
-			List<TopicToken> newSubscriptions = subscribedTopics.stream()
+			List<TopicToken> newTopicSubscriptions = subscribedTopics.stream()
 				.map(topic -> new TopicToken(topic, token))
 				.collect(Collectors.toList());
-			topicTokenRepository.saveAll(newSubscriptions);
+			topicTokenBulkRepository.saveAll(newTopicSubscriptions);
+
+			// 새 토큰을 기존에 구독된 모든 키워드와 매핑하여 KeywordToken 생성 및 저장
+			List<KeywordToken> newKeywordSubscriptions = subscribedKeywords.stream()
+				.map(keyword -> new KeywordToken(keyword, token))
+				.collect(Collectors.toList());
+			keywordTokenBulkRepository.saveAll(newKeywordSubscriptions);
 
 			// 각 토픽에 대해 새 토큰 구독 처리
 			for (Topic topic : subscribedTopics) {
 				fcmService.subscribeToTopic(topic.getDepartment(), Collections.singletonList(token.getTokenValue()));
 				log.info("새 토큰으로 " + topic.getDepartment() + " 토픽을 다시 구독합니다.");
+			}
+
+			// 각 키워드에 대해 새 토큰 구독 처리
+			for (Keyword keyword : subscribedKeywords) {
+				fcmService.subscribeToTopic(keyword.getEnglishKeyword(), Collections.singletonList(token.getTokenValue()));
+				log.info("새 토큰으로 " + keyword.getEnglishKeyword() + " 키워드를 다시 구독합니다.");
 			}
 		}
 	}
@@ -177,7 +205,10 @@ public class TopicService {
 		List<Token> expiredTokens = tokenRepository.findByExpirationDate(now);
 
 		// 만료된 토큰과 관련된 모든 TopicToken을 찾음
-		List<TopicToken> topicTokens = topicTokenRepository.findByTokenIn(expiredTokens);
+		List<TopicToken> topicTokens = topicTokenRepository.findTopicTokensWithTopic(expiredTokens);
+
+		// 만료된 토큰과 관련된 모든 KeywordToken을 찾음
+		List<KeywordToken> keywordTokens = keywordTokenRepository.findKeywordTokensWithKeyword(expiredTokens);
 
 		// 만료된 토큰의 값들을 추출
 		List<String> tokenValues = expiredTokens.stream()
@@ -189,9 +220,20 @@ public class TopicService {
 			fcmService.unsubscribeFromTopic(topicToken.getTopic().getDepartment(), tokenValues);
 		});
 
+		// 각 KeywordToken에 대해 구독 해지
+		keywordTokens.forEach(keywordToken -> {
+			fcmService.unsubscribeFromTopic(keywordToken.getKeyword().getEnglishKeyword(), tokenValues);
+		});
+
+		// 만료된 토큰 ID 리스트 추출
+		List<Long> expiredTokenIds = expiredTokens.stream()
+			.map(Token::getId)
+			.collect(Collectors.toList());
+
+		topicTokenRepository.deleteAllByTokenIds(expiredTokenIds); // TopicTokenRepository에서 먼저 삭제하고 TokenRepository에서 삭제
+		keywordTokenRepository.deleteAllByTokenIds(expiredTokenIds); // KeywordTokenRepository에서 먼저 삭제하고 TokenRepository에서 삭제
 		// 만료된 토큰 삭제
-		topicTokenRepository.deleteAll(topicTokens); // TopicTokenRepository에서 먼저 삭제하고 TokenRepository에서 삭제
-		tokenRepository.deleteAll(expiredTokens);
+		tokenRepository.deleteAllByTokenIds(expiredTokenIds);
 	}
 
 	// 사용자의 Topic 구독 목록 초기화

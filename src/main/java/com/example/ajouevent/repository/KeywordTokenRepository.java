@@ -23,4 +23,8 @@ public interface KeywordTokenRepository extends JpaRepository<KeywordToken, Long
 	@Query("DELETE FROM KeywordToken kt WHERE kt.token.id IN :tokenIds")
 	void deleteAllByTokenIds(@Param("tokenIds") List<Long> tokenIds);
 
+	// JOIN FETCH를 사용하여 관련된 Keyword를 한 번에 가져옴
+	@Query("SELECT kt FROM KeywordToken kt JOIN FETCH kt.keyword WHERE kt.token IN :tokens")
+	List<KeywordToken> findKeywordTokensWithKeyword(@Param("tokens") List<Token> tokens);
+
 }

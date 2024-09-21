@@ -20,8 +20,10 @@ public interface TopicTokenRepository extends JpaRepository<TopicToken, Long> {
 	@Query("DELETE FROM TopicToken tt WHERE tt.topic = :topic AND tt.token IN :tokens")
 	void deleteByTopicAndTokens(@Param("topic") Topic topic, @Param("tokens") List<Token> tokens);
 
-	// 토큰 리스트를 기반으로 TopicToken 객체들을 조회
-	List<TopicToken> findByTokenIn(List<Token> tokens);
+	// JOIN FETCH를 사용하여 관련된 Topic을 한 번에 가져옴
+	@Query("SELECT tt FROM TopicToken tt JOIN FETCH tt.topic WHERE tt.token IN :tokens")
+	List<TopicToken> findTopicTokensWithTopic(@Param("tokens") List<Token> tokens);
+
 
 	@Modifying
 	@Query("delete from TopicToken tt where tt.token.id in :tokenIds")
