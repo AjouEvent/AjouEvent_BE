@@ -194,8 +194,8 @@ public class TopicService {
 		}
 	}
 
-	// 매일 자정에 실행되는 스케줄링 작업
-	@Scheduled(cron = "0 0 0 * * ?")
+	// 매일 오전 5시에 실행 (cron 표현식 사용)
+	@Scheduled(cron = "0 0 5 * * ?")
 	@Transactional
 	public void unsubscribeExpiredTokens() {
 		LocalDate now = LocalDate.now();

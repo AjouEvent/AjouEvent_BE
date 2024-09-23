@@ -922,7 +922,7 @@ public class EventService {
 	}
 
 	// 기간 지난 배너 삭제
-	@Scheduled(cron = "0 0 0 * * ?")
+	@Scheduled(cron = "0 0 1 * * ?")
 	@Transactional
 	public void deleteExpiredBanners() {
 		LocalDate now = LocalDate.now();
