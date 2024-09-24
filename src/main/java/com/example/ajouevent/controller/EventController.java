@@ -164,6 +164,18 @@ public class EventController {
 		);
 	}
 
+	// 이벤트 배너 삭제 API
+	@PreAuthorize("isAuthenticated()")
+	@DeleteMapping("/deleteBanner/{eventBannerId}")
+	public ResponseEntity<ResponseDto> deleteEventBanner(@PathVariable("eventBannerId") Long eventBannerId) {
+		eventService.deleteEventBanner(eventBannerId);
+		return ResponseEntity.ok().body(ResponseDto.builder()
+			.successStatus(HttpStatus.OK)
+			.successContent("이벤트 배너가 삭제되었습니다.")
+			.build()
+		);
+	}
+
 	// 홈화면에 들어갈 이벤트 배너 불러오기
 	@PreAuthorize("permitAll()")
 	@GetMapping("/banner")
@@ -181,5 +193,17 @@ public class EventController {
 	@GetMapping("/test")
 	public String testGetMethod() {
 		return "get";
+	}
+
+	@PreAuthorize("isAuthenticated()")
+	@GetMapping("/getSubscribedPostsByKeyword")
+	public List<EventWithKeywordDto> getAllCLubEventsBySubscribedKeywords(Principal principal) {
+		return eventService.getAllCLubEventsBySubscribedKeywords(principal);
+	}
+
+	@PreAuthorize("isAuthenticated()")
+	@GetMapping("/getSubscribedPostsByKeyword/{keyword}")
+	public List<EventWithKeywordDto> getClubEventsByKeyword(@PathVariable("keyword") String englishKeyword, @PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
+		return eventService.getClubEventsByKeyword(englishKeyword, principal);
 	}
 }

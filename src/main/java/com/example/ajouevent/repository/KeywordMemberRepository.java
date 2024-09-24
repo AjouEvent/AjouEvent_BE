@@ -3,6 +3,7 @@ package com.example.ajouevent.repository;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -23,4 +24,11 @@ public interface KeywordMemberRepository extends JpaRepository<KeywordMember, Lo
 		"JOIN FETCH k.topic t " +
 		"WHERE km.member = :member")
 	List<KeywordMember> findByMemberWithKeywordAndTopic(@Param("member") Member member);
+
+	@Modifying
+	@Query("DELETE FROM KeywordMember c WHERE c.id IN :ids")
+	void deleteAllByIds(@Param("ids") List<Long> ids);
+
+	@Query("SELECT km FROM KeywordMember km JOIN FETCH km.keyword WHERE km.member = :member")
+	List<KeywordMember> findByMemberWithKeyword(@io.lettuce.core.dynamic.annotation.Param("member") Member member);
 }

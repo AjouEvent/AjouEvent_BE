@@ -19,6 +19,8 @@ import io.lettuce.core.dynamic.annotation.Param;
 public interface EventRepository extends JpaRepository<ClubEvent, Long> {
 	Slice<ClubEvent> findByTypeAndTitleContaining(Type type, String keyword, Pageable pageable);
 
+	List<ClubEvent> findByTypeAndTitleContaining(Type type, String keyword);
+
 	Slice<ClubEvent> findByTypeIn(List<Type> types, Pageable pageable);
 
 	Slice<ClubEvent> findAllByTitleContaining(String keyword, Pageable pageable);

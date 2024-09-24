@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.ajouevent.dto.ResponseDto;
+import com.example.ajouevent.dto.TopicDetailResponse;
 import com.example.ajouevent.dto.TopicRequest;
 import com.example.ajouevent.dto.TopicResponse;
 import com.example.ajouevent.dto.TopicStatus;
@@ -50,19 +51,25 @@ public class TopicController {
 		);
 	}
 
+	@PreAuthorize("isAuthenticated()")
 	@DeleteMapping("/subscriptions/reset")
 	public ResponseEntity<ResponseDto> resetSubscriptions() {
 		topicService.resetAllSubscriptions();
 		return ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
-			.successContent("모든 topic 구독을 초기화합니다.")
+			.successContent("사용자의 topic 구독을 초기화합니다.")
 			.build()
 		);
 	}
 
+	@GetMapping("/all")
+	public List<TopicDetailResponse> getAllTopics() {
+		return topicService.getAllTopics();
+	}
+
 	@PreAuthorize("isAuthenticated()")
 	@GetMapping("/subscriptions")
-	public TopicResponse getUserSubscriptions() {
+	public List<TopicResponse> getUserSubscriptions() {
 		// 현재 사용자가 구독하고 있는 토픽 리스트 가져오기
 		return topicService.getSubscribedTopics();
 	}
@@ -71,10 +78,5 @@ public class TopicController {
 	@GetMapping("/subscriptionsStatus")
 	public List<TopicStatus> getTopicWithUserSubscriptionsStatus(Principal principal) {
 		return topicService.getTopicWithUserSubscriptionsStatus(principal);
-	}
-
-	@GetMapping("/all")
-	public TopicResponse getAllTopics() {
-		return topicService.getAllTopics();
 	}
 }

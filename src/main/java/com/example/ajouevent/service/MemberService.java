@@ -32,7 +32,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.ajouevent.repository.MemberRepository;
-import com.example.ajouevent.repository.TokenRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +41,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class MemberService {
 	private final MemberRepository memberRepository;
-	private final TokenRepository tokenRepository;
 	private final PasswordEncoder encoder;
 	private final JwtUtil jwtUtil;
 	private final BCryptPasswordEncoder BCryptEncoder;
@@ -231,7 +229,6 @@ public class MemberService {
 		return !memberRepository.existsByEmail(email);
 	}
 
-	@Transactional
 	public String EmailCheckRequest(String email) {
 		String authCode = this.createCode();
 		EmailCheck existingEmailCheck = emailCheckRedisRepository.findByEmail(email);

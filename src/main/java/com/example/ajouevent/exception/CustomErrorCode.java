@@ -26,6 +26,7 @@ public enum CustomErrorCode {
     IMAGE_DELETE_FAILED("이미지를 삭제하는 도중 오류가 발생하였습니다.", HttpStatus.INTERNAL_SERVER_ERROR.value()),
     SUBSCRIBE_FAILED("구독하는 중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR.value()),
     ALREADY_SUBSCRIBED_TOPIC("이미 해당 토픽을 구독하고 있습니다.", HttpStatus.CONFLICT.value()),
+    ALREADY_SUBSCRIBED_KEYWORD("이미 해당 키워드를 구독하고 있습니다.", HttpStatus.CONFLICT.value()),
     SUBSCRIBE_CANCEL_FAILED("구독을 취소하는 도중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR.value()),
     EMAIL_CHECK_FAILED("이메일을 인증하는 도중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR.value()),
     NO_SUCH_ALGORITHM("이메일 인증에서 해당하는 알고리즘을 찾을 수 없습니다.", HttpStatus.INTERNAL_SERVER_ERROR.value()),
@@ -34,7 +35,8 @@ public enum CustomErrorCode {
     MAX_KEYWORD_LIMIT_EXCEEDED("최대 10개의 키워드를 구독할 수 있습니다.", HttpStatus.BAD_REQUEST.value()),
     KEYWORD_NOT_FOUND("키워드를 찾을 수 없습니다.", HttpStatus.NOT_FOUND.value()),
     PASSWORD_FAILED("비밀번호가 잘못되었습니다.", HttpStatus.BAD_REQUEST.value()),
-    REISSUE_PASSWORD_FAILED("비밀번호를 재발급하던 도중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR.value());
+    REISSUE_PASSWORD_FAILED("비밀번호를 재발급하던 도중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR.value()),
+    BANNER_NOT_FOUND("배너를 찾을 수 없습니다.", HttpStatus.NOT_FOUND.value());
 
     private final String message;
     private final int statusCode;

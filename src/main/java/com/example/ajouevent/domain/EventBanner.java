@@ -20,11 +20,13 @@ public class EventBanner {
 	private Long eventBannerId;
 
 	@Column(nullable = false)
-	private Long imgOrder;
+	private Long bannerOrder;
 
-	@OneToOne
-	@JoinColumn(name = "clubEvent_id")
-	private ClubEvent clubEvent;
+	@Column(nullable = false)
+	private String imgUrl;
+
+	@Column(nullable = false)
+	private String siteUrl;
 
 	@Column(nullable = false)
 	private LocalDate startDate;

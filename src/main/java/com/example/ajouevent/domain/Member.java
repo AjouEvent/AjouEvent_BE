@@ -50,6 +50,10 @@ public class Member {
 		CascadeType.REMOVE}, orphanRemoval = true)
 	private List<TopicMember> topicMembers;
 
+	@OneToMany(mappedBy = "member", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST,
+		CascadeType.REMOVE}, orphanRemoval = true)
+	private List<KeywordMember> keywordMembers;
+
 	@Builder
 	public Member(Long id, String email, String name, String password, String major, String phone) {
 		this.id = id;

@@ -20,6 +20,7 @@ import com.example.ajouevent.dto.UnsubscribeKeywordRequest;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import com.example.ajouevent.logger.KeywordLogger;
+import com.example.ajouevent.logger.TopicLogger;
 import com.example.ajouevent.repository.KeywordMemberRepository;
 import com.example.ajouevent.repository.KeywordRepository;
 import com.example.ajouevent.repository.KeywordTokenBulkRepository;
@@ -44,6 +45,7 @@ public class KeywordService {
 	private final KeywordMemberRepository keywordMemberRepository;
 	private final KeywordTokenBulkRepository keywordTokenBulkRepository;
 	private final KeywordTokenRepository keywordTokenRepository;
+	private final TopicLogger topicLogger;
 
 	// 키워드 구독 - 키워드 하나씩
 	@Transactional
@@ -51,6 +53,9 @@ public class KeywordService {
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 		String englishKeyword = keywordRequest.getEnglishKeyword();
 		String topicName = keywordRequest.getTopicName();
+
+		Member member = memberRepository.findByEmailWithTokens(memberEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 공백을 "8"로 바꿉니다
 		String formattedKeyword = englishKeyword.replace(" ", "8") + "8" + topicName;
@@ -62,14 +67,11 @@ public class KeywordService {
 		Keyword keyword = keywordRepository.findByEnglishKeyword(formattedKeyword)
 			.orElseGet(() -> createNewTopic(keywordRequest, formattedKeyword, topic));
 
-		log.info("가져온 topic" + topic.getKoreanTopic());
+		topicLogger.log("가져온 topic: " + topic.getKoreanTopic());
 
-		Member member = memberRepository.findByEmail(memberEmail)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
-		// 이미 해당 토픽을 구독 중인지 확인
+		// 이미 해당 키워드를 구독 중인지 확인
 		if (keywordMemberRepository.existsByKeywordAndMember(keyword, member)) {
-			throw new CustomException(CustomErrorCode.ALREADY_SUBSCRIBED_TOPIC);
+			throw new CustomException(CustomErrorCode.ALREADY_SUBSCRIBED_KEYWORD);
 		}
 
 		// 사용자가 이미 구독한 키워드 개수를 확인
@@ -114,17 +116,17 @@ public class KeywordService {
 		return newKeyword;
 	}
 
-	// 토픽 구독 취소 - 토픽 하나씩
+	// 키워드 구독 취소 - 키워드 하나씩
 	@Transactional
 	public void unsubscribeFromKeyword(UnsubscribeKeywordRequest unsubscribeKeywordRequest) {
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 		String englishKeyword = unsubscribeKeywordRequest.getEnglishKeyword();
 
+		Member member = memberRepository.findByEmailWithTokens(memberEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
 		Keyword keyword = keywordRepository.findByEnglishKeyword(englishKeyword)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.KEYWORD_NOT_FOUND));
-
-		Member member = memberRepository.findByEmail(memberEmail)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 유저가 설정한 키워드를 찾아서 삭제
 		keywordMemberRepository.deleteByKeywordAndMember(keyword, member);
@@ -138,7 +140,7 @@ public class KeywordService {
 			.map(Token::getTokenValue)
 			.collect(Collectors.toList());
 		fcmService.unsubscribeFromTopic(englishKeyword, tokenValues);
-		log.info("키워드 구독 취소 : " + keyword.getKoreanKeyword());
+		keywordLogger.log("키워드 구독 취소 : " + keyword.getKoreanKeyword());
 	}
 
 	// 사용자가 설정한 키워드 조회
@@ -157,5 +159,35 @@ public class KeywordService {
 				.topicName(km.getKeyword().getTopic().getKoreanTopic())
 				.build())
 			.collect(Collectors.toList());
+	}
+
+	// 사용자의 Keyword 구독 목록 초기화
+	@Transactional
+	public void resetAllSubscriptions() {
+		String email = SecurityContextHolder.getContext().getAuthentication().getName();
+		Member member = memberRepository.findByEmailWithTokens(email)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		List<KeywordMember> keywordMembers = keywordMemberRepository.findByMemberWithKeyword(member);
+		List<Token> tokens = member.getTokens();
+		List<String> tokenValues = tokens.stream()
+			.map(Token::getTokenValue)
+			.toList();
+
+		keywordMembers.forEach(keywordMember -> {
+			fcmService.unsubscribeFromTopic(keywordMember.getKeyword().getEnglishKeyword(), tokenValues);
+			keywordLogger.log("Keyword 구독 초기화 - Member: " + keywordMember.getMember().getEmail() + ", Keyword: "
+				+ keywordMember.getKeyword().getKoreanKeyword() + " - " + keywordMember.getKeyword().getEnglishKeyword());
+		});
+
+		List<Long> tokenIds = tokens.stream()
+			.map(Token::getId)
+			.collect(Collectors.toList());
+		keywordTokenRepository.deleteAllByTokenIds(tokenIds);
+
+		List<Long> keywordMemberIds = keywordMembers.stream()
+			.map(KeywordMember::getId)
+			.collect(Collectors.toList());
+		keywordMemberRepository.deleteAllByIds(keywordMemberIds);
 	}
 }

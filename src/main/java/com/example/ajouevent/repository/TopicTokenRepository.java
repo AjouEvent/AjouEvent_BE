@@ -23,9 +23,8 @@ public interface TopicTokenRepository extends JpaRepository<TopicToken, Long> {
 	// 토큰 리스트를 기반으로 TopicToken 객체들을 조회
 	List<TopicToken> findByTokenIn(List<Token> tokens);
 
-
 	@Modifying
-	@Query("delete from TopicToken tt where tt.topic.id in :topicIds")
-	void deleteAllByIds(@Param("topicIds") List<Long> topicIds);
+	@Query("delete from TopicToken tt where tt.token.id in :tokenIds")
+	void deleteAllByTokenIds(@Param("tokenIds") List<Long> tokenIds);
 
 }

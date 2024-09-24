@@ -7,11 +7,16 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 
+import com.example.ajouevent.domain.Keyword;
+import com.example.ajouevent.domain.KeywordMember;
+import com.example.ajouevent.dto.EventWithKeywordDto;
+import com.example.ajouevent.repository.KeywordMemberRepository;
+import com.example.ajouevent.repository.KeywordRepository;
 import com.example.ajouevent.util.SecurityUtil;
 import com.example.ajouevent.util.JsonParsingUtil;
 import com.example.ajouevent.domain.EventBanner;
@@ -81,6 +86,8 @@ public class EventService {
 	private final EventLikeRepository eventLikeRepository;
 	private final TopicMemberRepository topicMemberRepository;
 	private final EventBannerRepository eventBannerRepository;
+	private final KeywordRepository keywordRepository;
+	private final KeywordMemberRepository keywordMemberRepository;
 	private final JsonParsingUtil jsonParsingUtil;
 	private final CacheLogger cacheLogger;
 	private final CookieService cookieService;
@@ -598,7 +605,7 @@ public class EventService {
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 사용자가 구독하는 모든 토픽 가져오기
-		List<TopicMember> subscribedTopicMembers = topicMemberRepository.findByMember(member);
+		List<TopicMember> subscribedTopicMembers = topicMemberRepository.findByMemberWithTopic(member);
 
 		if (subscribedTopicMembers.isEmpty()) {
 			log.info("사용자가 구독하는 토픽이 없습니다.");
@@ -847,7 +854,8 @@ public class EventService {
 	}
 
 	// 이번주에 생성된 게시글 중 조회수 탑10 게시글 조회 후 DTO 반환
-	private List<EventResponseDto> getTop10EventsForCurrentWeek() {
+	@Transactional
+	public List<EventResponseDto> getTop10EventsForCurrentWeek() {
 		LocalDate now = LocalDate.now();
 		LocalDate startOfWeek = now.with(DayOfWeek.MONDAY);
 		LocalDate endOfWeek = now.with(DayOfWeek.SUNDAY);
@@ -866,23 +874,44 @@ public class EventService {
 
 	// 홈화면에 들어갈 이벤트 배너 추가
 	public void addEventBanner(EventBannerRequest eventBannerRequest) {
-		ClubEvent clubEvent = eventRepository.findById(eventBannerRequest.getEventId())
-			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
-
 		EventBanner eventBanner = EventBanner.builder()
-			.clubEvent(clubEvent)
-			.imgOrder(eventBannerRequest.getImgOrder())
+			.imgUrl(eventBannerRequest.getImgUrl())
+			.siteUrl(eventBannerRequest.getSiteUrl())
+			.bannerOrder(eventBannerRequest.getBannerOrder())
 			.startDate(eventBannerRequest.getStartDate())
 			.endDate(eventBannerRequest.getEndDate())
 			.build();
-
 		eventBannerRepository.save(eventBanner);
 
+		//캐시 초기화
+		jsonParsingUtil.clearCache("Banners");
+	}
+
+	// 이벤트 배너 삭제
+	public void deleteEventBanner(Long eventBannerId) {
+		EventBanner eventBanner = eventBannerRepository.findById(eventBannerId)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.BANNER_NOT_FOUND));
+		eventBannerRepository.delete(eventBanner);
+
+		//캐시 초기화
+		jsonParsingUtil.clearCache("Banners");
 	}
 
 	// 홈화면에 들어갈 이벤트 배너 불러오기
 	public List<EventBannerDto> getAllEventBanners() {
-		return eventBannerRepository.findAllByOrderByImgOrderAsc().stream()
+		String cacheKey = "Banners";
+		Optional<List<EventBannerDto>> cachedData = jsonParsingUtil.getData(cacheKey, new TypeReference<List<EventBannerDto>>() {});
+
+		if (cachedData.isPresent()) {
+			List<EventBannerDto> response = cachedData.get();
+			return response;
+		}
+
+		List<EventBanner> eventBannerDtoList = eventBannerRepository.findAllByOrderByBannerOrderAsc();
+
+		jsonParsingUtil.saveData(cacheKey, eventBannerDtoList, 6, TimeUnit.HOURS);
+
+		return eventBannerDtoList.stream()
 			.map(EventBannerDto::toDto)
 			.collect(Collectors.toList());
 	}
@@ -892,6 +921,9 @@ public class EventService {
 	public void deleteExpiredBanners() {
 		LocalDate now = LocalDate.now();
 		eventBannerRepository.deleteByEndDateBefore(now);
+
+		//캐시 초기화
+		jsonParsingUtil.clearCache("Banners");
 	}
 
 	// 랭킹 1시간마다 업데이트
@@ -951,5 +983,88 @@ public class EventService {
 			Long viewCount = eventIdToViewCountMap.get(dto.getEventId());
 			dto.setViewCount(viewCount != null ? viewCount : 0);
 		}
+	}
+
+	// 사용자가 구독한 키워드 선택해서 해당 키워드 글만 조회
+	@Transactional(readOnly = true)
+	public List<EventWithKeywordDto> getAllCLubEventsBySubscribedKeywords(Principal principal) {
+		// 사용자가 로그인하지 않은 경우
+		if (principal == null) {
+			throw new CustomException(CustomErrorCode.LOGIN_NEEDED);
+		}
+
+		String userEmail = principal.getName();
+		Member member = memberRepository.findByEmail(userEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		List<KeywordMember> keywordMembers = keywordMemberRepository.findByMemberWithKeywordAndTopic(member);
+		List<Keyword> keywords = keywordMembers.stream()
+			.map(KeywordMember::getKeyword)
+			.toList();
+
+		List<EventWithKeywordDto> eventWithKeywordDtos = new ArrayList<>();
+		// 각 키워드에 대해 게시글을 검색하고 결과를 리스트에 추가합니다.
+		for (Keyword keyword : keywords) {
+			Type type = keyword.getTopic().getType();
+			List<ClubEvent> clubEventSlice = eventRepository.findByTypeAndTitleContaining(type, keyword.getKoreanKeyword());
+			// 검색된 게시글을 리스트에 추가합니다.
+			List<EventWithKeywordDto> eventWithKeywordDtoList = clubEventSlice.stream()
+				.map(clubEvent -> EventWithKeywordDto.toDto(clubEvent, keyword.getKoreanKeyword()))
+				.toList();
+			eventWithKeywordDtos.addAll(eventWithKeywordDtoList);
+		}
+
+		// 사용자가 찜한 게시글 목록 조회
+		List<EventLike> likedEventSlice = member.getEventLikeList();
+		Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
+			.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+
+		// 각 이벤트 DTO에 사용자의 찜 여부 설정
+		for (EventWithKeywordDto dto : eventWithKeywordDtos) {
+			dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
+		}
+
+		return eventWithKeywordDtos.stream()
+			.sorted(Comparator.comparing(EventWithKeywordDto::getCreatedAt).reversed())
+			.toList();
+	}
+
+	// 사용자가 구독한 키워드 중 단일 키워드에 대한 글 조회
+	@Transactional(readOnly = true)
+	public List<EventWithKeywordDto> getClubEventsByKeyword(String englishKeyword, Principal principal) {
+		if (principal == null) {
+			throw new CustomException(CustomErrorCode.LOGIN_NEEDED);
+		}
+
+		String userEmail = principal.getName();
+		Member member = memberRepository.findByEmail(userEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		Keyword keyword = keywordRepository.findByEnglishKeyword(englishKeyword)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.KEYWORD_NOT_FOUND));
+
+		List<EventWithKeywordDto> eventWithKeywordDtos = new ArrayList<>();
+
+		Type type = keyword.getTopic().getType();
+		List<ClubEvent> clubEventSlice = eventRepository.findByTypeAndTitleContaining(type, keyword.getKoreanKeyword());
+
+		List<EventWithKeywordDto> eventWithKeywordDtoList = clubEventSlice.stream()
+			.map(clubEvent -> EventWithKeywordDto.toDto(clubEvent, keyword.getKoreanKeyword()))
+			.toList();
+		eventWithKeywordDtos.addAll(eventWithKeywordDtoList);
+
+		// 사용자가 찜한 게시글 목록 조회
+		List<EventLike> likedEventSlice = member.getEventLikeList();
+		Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
+			.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+
+		// 각 이벤트 DTO에 사용자의 찜 여부 설정
+		for (EventWithKeywordDto dto : eventWithKeywordDtos) {
+			dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
+		}
+
+		return eventWithKeywordDtos.stream()
+			.sorted(Comparator.comparing(EventWithKeywordDto::getCreatedAt).reversed())
+			.toList();
 	}
 }

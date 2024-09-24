@@ -47,8 +47,8 @@ public class FCMService {
 	private final AlarmLogger alarmLogger;
 
 	private static final String DEFAULT_IMAGE_URL = "https://www.ajou.ac.kr/_res/ajou/kr/img/intro/img-symbol.png";
-	private static final String REDIRECTION_URL_PREFIX = "https://ajou-event.vercel.app/event/";
-	private static final String DEFAULT_CLICK_ACTION_URL =  "https://ajou-event.vercel.app";
+	private static final String REDIRECTION_URL_PREFIX = "https://www.ajouevent.com/event/";
+	private static final String DEFAULT_CLICK_ACTION_URL =  "https://www.ajouevent.com";
 	private final KeywordRepository keywordRepository;
 	private final TopicRepository topicRepository;
 
@@ -143,6 +143,7 @@ public class FCMService {
 			WebhookResponse webhookResponse = WebhookResponse.builder()
 				.result("Webhook 요청이 성공적으로 처리되었습니다.")
 				.topic(topicName)
+				.eventId(eventId)
 				.build();
 			return ResponseEntity.ok().body(webhookResponse);
 		} catch (Exception e) {

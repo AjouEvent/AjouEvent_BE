@@ -3,11 +3,13 @@ package com.example.ajouevent.service;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.example.ajouevent.dto.TopicDetailResponse;
 import com.example.ajouevent.dto.TopicStatus;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
@@ -57,10 +59,10 @@ public class TopicService {
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 		String topicName = topicRequest.getTopic();
 
+		Member member = memberRepository.findByEmailWithTokens(memberEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 		Topic topic = topicRepository.findByDepartment(topicName)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
-		Member member = memberRepository.findByEmail(memberEmail)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 이미 해당 토픽을 구독 중인지 확인
 		if (topicMemberRepository.existsByTopicAndMember(topic, member)) {
@@ -96,17 +98,16 @@ public class TopicService {
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 		String topicName = topicRequest.getTopic();
 
+		Member member = memberRepository.findByEmailWithTokens(memberEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
 		Topic topic = topicRepository.findByDepartment(topicName)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
-		Member member = memberRepository.findByEmail(memberEmail)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		topicLogger.log(topic.getDepartment() + "토픽 구독 취소");
 		topicLogger.log("멤버 이메일 : " + memberEmail);
 
 		List<Token> memberTokens = member.getTokens();
-
-		// FCM 서비스를 사용하여 토픽에 대한 구독 취소 진행
 		List<String> tokenValues = memberTokens.stream()
 			.map(Token::getTokenValue)
 			.collect(Collectors.toList());
@@ -193,81 +194,61 @@ public class TopicService {
 		tokenRepository.deleteAll(expiredTokens);
 	}
 
-	// 사용자의 구독 목록 초기화
+	// 사용자의 Topic 구독 목록 초기화
 	@Transactional
 	public void resetAllSubscriptions() {
 		String email = SecurityContextHolder.getContext().getAuthentication().getName();
-		Member member = memberRepository.findByEmail(email)
+		Member member = memberRepository.findByEmailWithTokens(email)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
-		// Member가 구독하고 있는 Topic과 Member가 가지고 있는 토큰을 가져옴
-		List<TopicMember> topicMembers = member.getTopicMembers();
+		List<TopicMember> topicMembers = topicMemberRepository.findByMemberWithTopic(member);
 		List<Token> tokens = member.getTokens();
-
 		List<String> tokenValues = tokens.stream()
 			.map(Token::getTokenValue)
 			.toList();
 
-		// 사용자 구독하고 있는 topic 로그 출력
-		topicLogger.log(email + " 가 구독하고 있는 토픽 목록 : ");
-		topicMembers.forEach(topicMember -> {
-			topicLogger.log("Topic: " + topicMember.getTopic().getDepartment());
-			System.out.println(topicMember);
-		});
-
-		// FcmService를 호출해서 Member가 가지고 있는 Token과 Member가 구독하고 있는 Topic을 1대1로 매핑하여 구독 취소
-		// TopicMemberRepository, TopicTokenRepository에서도 삭제
 		topicMembers.forEach(topicMember -> {
 			fcmService.unsubscribeFromTopic(topicMember.getTopic().getDepartment(), tokenValues);
-			topicLogger.log("Deleting TopicMember - Member: " + topicMember.getMember().getEmail() + ", Topic: "
+			topicLogger.log("Topic 구독 초기화 - Member: " + topicMember.getMember().getEmail() + ", Topic: "
 				+ topicMember.getTopic().getDepartment());
 		});
 
-		List<Long> topicIds = topicMembers.stream()
-			.map(tm -> tm.getTopic().getId())
+		List<Long> tokenIds = tokens.stream()
+			.map(Token::getId)
 			.collect(Collectors.toList());
-		topicTokenRepository.deleteAllByIds(topicIds);
+		topicTokenRepository.deleteAllByTokenIds(tokenIds);
 
 		List<Long> topicMemberIds = topicMembers.stream()
 			.map(TopicMember::getId)
 			.collect(Collectors.toList());
 		topicMemberRepository.deleteAllByIds(topicMemberIds);
-
 	}
 
 	// 사용자가 구독하고 있는 토픽 조회
 	@Transactional(readOnly = true)
-	public TopicResponse getSubscribedTopics() {
-		// 스프링 시큐리티 컨텍스트에서 현재 사용자의 이메일 가져오기
+	public List<TopicResponse> getSubscribedTopics() {
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-		log.info("가져온 이메일 : " + memberEmail);
-		// 이메일을 기반으로 회원 정보 조회
 		Member member = memberRepository.findByEmail(memberEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// 회원이 구독하는 토픽 목록 조회
-		List<TopicMember> topicMembers = topicMemberRepository.findByMember(member);
+		List<TopicMember> topicMembers = topicMemberRepository.findByMemberWithTopic(member);
 
-		// TopicMember 목록에서 토픽의 이름만 추출하여 반환
-		List<String> topics = topicMembers.stream()
-			.map(topicMember -> topicMember.getTopic().getKoreanTopic())
+		List<TopicResponse> topicResponseList = topicMembers.stream()
+			.map(topicMember -> new TopicResponse(
+				topicMember.getId(),
+				topicMember.getTopic().getKoreanTopic(),
+				topicMember.getTopic().getDepartment()
+			))
+			.sorted(Comparator.comparing(TopicResponse::getId).reversed())
 			.collect(Collectors.toList());
-
-		// TopicResponse 객체 생성하여 반환
-		return new TopicResponse(topics);
+		return topicResponseList;
 	}
 
-	// 전체 topic 조회
-	@Transactional(readOnly = true)
-	public TopicResponse getAllTopics() {
-		List<Topic> topics = topicRepository.findAll();
-		List<String> topicName = topics.stream()
-			.map(Topic::getKoreanTopic)
-			.toList();
-		return new TopicResponse(topicName);
-	}
 
-	// 사용자가 구독하고 있는 토픽 조회
+
+
+	// 전체 Topic에 대해 사용자의 구독 여부 조회
 	@Transactional(readOnly = true)
 	public List<TopicStatus> getTopicWithUserSubscriptionsStatus(Principal principal) {
 		List<Topic> allTopics = topicRepository.findAll();
@@ -279,8 +260,33 @@ public class TopicService {
 			.map(subscription -> subscription.getTopic().getId())
 			.collect(Collectors.toSet());
 
-		return allTopics.stream()
-			.map(topic -> new TopicStatus(topic, subscribedTopicIds.contains(topic.getId())))
-			.collect(Collectors.toList());
+		List<TopicStatus> topicStatusList = allTopics.stream()
+			.map(topic -> TopicStatus.builder()
+				.id(topic.getId())
+				.koreanTopic(topic.getKoreanTopic())
+				.englishTopic(topic.getDepartment())
+				.classification(topic.getClassification())
+				.subscribed(subscribedTopicIds.contains(topic.getId()))
+				.koreanOrder(topic.getKoreanOrder())
+				.build())
+			.sorted(Comparator.comparingLong(TopicStatus::getKoreanOrder))
+			.toList();
+		return topicStatusList;
+	}
+
+	// 전체 topic 조회
+	@Transactional(readOnly = true)
+	public List<TopicDetailResponse> getAllTopics() {
+		List<Topic> topics = topicRepository.findAll();
+
+		List<TopicDetailResponse> topicDetailResponseList = topics.stream()
+			.map(topic -> new TopicDetailResponse(
+				topic.getClassification(),
+				topic.getKoreanOrder(),
+				topic.getKoreanTopic()
+			))
+			.sorted(Comparator.comparingLong(TopicDetailResponse::getKoreanOrder))
+			.toList();
+		return topicDetailResponseList;
 	}
 }

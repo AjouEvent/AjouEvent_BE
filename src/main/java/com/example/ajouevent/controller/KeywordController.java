@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -53,6 +54,17 @@ public class KeywordController {
 	@GetMapping("/userKeywords")
 	public List<KeywordResponse> getUserKeywordNotifications(Principal principal) {
 		return keywordService.getUserKeyword(principal);
+	}
+
+	@PreAuthorize("isAuthenticated()")
+	@DeleteMapping("/subscriptions/reset")
+	public ResponseEntity<ResponseDto> resetSubscriptions() {
+		keywordService.resetAllSubscriptions();
+		return ResponseEntity.ok().body(ResponseDto.builder()
+			.successStatus(HttpStatus.OK)
+			.successContent("사용자의 모든 keyword 구독을 초기화합니다.")
+			.build()
+		);
 	}
 
 }
