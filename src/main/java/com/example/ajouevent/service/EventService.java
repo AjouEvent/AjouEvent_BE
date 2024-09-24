@@ -616,15 +616,15 @@ public class EventService {
 			log.info("사용자가 구독하는 토픽이 없습니다.");
 		}
 
-		// 각 TopicMember의 Topic과 Type을 로그로 출력
-		for (TopicMember topicMember : subscribedTopicMembers) {
-			Topic topic = topicMember.getTopic();
-			if (topic != null) {
-				log.info("Topic ID: {}, Type: {}", topic.getId(), topic.getType());
-			} else {
-				log.warn("TopicMember에 연결된 Topic이 null입니다.");
-			}
-		}
+		// // 각 TopicMember의 Topic과 Type을 로그로 출력
+		// for (TopicMember topicMember : subscribedTopicMembers) {
+		// 	Topic topic = topicMember.getTopic();
+		// 	if (topic != null) {
+		// 		log.info("Topic ID: {}, Type: {}", topic.getId(), topic.getType());
+		// 	} else {
+		// 		log.warn("TopicMember에 연결된 Topic이 null입니다.");
+		// 	}
+		// }
 
 		// 토픽 멤버에서 토픽만 추출하여 Type 열거형 리스트로 변환
 		List<Type> subscribedTypes = subscribedTopicMembers.stream()
@@ -632,13 +632,15 @@ public class EventService {
 			.map(Topic::getType)
 			.collect(Collectors.toList());
 
-		// 각 구독하는 토픽을 로그로 출력
-		for (Type type : subscribedTypes) {
-			if (type != null) {
-				log.info("사용자가 구독하는 토픽: {}", type.getEnglishTopic());
-			} else {
-				log.warn("null 토픽이 발견되었습니다.");
-			}
+		// // 각 구독하는 토픽을 로그로 출력
+		// for (Type type : subscribedTypes) {
+		// 	if (type != null) {
+		// 		log.info("사용자가 구독하는 토픽: {}", type.getEnglishTopic());
+		// 	} else {
+		// 		log.warn("null 토픽이 발견되었습니다.");
+		// 	}
+		// }
+
 		// 검색 기능 추가
 		Slice<ClubEvent> clubEventSlice;
 		if (keyword != null && !keyword.isEmpty()) {
