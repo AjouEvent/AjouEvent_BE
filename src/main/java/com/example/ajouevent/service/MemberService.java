@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import com.example.ajouevent.util.JwtUtil;
 import com.example.ajouevent.auth.OAuth;
@@ -22,9 +23,6 @@ import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import com.example.ajouevent.repository.EmailCheckRedisRepository;
 import com.google.api.client.auth.oauth2.TokenResponse;
-import com.google.firebase.auth.UserInfo;
-import org.apache.catalina.User;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.SimpleMailMessage;
@@ -38,8 +36,6 @@ import com.example.ajouevent.repository.TokenRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import javax.security.auth.login.LoginException;
 
 @Service
 @RequiredArgsConstructor
@@ -55,8 +51,7 @@ public class MemberService {
 	private final DiscordMessageProvider discordMessageProvider;
 	private final JavaMailSender javaMailSender;
 	private final EmailCheckRedisRepository emailCheckRedisRepository;
-	private final CalendarService calendarService;
-
+	private final RedisTemplate<String, EmailCheck> redisEmailCheckTemplate;
 
 	private static final String REDIS_HASH = "EmailCheck";
 	@Transactional
@@ -218,10 +213,17 @@ public class MemberService {
 	public UserInfoGetDto connectCalendar(OAuthDto oAuthDto) throws GeneralSecurityException, IOException {
 		TokenResponse googleToken = oAuth.requestGoogleAccessToken(oAuthDto);
 
-		UserInfoGetDto userInfoGetDto = oAuth.printUserResource(googleToken);
-		if (googleToken.getRefreshToken() != null)
-			CalendarService.getCredentials(googleToken, userInfoGetDto.getEmail());
+		System.out.println("Access Token: " + googleToken.getAccessToken());
+		System.out.println("Refresh Token: " + googleToken.getRefreshToken());
+		System.out.println("Token Type: " + googleToken.getTokenType());
+		System.out.println("Expires In: " + googleToken.getExpiresInSeconds());
 
+		UserInfoGetDto userInfoGetDto = oAuth.printUserResource(googleToken);
+		log.info("hello");
+		if (googleToken.getRefreshToken() != null) {
+			log.info("helloworld");
+			CalendarService.getCredentials(googleToken, userInfoGetDto.getEmail());
+		}
 		return userInfoGetDto;
 	}
 
@@ -236,13 +238,18 @@ public class MemberService {
 		if (existingEmailCheck != null) {
 			// 이미 해당 이메일이 Redis에 저장되어 있는 경우
 			existingEmailCheck.setCode(authCode);
-			emailCheckRedisRepository.save(existingEmailCheck);
+			existingEmailCheck = emailCheckRedisRepository.save(existingEmailCheck);
 		} else {
 			EmailCheck emailCheck = new EmailCheck(email, authCode);
 			emailCheck.setId(UUID.randomUUID().toString());
 
-			emailCheckRedisRepository.save(emailCheck);
+			existingEmailCheck = emailCheckRedisRepository.save(emailCheck);
 		}
+
+		redisEmailCheckTemplate.expire(REDIS_HASH, 300, TimeUnit.SECONDS);
+		redisEmailCheckTemplate.expire(REDIS_HASH + ":" + existingEmailCheck.getId(), 300, TimeUnit.SECONDS);
+		redisEmailCheckTemplate.expire(REDIS_HASH + ":email:" + email, 300, TimeUnit.SECONDS);
+		redisEmailCheckTemplate.expire(REDIS_HASH + ":" + existingEmailCheck.getId() + ":idx", 300, TimeUnit.SECONDS);
 
 		try {
 			SMTPMsgDto smtpMsgDto = SMTPMsgDto.builder()

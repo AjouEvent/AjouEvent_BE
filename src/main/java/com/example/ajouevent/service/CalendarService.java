@@ -87,6 +87,9 @@ public class CalendarService {
 
         GoogleAuthorizationCodeFlow flow = getFlow(userId);
         flow.createAndStoreCredential(tokenResponse, getSafeUserId(userId));
+
+        log.info("Test 3");
+
     }
 
     private static GoogleAuthorizationCodeFlow getFlow (String userId) throws IOException, GeneralSecurityException {
@@ -96,10 +99,15 @@ public class CalendarService {
             throw new CustomException(CustomErrorCode.FILE_NOT_FOUND);
         }
 
+        log.info("Test 1");
+
         GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
 
         FileDataStoreFactory dataStoreFactory = new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH));
         DataStore<StoredCredential> dataStore = dataStoreFactory.getDataStore(getSafeUserId(userId));
+
+
+        log.info("Test 2");
 
         return  new GoogleAuthorizationCodeFlow.Builder(
                 GoogleNetHttpTransport.newTrustedTransport(),

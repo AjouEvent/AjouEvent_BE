@@ -107,5 +107,5 @@ dependencyManagement {
 // build.gradle
 
 jar {
-    enabled = false
+    enabled = true
 }
