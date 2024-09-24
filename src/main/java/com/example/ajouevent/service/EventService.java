@@ -595,11 +595,11 @@ public class EventService {
 
 	// 사용자가 구독하고 있는 topic 관련 글 조회(로그인 안하면 기본은 AjouNormal)
 	@Transactional
-	public SliceResponse<EventResponseDto> getSubscribedEvents(Pageable pageable, Principal principal) {
+	public SliceResponse<EventResponseDto> getSubscribedEvents(Pageable pageable, Principal principal, String keyword) {
 		// 사용자가 로그인하지 않은 경우
 		if (principal == null) {
 			String type = String.valueOf(Type.AJOUNORMAL);
-			String keyword = "";
+			keyword = keyword == null ? "" : keyword;  // 검색 키워드가 없는 경우 빈 문자열
 			return getEventTypeList(type, keyword, pageable, principal);
 		}
 
@@ -639,10 +639,15 @@ public class EventService {
 			} else {
 				log.warn("null 토픽이 발견되었습니다.");
 			}
+		// 검색 기능 추가
+		Slice<ClubEvent> clubEventSlice;
+		if (keyword != null && !keyword.isEmpty()) {
+			// 검색어가 있을 경우, 검색어에 맞는 이벤트만 필터링
+			clubEventSlice = eventRepository.findByTypeInAndTitleContaining(subscribedTypes, keyword, pageable);
+		} else {
+			// 검색어가 없을 경우, 모든 이벤트 조회
+			clubEventSlice = eventRepository.findByTypeIn(subscribedTypes, pageable);
 		}
-
-		// 변환된 Type 열거형 리스트를 사용하여 이벤트를 조회
-		Slice<ClubEvent> clubEventSlice = eventRepository.findByTypeIn(subscribedTypes, pageable);
 
 		// 사용자가 찜한 게시글 목록 조회
 		List<EventLike> likedEventSlice = member.getEventLikeList();

@@ -126,8 +126,10 @@ public class EventController {
 
 	@PreAuthorize("isAuthenticated()")
 	@GetMapping("/subscribed")
-	public SliceResponse<EventResponseDto> getSubscribedEvent(@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
-		return eventService.getSubscribedEvents(pageable, principal);
+	public SliceResponse<EventResponseDto> getSubscribedEvent(
+		@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable,
+		Principal principal, @RequestParam(value = "keyword", required = false) String keyword) {
+		return eventService.getSubscribedEvents(pageable, principal, keyword);
 	}
 
 	// 게시글 찜하기
