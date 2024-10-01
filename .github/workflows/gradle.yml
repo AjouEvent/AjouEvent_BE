@@ -39,7 +39,7 @@ jobs:
         echo "${{secrets.APPLICATION_DEV_YML}}" > ./src/main/resources/application-dev.yml
         echo "${{secrets.DOCKER_COMPOSE}}" > ./src/main/resources/docker-compose.yml
         echo "${{secrets.PRO_YML}}" > ./src/main/resources/prometheus.yml
-        echo "${{secrets.FIREBASE_JSON}}" > ./src/main/resources/firebase/ajou-event-firebase-adminsdk-aeken-655a7eca6d.json
+        echo "${{secrets.FIREBASE_JSON}}" | base64 -d > ./src/main/resources/firebase/${{ secrets.FIREBASE_JSON_FILE }}
     
 
     - name: Permission for gradlew
