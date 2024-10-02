@@ -36,7 +36,7 @@ jobs:
       run: |
         echo "${{secrets.APPLICATION_YML}}" > ./src/main/resources/application.yml
         echo "${{secrets.CREDENTIAL_JSON}}" > ./src/main/resources/credentials.json
-        echo "${{secrets.APPLICATION_DEV_YML}}" > ./src/main/resources/application-dev.yml
+        echo "${{secrets.APPLICATION_PROD_YML}}" > ./src/main/resources/application-prod.yml
         echo "${{secrets.DOCKER_COMPOSE}}" > ./src/main/resources/docker-compose.yml
         echo "${{secrets.PRO_YML}}" > ./src/main/resources/prometheus.yml
         echo "${{secrets.FIREBASE_JSON}}" | base64 -d > ./src/main/resources/firebase/${{ secrets.FIREBASE_JSON_FILE_NAME }}
