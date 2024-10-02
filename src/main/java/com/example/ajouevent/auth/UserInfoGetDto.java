@@ -2,9 +2,9 @@ package com.example.ajouevent.auth;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
-@Data
+@Getter
 @Builder
 public class UserInfoGetDto {
     private String id;

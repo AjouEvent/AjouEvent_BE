@@ -45,6 +45,14 @@ public class MemberController {
 		return memberService.login(loginRequest);
 	}
 
+	// 사용자 등록 API
+	@PreAuthorize("isAuthenticated()")
+	@PostMapping("/register-info")
+	public ResponseEntity<RegisterResponse> registerInfo(@RequestBody RegisterMemberInfoRequest registerMemberInfoRequest, Principal principal) throws IOException {
+		RegisterResponse responseMessage = memberService.registerInfo(registerMemberInfoRequest, principal);
+		return ResponseEntity.status(HttpStatus.CREATED).body(responseMessage);
+	}
+
 	@PatchMapping("/reissue-token")
 	public ResponseEntity<LoginResponse> reissueAccessToken(@RequestBody ReissueTokenDto refreshToken) {
 		LoginResponse token = memberService.reissueAccessToken(refreshToken);

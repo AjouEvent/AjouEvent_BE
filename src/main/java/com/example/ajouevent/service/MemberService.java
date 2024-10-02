@@ -80,9 +80,27 @@ public class MemberService {
 		memberRepository.save(newMember);
 
 		// 회원가입이 완료되면 트리거 된다.
-		String registerMessage = newMember.getId() + "번째 유저" + registerRequest.getName() + " 님이 회원가입했습니다!\n";
+		String registerMessage = newMember.getId() + "번째 유저 " + registerRequest.getName() + " 님이 회원가입했습니다!\n";
 		discordMessageProvider.sendMessage(registerMessage);
 		return "가입 완료"; // -> 수정 필요
+	}
+
+	@Transactional
+	public RegisterResponse registerInfo(RegisterMemberInfoRequest registerMemberInfoRequest, Principal principal) throws IOException {
+		Member member = memberRepository.findByEmail(principal.getName())
+			.orElseThrow(() -> new CustomException(CustomErrorCode.LOGIN_FAILED));
+
+		if (registerMemberInfoRequest.getMajor() != null) member.setMajor(registerMemberInfoRequest.getMajor());
+
+
+		memberRepository.save(member);
+
+		String registerMessage = member.getId() + "번째 유저 " + member.getName() + " 님이 회원가입했습니다!\n";
+		discordMessageProvider.sendMessage(registerMessage);
+		return RegisterResponse.builder()
+			.email(member.getEmail())
+			.name(member.getName())
+			.build();
 	}
 
 	@Transactional
@@ -194,8 +212,33 @@ public class MemberService {
 	public LoginResponse socialLogin (OAuthDto oAuthDto) throws GeneralSecurityException, IOException {
 		UserInfoGetDto userInfoGetDto = connectCalendar(oAuthDto);
 
-		Member member = memberRepository.findByEmail(userInfoGetDto.getEmail())
-				.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+		Boolean isNewMember = false; // 새로 가입한 회원 여부
+
+		// // 캘린더 연동을 선택한 경우
+		// if (isCalendarLinked) {
+		// 	userInfoGetDto = connectCalendar(oAuthDto);
+		// } else {
+		// 	// 캘린더 연동을 선택하지 않은 경우, 구글 로그인만 처리
+		// 	TokenResponse googleToken = oAuth.requestGoogleAccessToken(oAuthDto);
+		// 	userInfoGetDto = oAuth.printUserResource(googleToken);
+		// }
+
+		Optional<Member> memberOptional = memberRepository.findByEmail(userInfoGetDto.getEmail());
+
+		Member member;
+
+		if (memberOptional.isPresent()) {
+			member = memberOptional.get();
+		} else {
+			member = Member.builder()
+				.email(userInfoGetDto.getEmail())
+				.name(userInfoGetDto.getName())
+				.build();
+
+			memberRepository.save(member);
+			isNewMember = true; // 새로 가입한 회원으로 설정
+		}
+
 
 		MemberDto.MemberInfoDto memberInfoDto = MemberDto.MemberInfoDto.builder()
 				.memberId(member.getId())
@@ -227,6 +270,7 @@ public class MemberService {
 				.name(member.getName())
 				.major(member.getMajor())
 				.email(member.getEmail())
+				.isNewMember(isNewMember)
 				.build();
 	}
 
