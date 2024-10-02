@@ -20,4 +20,5 @@ public class LoginResponse {
 	private String name;
 	private String major;
 	private String email;
+	private Boolean isNewMember;
 }
