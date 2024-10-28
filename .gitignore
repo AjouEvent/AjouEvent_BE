@@ -5,6 +5,11 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
+.DS_Store
+._.DS_Store
+**/.DS_Store
+**/._.DS_Store
+
 ### STS ###
 .apt_generated
 .classpath
@@ -20,11 +25,16 @@ bin/
 ### Firebase ###
 **/src/main/resources/application-*.yml
 **/src/main/resources/firebase/*.json
+/src/main/resources/firebase_dev/*.json
+/src/main/resources/firebase_local/*.json
 /src/main/resources/application-*.yml
 
 
 ### IntelliJ IDEA ###
 application.properties
+application.yml
+application-dev.yml
+/src/main/resources/*.yml
 
 .idea
 *.iws
@@ -43,3 +53,14 @@ out/
 
 ### VS Code ###
 .vscode/
+
+**/src/main/resources/credentials.json
+**/tokens/
+/webhook_log.txt
+/topic_log.txt
+/alarm_log.txt
+/notification_log.txt
+/src/main/resources/docker-compose.yml
+/src/main/resources/prometheus.yml
+
+/src/main/.DS_Store

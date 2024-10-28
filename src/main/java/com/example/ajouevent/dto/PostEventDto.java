@@ -1,18 +1,19 @@
 package com.example.ajouevent.dto;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 import com.example.ajouevent.domain.Type;
-import com.google.api.client.util.DateTime;
+
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import javax.swing.*;
 
 @Getter
 @Setter
-@Builder
+@NoArgsConstructor
 public class PostEventDto {
 
     @NotNull(message = "제목은 Null 일 수 없습니다!")
@@ -20,15 +21,20 @@ public class PostEventDto {
 
     private String content;
 
-    private String writer;
+    private String url;
 
-    private DateTime date;
+    private String writer;
 
     private String subject;
 
     private String major;
 
+    private LocalDateTime eventDateTime;
+
     @NotNull(message = "type은 Null일 수 없습니다")
     private Type type;
+
+    // 이미지 URL 리스트 추가
+    private List<String> imageUrls;
 
 }

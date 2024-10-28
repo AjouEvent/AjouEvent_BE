@@ -2,22 +2,23 @@ package com.example.ajouevent.dto;
 
 import java.time.LocalDateTime;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class LoginResponse {
 
-	private String id;
+	private Long id;
+	private String grantType;
+	private String accessToken;
+	private String refreshToken;
+	private String name;
+	private String major;
 	private String email;
-	private String userName;
-	private LocalDateTime createdAt;
-
-	public LoginResponse(String id, String email, String userName, LocalDateTime createdAt) {
-		this.id = id;
-		this.email = email;
-		this.userName = userName;
-		this.createdAt = createdAt;
-	}
+	private Boolean isNewMember;
 }

@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 @Configuration
@@ -34,4 +35,12 @@ public class S3Config {
 			.withCredentials(new AWSStaticCredentialsProvider(basicAWSCredentials))
 			.build();
 	}
+
+	@Bean
+	@Primary
+	public BasicAWSCredentials awsCredentialsProvider(){
+		return new BasicAWSCredentials(accessKey, secretKey);
+	}
+
+
 }

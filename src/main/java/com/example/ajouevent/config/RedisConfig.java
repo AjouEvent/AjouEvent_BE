@@ -1,5 +1,6 @@
 package com.example.ajouevent.config;
 
+import com.example.ajouevent.domain.EmailCheck;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -7,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 @Configuration
@@ -24,22 +26,36 @@ public class RedisConfig {
 		return new LettuceConnectionFactory(host, port);
 	}
 
+	// StringRedisSerializer
 	@Bean
-	public RedisTemplate<String, Object> redisTemplate() {
+	public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
 		RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
 		redisTemplate.setConnectionFactory(redisConnectionFactory());
+		redisTemplate.setEnableTransactionSupport(true);
 
-		// 일반적인 key:value의 경우 시리얼라이저
 		redisTemplate.setKeySerializer(new StringRedisSerializer());
 		redisTemplate.setValueSerializer(new StringRedisSerializer());
 
-		// Hash를 사용할 경우 시리얼라이저
+		// Hash를 사용할 경우 Serializer
 		redisTemplate.setHashKeySerializer(new StringRedisSerializer());
 		redisTemplate.setHashValueSerializer(new StringRedisSerializer());
 
-		// 모든 경우
-		redisTemplate.setDefaultSerializer(new StringRedisSerializer());
+		return redisTemplate;
+	}
+
+	@Bean
+	public RedisTemplate<String, EmailCheck> redisEaTemplate(RedisConnectionFactory connectionFactory) {
+		RedisTemplate<String, EmailCheck> redisTemplate = new RedisTemplate<>();
+		redisTemplate.setConnectionFactory(connectionFactory);
+		redisTemplate.setEnableTransactionSupport(true);
+
+		redisTemplate.setKeySerializer(new StringRedisSerializer());
+		redisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+
+		redisTemplate.setHashKeySerializer(new StringRedisSerializer());
+		redisTemplate.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
 
 		return redisTemplate;
 	}
+
 }

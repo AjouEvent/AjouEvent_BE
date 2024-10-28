@@ -2,9 +2,8 @@ package com.example.ajouevent.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.checkerframework.checker.units.qual.C;
-import org.joda.time.DateTime;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -19,22 +18,35 @@ public class Alarm {
     private Long alarmId;
 
     @Column
+    private LocalDateTime alarmDateTime;
+
+    @Column
     private String date;
 
     @Column
     private String title;
 
-    @Column
+    @Column(length = 50000)
     private String content;
+
+    @Column
+    private String url;
 
     @Column
     private String writer;
 
     @Column
-    private DateTime eventDate;
+    private LocalDateTime eventDate;
 
     @Column
     private String subject;
+
+    @Column
+    private String target;
+
+    @Column(length = 50000)
+    @Enumerated(value = EnumType.STRING)
+    private Type type;
 
     @OneToMany(mappedBy = "alarm", fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.REMOVE}, orphanRemoval = true)
     @ToString.Exclude
