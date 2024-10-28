@@ -1,6 +1,9 @@
 package com.example.ajouevent.service;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -87,6 +90,8 @@ public class KeywordService {
 		KeywordMember keywordMember = KeywordMember.builder()
 			.keyword(keyword)
 			.member(member)
+			.isRead(false)
+			.lastReadAt(LocalDateTime.now())
 			.build();
 		keywordMemberRepository.save(keywordMember);
 
@@ -162,6 +167,8 @@ public class KeywordService {
 				.koreanKeyword(km.getKeyword().getKoreanKeyword())
 				.searchKeyword(km.getKeyword().getSearchKeyword())
 				.topicName(km.getKeyword().getTopic().getKoreanTopic())
+				.isRead(km.getIsRead())
+				.lastReadAt(km.getLastReadAt())
 				.build())
 			.collect(Collectors.toList());
 	}

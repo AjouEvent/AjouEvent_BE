@@ -2,6 +2,7 @@ package com.example.ajouevent.service;
 
 import java.security.Principal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -85,6 +86,8 @@ public class TopicService {
 		TopicMember topicMember = TopicMember.builder()
 			.topic(topic)
 			.member(member)
+			.isRead(false)
+			.lastReadAt(LocalDateTime.now())
 			.build();
 		topicMemberRepository.save(topicMember);
 
@@ -280,7 +283,9 @@ public class TopicService {
 			.map(topicMember -> new TopicResponse(
 				topicMember.getId(),
 				topicMember.getTopic().getKoreanTopic(),
-				topicMember.getTopic().getDepartment()
+				topicMember.getTopic().getDepartment(),
+				topicMember.isRead(),
+				topicMember.getLastReadAt()
 			))
 			.sorted(Comparator.comparing(TopicResponse::getId).reversed())
 			.collect(Collectors.toList());

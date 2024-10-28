@@ -1,5 +1,8 @@
 package com.example.ajouevent.domain;
 
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -11,9 +14,11 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -30,8 +35,9 @@ public class TopicMember {
 	@JoinColumn(name = "member_id")
 	private Member member;
 
-	public TopicMember(Topic topic, Member member) {
-		this.topic = topic;
-		this.member = member;
-	}
+	@Column(nullable = false)
+	private boolean isRead;
+
+	@Column(nullable = false)
+	private LocalDateTime lastReadAt;
 }
