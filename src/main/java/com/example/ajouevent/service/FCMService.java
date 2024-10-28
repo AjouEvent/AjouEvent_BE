@@ -133,9 +133,14 @@ public class FCMService {
 					messageTitle = koreanKeyword + "-" + messageTitle;
 					String encodedKeyword = keyword.getEncodedKeyword();
 					// FCM 메시지 생성 - keyword
-					Message keywordMessage = createFcmMessage(englishKeyword, messageTitle, body, imageUrl, url);
-					send(keywordMessage);
 					Message keywordMessage = createFcmMessage(encodedKeyword, messageTitle, body, imageUrl, url);
+					// 비동기적으로 알림 전송
+					send(keywordMessage).thenAccept(response -> {
+						topicLogger.log("Keyword 알림 -" + koreanKeyword +" 전송 성공: " + response);
+					}).exceptionally(e -> {
+						topicLogger.log("Keyword 알림 전송 실패: " + e.getMessage());
+						return null;
+					});
 
 					keywordLogger.log("키워드 '영어 : " + encodedKeyword + " 한글 : " + koreanKeyword + "에 대한 공지사항이 전송되었습니다.");
 				}
