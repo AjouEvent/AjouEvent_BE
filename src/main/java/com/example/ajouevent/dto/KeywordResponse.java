@@ -10,7 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class KeywordResponse {
+	private String encodedKeyword;
 	private String koreanKeyword;
-	private String englishKeyword;
+	private String searchKeyword;
 	private String topicName;
 }

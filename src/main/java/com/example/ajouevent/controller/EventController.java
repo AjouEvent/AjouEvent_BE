@@ -206,9 +206,9 @@ public class EventController {
 
 	@PreAuthorize("isAuthenticated()")
 	@GetMapping("/getSubscribedPostsByKeyword/{keyword}")
-	public SliceResponse<EventWithKeywordDto> getClubEventsByKeyword(@PathVariable("keyword") String englishKeyword,
+	public SliceResponse<EventWithKeywordDto> getClubEventsByKeyword(@PathVariable("keyword") String searchKeyword,
 		Principal principal,
 		@PageableDefault(size = 10, sort = "createdAt", direction = DESC) Pageable pageable) {
-		return eventService.getClubEventsByKeyword(englishKeyword, principal, pageable);
+		return eventService.getClubEventsByKeyword(searchKeyword, principal, pageable);
 	}
 }

@@ -1070,8 +1070,8 @@ public class EventService {
 	}
 
 	// 단일 키워드 대상 글 조회
-	@Transactional(readOnly = true)
-	public SliceResponse<EventWithKeywordDto> getClubEventsByKeyword(String englishKeyword, Principal principal, Pageable pageable) {
+	@Transactional
+	public SliceResponse<EventWithKeywordDto> getClubEventsByKeyword(String searchKeyword, Principal principal, Pageable pageable) {
 		if (principal == null) {
 			throw new CustomException(CustomErrorCode.LOGIN_NEEDED);
 		}
@@ -1080,7 +1080,7 @@ public class EventService {
 		Member member = memberRepository.findByEmail(userEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
-		Keyword keyword = keywordRepository.findByEnglishKeyword(englishKeyword)
+		Keyword keyword = keywordRepository.findBySearchKeyword(searchKeyword)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.KEYWORD_NOT_FOUND));
 
 		// 키워드에 해당하는 이벤트 페이징 조회

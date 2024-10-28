@@ -11,7 +11,8 @@ import com.example.ajouevent.domain.Topic;
 
 @Repository
 public interface KeywordRepository extends JpaRepository<Keyword, Long> {
-	Optional<Keyword> findByEnglishKeyword(String englishKeyword);
+	Optional<Keyword> findBySearchKeyword(String searchKeyword);
+	Optional<Keyword> findByEncodedKeyword(String encodedKeyword);
 
 	List<Keyword> findByTopic(Topic topic);
 }

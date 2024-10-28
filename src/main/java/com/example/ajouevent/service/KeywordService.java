@@ -51,21 +51,24 @@ public class KeywordService {
 	@Transactional
 	public void subscribeToKeyword(KeywordRequest keywordRequest) {
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-		String englishKeyword = keywordRequest.getEnglishKeyword();
+		String koreanKeyword = keywordRequest.getKoreanKeyword();
 		String topicName = keywordRequest.getTopicName();
 
 		Member member = memberRepository.findByEmailWithTokens(memberEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
-		// 공백을 "8"로 바꿉니다
-		String formattedKeyword = englishKeyword.replace(" ", "8") + "8" + topicName;
+		// URL 인코딩과 Topic ID 결합하여 고유한 formattedKeyword 생성
+		String encodedKeyword = URLEncoder.encode(koreanKeyword, StandardCharsets.UTF_8);
+		String searchKeyword = koreanKeyword + "_" + topicName;
+		encodedKeyword = encodedKeyword.replace("+", "%20");
+		String formattedKeyword = encodedKeyword + "_" + topicName;
 
 		Topic topic = topicRepository.findByDepartment(topicName)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
 
 		// 입력된 키워드가 존재하는지 확인하고, 없다면 새로 생성
-		Keyword keyword = keywordRepository.findByEnglishKeyword(formattedKeyword)
-			.orElseGet(() -> createNewTopic(keywordRequest, formattedKeyword, topic));
+		Keyword keyword = keywordRepository.findByEncodedKeyword(formattedKeyword)
+			.orElseGet(() -> createNewTopic(keywordRequest, searchKeyword, formattedKeyword, topic));
 
 		topicLogger.log("가져온 topic: " + topic.getKoreanTopic());
 
@@ -103,11 +106,12 @@ public class KeywordService {
 	}
 
 	// 새로운 키워드 생성 메서드
-	private Keyword createNewTopic(KeywordRequest keywordRequest, String formattedKeyword, Topic topic) {
+	private Keyword createNewTopic(KeywordRequest keywordRequest, String searchKeyword, String formattedKeyword, Topic topic) {
 		// 새로운 토픽 생성 로직
 		Keyword newKeyword = Keyword.builder()
-			.englishKeyword(formattedKeyword)
+			.encodedKeyword(formattedKeyword)
 			.koreanKeyword(keywordRequest.getKoreanKeyword())
+			.searchKeyword(searchKeyword)
 			.topic(topic)
 			.build();
 		keywordRepository.save(newKeyword);
@@ -120,12 +124,12 @@ public class KeywordService {
 	@Transactional
 	public void unsubscribeFromKeyword(UnsubscribeKeywordRequest unsubscribeKeywordRequest) {
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-		String englishKeyword = unsubscribeKeywordRequest.getEnglishKeyword();
+		String encodedKeyword = unsubscribeKeywordRequest.getEncodedKeyword();
 
 		Member member = memberRepository.findByEmailWithTokens(memberEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
-		Keyword keyword = keywordRepository.findByEnglishKeyword(englishKeyword)
+		Keyword keyword = keywordRepository.findByEncodedKeyword(encodedKeyword)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.KEYWORD_NOT_FOUND));
 
 		// 유저가 설정한 키워드를 찾아서 삭제
@@ -139,7 +143,7 @@ public class KeywordService {
 		List<String> tokenValues = memberTokens.stream()
 			.map(Token::getTokenValue)
 			.collect(Collectors.toList());
-		fcmService.unsubscribeFromTopic(englishKeyword, tokenValues);
+		fcmService.unsubscribeFromTopic(encodedKeyword, tokenValues);
 		keywordLogger.log("키워드 구독 취소 : " + keyword.getKoreanKeyword());
 	}
 
@@ -154,8 +158,9 @@ public class KeywordService {
 
 		return keywordMembers.stream()
 			.map(km -> KeywordResponse.builder()
+				.encodedKeyword(km.getKeyword().getEncodedKeyword())
 				.koreanKeyword(km.getKeyword().getKoreanKeyword())
-				.englishKeyword(km.getKeyword().getEnglishKeyword())
+				.searchKeyword(km.getKeyword().getSearchKeyword())
 				.topicName(km.getKeyword().getTopic().getKoreanTopic())
 				.build())
 			.collect(Collectors.toList());
@@ -175,9 +180,9 @@ public class KeywordService {
 			.toList();
 
 		keywordMembers.forEach(keywordMember -> {
-			fcmService.unsubscribeFromTopic(keywordMember.getKeyword().getEnglishKeyword(), tokenValues);
+			fcmService.unsubscribeFromTopic(keywordMember.getKeyword().getEncodedKeyword(), tokenValues);
 			keywordLogger.log("Keyword 구독 초기화 - Member: " + keywordMember.getMember().getEmail() + ", Keyword: "
-				+ keywordMember.getKeyword().getKoreanKeyword() + " - " + keywordMember.getKeyword().getEnglishKeyword());
+				+ keywordMember.getKeyword().getKoreanKeyword() + " - " + keywordMember.getKeyword().getEncodedKeyword());
 		});
 
 		List<Long> tokenIds = tokens.stream()

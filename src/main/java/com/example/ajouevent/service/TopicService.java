@@ -188,8 +188,8 @@ public class TopicService {
 
 			// 각 키워드에 대해 새 토큰 구독 처리
 			for (Keyword keyword : subscribedKeywords) {
-				fcmService.subscribeToTopic(keyword.getEnglishKeyword(), Collections.singletonList(token.getTokenValue()));
-				log.info("새 토큰으로 " + keyword.getEnglishKeyword() + " 키워드를 다시 구독합니다.");
+				fcmService.subscribeToTopic(keyword.getEncodedKeyword(), Collections.singletonList(token.getTokenValue()));
+				log.info("새 토큰으로 " + keyword.getEncodedKeyword() + " 키워드를 다시 구독합니다.");
 			}
 		}
 	}
@@ -222,7 +222,7 @@ public class TopicService {
 
 		// 각 KeywordToken에 대해 구독 해지
 		keywordTokens.forEach(keywordToken -> {
-			fcmService.unsubscribeFromTopic(keywordToken.getKeyword().getEnglishKeyword(), tokenValues);
+			fcmService.unsubscribeFromTopic(keywordToken.getKeyword().getEncodedKeyword(), tokenValues);
 		});
 
 		// 만료된 토큰 ID 리스트 추출

@@ -131,12 +131,13 @@ public class FCMService {
 				// 공지사항의 제목이나 본문에 키워드가 포함되어 있는지 확인
 				if (noticeDto.getTitle().contains(koreanKeyword)) {
 					messageTitle = koreanKeyword + "-" + messageTitle;
-					String englishKeyword = keyword.getEnglishKeyword();
+					String encodedKeyword = keyword.getEncodedKeyword();
 					// FCM 메시지 생성 - keyword
 					Message keywordMessage = createFcmMessage(englishKeyword, messageTitle, body, imageUrl, url);
 					send(keywordMessage);
+					Message keywordMessage = createFcmMessage(encodedKeyword, messageTitle, body, imageUrl, url);
 
-					keywordLogger.log("키워드 '영어 : " + englishKeyword + " 한글 : " + koreanKeyword + "에 대한 공지사항이 전송되었습니다.");
+					keywordLogger.log("키워드 '영어 : " + encodedKeyword + " 한글 : " + koreanKeyword + "에 대한 공지사항이 전송되었습니다.");
 				}
 			}
 

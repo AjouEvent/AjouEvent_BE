@@ -24,10 +24,12 @@ public class Keyword {
 	private Long id;
 
 	@Column
-	private String englishKeyword;
+	private String encodedKeyword;
 
 	@Column
 	private String koreanKeyword;
+
+	@Column String searchKeyword;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "topic_id")
