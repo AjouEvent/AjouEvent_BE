@@ -101,6 +101,8 @@ public class KeywordService {
 			.collect(Collectors.toList());
 		keywordTokenBulkRepository.saveAll(keywordTokens);
 
+		memberRepository.updateKeywordTabReadStatus(member, false);
+
 		// FCM 서비스를 사용하여 토픽에 대한 구독 진행
 		List<String> tokenValues = memberTokens.stream()
 			.map(Token::getTokenValue)

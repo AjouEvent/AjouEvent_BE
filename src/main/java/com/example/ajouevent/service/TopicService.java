@@ -97,6 +97,8 @@ public class TopicService {
 			.collect(Collectors.toList());
 		topicTokenBulkRepository.saveAll(topicTokens);
 
+		memberRepository.updateTopicTabReadStatus(member, false);
+
 		// FCM 서비스를 사용하여 토픽에 대한 구독 진행
 		List<String> tokenValues = memberTokens.stream()
 			.map(Token::getTokenValue)

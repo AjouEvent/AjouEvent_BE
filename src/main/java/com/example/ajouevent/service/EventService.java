@@ -527,8 +527,14 @@ public class EventService {
 		if (cachedData.isPresent()) {
 			SliceResponse<EventResponseDto> response = cachedData.get();
 			if (principal != null) {
+				// 읽음 상태 업데이트: 사용자가 토픽의 공지사항을 조회했으므로 읽음으로 처리
+				Member member = memberRepository.findByEmail(principal.getName())
+					.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+				Topic topic = topicRepository.findByDepartment(type)
+					.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
 				// 동기적으로 찜 상태를 업데이트
 				updateLikeStatusForUser(response.getResult(), principal.getName());
+				markTopicAsRead(member, topic);
 			}
 
 			// 조회수, 좋아요수를 실시간으로 반영
@@ -1236,14 +1242,16 @@ public class EventService {
 		}
 
 		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-		// 멤버가 구독한 모든 토픽의 읽음 상태 조회
-		List<TopicMember> topicMembers = topicMemberRepository.findByMember(member);
-		boolean allTopicsRead = topicMembers.stream().allMatch(TopicMember::isRead);
-
-		// 모든 구독한 토픽이 읽음 상태일 경우만 구독 알림의 상태를 true로 설정
-		if (allTopicsRead) {
-			memberRepository.updateTopicTabReadStatus(member, true);
-		}
+		// // 멤버가 구독한 모든 토픽의 읽음 상태 조회
+		// List<TopicMember> topicMembers = topicMemberRepository.findByMember(member);
+		// boolean allTopicsRead = topicMembers.stream().allMatch(TopicMember::isRead);
+		//
+		// // 모든 구독한 토픽이 읽음 상태일 경우만 구독 알림의 상태를 true로 설정
+		// if (allTopicsRead) {
+		// 	log.info("토픽 알림 탭 읽음상태 업데이트 - true");
+		// 	memberRepository.updateTopicTabReadStatus(member, true);
+		// }
+		memberRepository.updateTopicTabReadStatus(member, true);
 	}
 
 	// 키워드 알림 읽음 상태를 관리하기 위한 로직
@@ -1255,14 +1263,25 @@ public class EventService {
 
 		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
-		// 멤버가 구독한 모든 키워드의 읽음 상태 조회
-		List<KeywordMember> keywordMembers = keywordMemberRepository.findByMember(member);
-		boolean allKeywordsRead = keywordMembers.stream().allMatch(KeywordMember::getIsRead);
-
-		// 모든 구독한 키워드가 읽음 상태일 경우만 키워드 알림의 상태를 true로 설정
-		if (allKeywordsRead) {
-			memberRepository.updateKeywordTabReadStatus(member, true);
-		}
+		// // 멤버가 구독한 모든 키워드의 읽음 상태 조회
+		// List<KeywordMember> keywordMembers = keywordMemberRepository.findByMember(member);
+		//
+		// // 각 키워드의 읽음 상태를 로그로 출력
+		// keywordMembers.forEach(keywordMember ->
+		// 	log.info("Keyword: {}, isRead: {}",
+		// 		keywordMember.getKeyword().getKoreanKeyword(),
+		// 		keywordMember.getIsRead())
+		// );
+		//
+		//
+		// boolean allKeywordsRead = keywordMembers.stream().allMatch(KeywordMember::getIsRead);
+		//
+		// // 모든 구독한 키워드가 읽음 상태일 경우만 키워드 알림의 상태를 true로 설정
+		// if (allKeywordsRead) {
+		// 	log.info("키워드 알림 탭 읽음상태 업데이트 - true");
+		// 	memberRepository.updateKeywordTabReadStatus(member, true);
+		// }
+		memberRepository.updateKeywordTabReadStatus(member, true);
 	}
 
 }
