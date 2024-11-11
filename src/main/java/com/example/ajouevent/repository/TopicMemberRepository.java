@@ -31,5 +31,11 @@ public interface TopicMemberRepository extends JpaRepository<TopicMember, Long> 
 	List<TopicMember> findByMemberWithTopic(@Param("member") Member member);
 
 	@Query("SELECT tm.member FROM TopicMember tm WHERE tm.topic = :topic")
-	List<Member> findByTopic(@Param("topic") Topic topic);
+	List<Member> findMembersByTopic(@Param("topic") Topic topic);
+
+	@Query("SELECT tm FROM TopicMember tm WHERE tm.topic = :topic")
+	List<TopicMember> findByTopic(@Param("topic") Topic topic);
+
+	Optional<TopicMember> findByMemberAndTopic(Member member, Topic topic);
+
 }

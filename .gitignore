@@ -25,6 +25,8 @@ bin/
 ### Firebase ###
 **/src/main/resources/application-*.yml
 **/src/main/resources/firebase/*.json
+/src/main/resources/firebase_dev/*.json
+/src/main/resources/firebase_local/*.json
 /src/main/resources/application-*.yml
 
 

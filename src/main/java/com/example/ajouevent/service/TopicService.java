@@ -2,6 +2,7 @@ package com.example.ajouevent.service;
 
 import java.security.Principal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -85,6 +86,8 @@ public class TopicService {
 		TopicMember topicMember = TopicMember.builder()
 			.topic(topic)
 			.member(member)
+			.isRead(false)
+			.lastReadAt(LocalDateTime.now())
 			.build();
 		topicMemberRepository.save(topicMember);
 
@@ -93,6 +96,8 @@ public class TopicService {
 			.map(token -> new TopicToken(topic, token))
 			.collect(Collectors.toList());
 		topicTokenBulkRepository.saveAll(topicTokens);
+
+		memberRepository.updateTopicTabReadStatus(member, false);
 
 		// FCM 서비스를 사용하여 토픽에 대한 구독 진행
 		List<String> tokenValues = memberTokens.stream()
@@ -188,8 +193,8 @@ public class TopicService {
 
 			// 각 키워드에 대해 새 토큰 구독 처리
 			for (Keyword keyword : subscribedKeywords) {
-				fcmService.subscribeToTopic(keyword.getEnglishKeyword(), Collections.singletonList(token.getTokenValue()));
-				log.info("새 토큰으로 " + keyword.getEnglishKeyword() + " 키워드를 다시 구독합니다.");
+				fcmService.subscribeToTopic(keyword.getEncodedKeyword(), Collections.singletonList(token.getTokenValue()));
+				log.info("새 토큰으로 " + keyword.getEncodedKeyword() + " 키워드를 다시 구독합니다.");
 			}
 		}
 	}
@@ -222,7 +227,7 @@ public class TopicService {
 
 		// 각 KeywordToken에 대해 구독 해지
 		keywordTokens.forEach(keywordToken -> {
-			fcmService.unsubscribeFromTopic(keywordToken.getKeyword().getEnglishKeyword(), tokenValues);
+			fcmService.unsubscribeFromTopic(keywordToken.getKeyword().getEncodedKeyword(), tokenValues);
 		});
 
 		// 만료된 토큰 ID 리스트 추출
@@ -280,7 +285,9 @@ public class TopicService {
 			.map(topicMember -> new TopicResponse(
 				topicMember.getId(),
 				topicMember.getTopic().getKoreanTopic(),
-				topicMember.getTopic().getDepartment()
+				topicMember.getTopic().getDepartment(),
+				topicMember.isRead(),
+				topicMember.getLastReadAt()
 			))
 			.sorted(Comparator.comparing(TopicResponse::getId).reversed())
 			.collect(Collectors.toList());

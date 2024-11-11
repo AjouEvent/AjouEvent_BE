@@ -45,7 +45,7 @@ public class KeywordController {
 		keywordService.unsubscribeFromKeyword(unsubscribeKeywordRequest);
 		return ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
-			.successContent(unsubscribeKeywordRequest.getEnglishKeyword() +" 키워드를 구독 취소합니다.")
+			.successContent(unsubscribeKeywordRequest.getEncodedKeyword() +" 키워드를 구독 취소합니다.")
 			.build()
 		);
 	}

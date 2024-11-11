@@ -8,10 +8,10 @@ import lombok.Getter;
 @Getter
 @Builder
 public class UnsubscribeKeywordRequest {
-	private String englishKeyword;
+	private String encodedKeyword;
 
 	@JsonCreator
-	public UnsubscribeKeywordRequest(String englishKeyword) {
-		this.englishKeyword = englishKeyword;
+	public UnsubscribeKeywordRequest(String encodedKeyword) {
+		this.encodedKeyword = encodedKeyword;
 	}
 }

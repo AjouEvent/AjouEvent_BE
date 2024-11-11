@@ -1,6 +1,7 @@
 package com.example.ajouevent.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -31,4 +32,14 @@ public interface KeywordMemberRepository extends JpaRepository<KeywordMember, Lo
 
 	@Query("SELECT km FROM KeywordMember km JOIN FETCH km.keyword WHERE km.member = :member")
 	List<KeywordMember> findByMemberWithKeyword(@io.lettuce.core.dynamic.annotation.Param("member") Member member);
+
+	@Query("SELECT km FROM KeywordMember km WHERE km.keyword = :keyword")
+	List<KeywordMember> findByKeyword(@Param("keyword") Keyword keyword);
+
+	@Query("SELECT km FROM KeywordMember km WHERE km.keyword = :keyword AND km.member = :member")
+	Optional<KeywordMember> findByKeywordAndMember(@Param("keyword") Keyword keyword, @Param("member") Member member);
+
+	@Modifying
+	@Query("UPDATE KeywordMember km SET km.isRead = :isRead WHERE km.keyword = :keyword AND km.member = :member")
+	void updateReadStatus(@Param("isRead") boolean isRead, @Param("keyword") Keyword keyword, @Param("member") Member member);
 }

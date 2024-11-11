@@ -54,6 +54,15 @@ public class Member {
 		CascadeType.REMOVE}, orphanRemoval = true)
 	private List<KeywordMember> keywordMembers;
 
+	@Column(nullable = false)
+	private Boolean isSubscribedTabRead;
+
+	@Column(nullable = false)
+	private Boolean isTopicTabRead;
+
+	@Column(nullable = false)
+	private Boolean isKeywordTabRead;
+
 	@Builder
 	public Member(Long id, String email, String name, String password, String major, String phone) {
 		this.id = id;
