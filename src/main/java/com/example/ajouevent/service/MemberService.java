@@ -233,6 +233,9 @@ public class MemberService {
 			member = Member.builder()
 				.email(userInfoGetDto.getEmail())
 				.name(userInfoGetDto.getName())
+				.isSubscribedTabRead(true)
+				.isTopicTabRead(true)
+				.isKeywordTabRead(true)
 				.build();
 
 			memberRepository.save(member);
