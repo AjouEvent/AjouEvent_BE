@@ -29,7 +29,7 @@ public class WebhookController {
 
 	// go 크롤링 서버에서 보낸 웹훅 처리를 listen하는 api
 	@PostMapping("/crawling")
-	public ResponseEntity<WebhookResponse> handleWebhook(@RequestHeader("Authorization") String token, @RequestBody NoticeDto noticeDto) {
+	public ResponseEntity<WebhookResponse> handleWebhook(@RequestHeader("crawling-token") String token, @RequestBody NoticeDto noticeDto) {
 
 		// 토큰 검증
 		if (!redisService.isTokenValid("crawling-token", token)) {
