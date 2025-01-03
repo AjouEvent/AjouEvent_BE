@@ -8,7 +8,6 @@ import lombok.Setter;
 @Setter
 @Builder
 public class MemberReadStatusDto {
-	private Boolean isSubscribedTabRead;
 	private Boolean isTopicTabRead;
 	private Boolean isKeywordTabRead;
 

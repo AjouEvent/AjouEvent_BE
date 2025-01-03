@@ -219,18 +219,6 @@ public class EventController {
 		return ResponseEntity.ok(eventService.getMemberReadStatus(principal));
 	}
 
-	// 구독 탭 클릭 시 상태 업데이트
-	@PreAuthorize("isAuthenticated()")
-	@PostMapping("/updateSubscribedTabRead")
-	public ResponseEntity<ResponseDto> updateSubscribedTabRead(Principal principal) {
-		eventService.updateSubscribedTabReadStatus(principal);
-		return ResponseEntity.ok().body(ResponseDto.builder()
-			.successStatus(HttpStatus.OK)
-			.successContent("구독 탭의 읽음 상태 업데이트 요청 완료.")
-			.build()
-		);
-	}
-
 	// 구독 알림 클릭 시 상태 업데이트
 	@PreAuthorize("isAuthenticated()")
 	@PostMapping("/updateTopicTabRead")
