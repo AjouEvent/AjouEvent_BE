@@ -55,23 +55,19 @@ public class Member {
 	private List<KeywordMember> keywordMembers;
 
 	@Column(nullable = false)
-	private Boolean isSubscribedTabRead;
-
-	@Column(nullable = false)
 	private Boolean isTopicTabRead;
 
 	@Column(nullable = false)
 	private Boolean isKeywordTabRead;
 
 	@Builder
-	public Member(Long id, String email, String name, String password, String major, String phone, Boolean isSubscribedTabRead, Boolean isTopicTabRead, Boolean isKeywordTabRead) {
+	public Member(Long id, String email, String name, String password, String major, String phone, Boolean isTopicTabRead, Boolean isKeywordTabRead) {
 		this.id = id;
 		this.email = email;
 		this.name = name;
 		this.password = password;
 		this.major = major;
 		this.phone = phone;
-		this.isSubscribedTabRead = isSubscribedTabRead;
 		this.isTopicTabRead = isTopicTabRead;
 		this.isKeywordTabRead = isKeywordTabRead;
 	}

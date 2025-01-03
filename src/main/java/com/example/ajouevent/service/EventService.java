@@ -1215,24 +1215,10 @@ public class EventService {
 
 		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 		return MemberReadStatusDto.builder()
-			.isSubscribedTabRead(member.getIsSubscribedTabRead())
 			.isTopicTabRead(member.getIsTopicTabRead())
 			.isKeywordTabRead(member.getIsKeywordTabRead())
 			.build();
 	}
-
-	// 구독 탭 읽음 상태 업데이트 (토픽과 키워드 모두 읽음일 때만 true로 설정)
-	@Transactional
-	public void updateSubscribedTabReadStatus(Principal principal) {
-		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
-		// 두 값이 모두 true일 때만 구독 탭 읽음 상태도 true로 설정
-		if (member.getIsTopicTabRead() && member.getIsKeywordTabRead()) {
-			member.setIsSubscribedTabRead(true);
-			memberRepository.save(member); // 업데이트된 상태 저장
-		}
-	}
-
 
 	// 구독 알림 읽음 상태를 관리하기 위한 로직
 	@Transactional

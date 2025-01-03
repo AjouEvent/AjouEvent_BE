@@ -35,10 +35,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 	Member findMemberByEmailAndPhone(String email, String phone);
 
 	@Modifying
-	@Query("UPDATE Member m SET m.isSubscribedTabRead = :isRead WHERE m = :member")
-	void updateSubscribedTabReadStatus(@Param("member") Member member, @Param("isRead") boolean isRead);
-
-	@Modifying
 	@Query("UPDATE Member m SET m.isTopicTabRead = :isRead WHERE m = :member")
 	void updateTopicTabReadStatus(@Param("member") Member member, @Param("isRead") boolean isRead);
 
