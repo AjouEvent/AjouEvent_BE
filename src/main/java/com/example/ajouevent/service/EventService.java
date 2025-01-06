@@ -611,7 +611,7 @@ public class EventService {
 		EventDetailResponseDto responseDto = EventDetailResponseDto.toDto(clubEvent, false);
 
 		if (isAnonymous(userId)) {
-			handleAnonymousUser(request, response, clubEvent);
+			handleAnonymousUserWithCookieAndRedis(request, response, clubEvent);
 		} else {
 			handleAuthenticatedUser(userId, clubEvent);
 			updateLikeStatusForUser(responseDto, userId);
@@ -624,14 +624,41 @@ public class EventService {
 		return "Anonymous".equals(userId);
 	}
 
-	private void handleAnonymousUser(HttpServletRequest request, HttpServletResponse response, ClubEvent clubEvent) {
+	private void handleAnonymousUserWithCookieAndRedis(HttpServletRequest request, HttpServletResponse response, ClubEvent clubEvent) {
+		String ipAddress = getClientIp(request);
+		String userAgent = request.getHeader("User-Agent");
 		String currentCookieValue = cookieService.getCookieValue(request, clubEvent);
+
+		// Redis 키 생성
+		String redisKey = "ClubEvent_View:" + clubEvent.getEventId() + ":" + ipAddress + ":" + userAgent;
+
+		// 쿠키가 없거나 조회된 적 없는 경우
 		if (!cookieService.isAlreadyViewed(currentCookieValue, clubEvent.getEventId())) {
 			ResponseCookie newCookie = cookieService.createOrUpdateCookie(currentCookieValue, clubEvent);
-			log.info("새로운 쿠키" + newCookie);
 			response.addHeader("Set-Cookie", newCookie.toString());
-			increaseViews(clubEvent);
+
+			// 쿠키가 없으면 Redis에서 한 번 더 확인
+			if (Boolean.FALSE.equals(stringRedisTemplate.hasKey(redisKey))) {
+				stringRedisTemplate.opsForValue().set(redisKey, "0", 86400L, TimeUnit.SECONDS); // TTL과 함께 설정
+
+				// 조회수 증가
+				increaseViews(clubEvent);
+			}
 		}
+	}
+
+	private String getClientIp(HttpServletRequest request) {
+		String ip = request.getHeader("X-Forwarded-For");
+		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("Proxy-Client-IP");
+		}
+		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("WL-Proxy-Client-IP");
+		}
+		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getRemoteAddr();
+		}
+		return ip.split(",")[0].trim(); // X-Forwarded-For는 콤마로 구분된 여러 IP를 가질 수 있음
 	}
 
 	private void handleAuthenticatedUser(String userId, ClubEvent clubEvent) {
