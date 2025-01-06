@@ -625,7 +625,7 @@ public class EventService {
 	}
 
 	private void handleAnonymousUserWithCookieAndRedis(HttpServletRequest request, HttpServletResponse response, ClubEvent clubEvent) {
-		String ipAddress = request.getRemoteAddr();
+		String ipAddress = getClientIp(request);
 		String userAgent = request.getHeader("User-Agent");
 		String currentCookieValue = cookieService.getCookieValue(request, clubEvent);
 
@@ -645,6 +645,20 @@ public class EventService {
 				increaseViews(clubEvent);
 			}
 		}
+	}
+
+	private String getClientIp(HttpServletRequest request) {
+		String ip = request.getHeader("X-Forwarded-For");
+		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("Proxy-Client-IP");
+		}
+		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("WL-Proxy-Client-IP");
+		}
+		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getRemoteAddr();
+		}
+		return ip.split(",")[0].trim(); // X-Forwarded-For는 콤마로 구분된 여러 IP를 가질 수 있음
 	}
 
 	private void handleAuthenticatedUser(String userId, ClubEvent clubEvent) {
