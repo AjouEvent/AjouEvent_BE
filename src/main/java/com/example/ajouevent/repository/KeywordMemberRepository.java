@@ -42,4 +42,6 @@ public interface KeywordMemberRepository extends JpaRepository<KeywordMember, Lo
 	@Modifying
 	@Query("UPDATE KeywordMember km SET km.isRead = :isRead WHERE km.keyword = :keyword AND km.member = :member")
 	void updateReadStatus(@Param("isRead") boolean isRead, @Param("keyword") Keyword keyword, @Param("member") Member member);
+
+	boolean existsByMemberAndIsReadFalse(Member member);
 }

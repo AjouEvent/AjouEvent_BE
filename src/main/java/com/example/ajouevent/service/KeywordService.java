@@ -169,7 +169,7 @@ public class KeywordService {
 				.koreanKeyword(km.getKeyword().getKoreanKeyword())
 				.searchKeyword(km.getKeyword().getSearchKeyword())
 				.topicName(km.getKeyword().getTopic().getKoreanTopic())
-				.isRead(km.getIsRead())
+				.isRead(km.isRead())
 				.lastReadAt(km.getLastReadAt())
 				.build())
 			.collect(Collectors.toList());

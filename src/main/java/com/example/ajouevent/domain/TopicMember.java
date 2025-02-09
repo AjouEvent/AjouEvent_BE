@@ -35,7 +35,7 @@ public class TopicMember {
 	@JoinColumn(name = "member_id")
 	private Member member;
 
-	@Column(nullable = false)
+	@Column(nullable = false, columnDefinition = "TINYINT(1)")
 	private boolean isRead;
 
 	@Column(nullable = false)
