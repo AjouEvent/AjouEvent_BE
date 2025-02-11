@@ -36,4 +36,6 @@ public interface EventRepository extends JpaRepository<ClubEvent, Long> {
 	void updateViews(@Param("viewCount") Long viewCount, @Param("eventId") Long eventId);
 
 	Slice<ClubEvent> findByTypeInAndTitleContaining(@Param("types") List<Type> types, @Param("keyword") String keyword, Pageable pageable);
+
+	List<ClubEvent> findTop10ByTypeOrderByCreatedAtDesc(Type type);
 }

@@ -36,7 +36,9 @@ public enum CustomErrorCode {
     KEYWORD_NOT_FOUND("키워드를 찾을 수 없습니다.", HttpStatus.NOT_FOUND.value()),
     PASSWORD_FAILED("비밀번호가 잘못되었습니다.", HttpStatus.BAD_REQUEST.value()),
     REISSUE_PASSWORD_FAILED("비밀번호를 재발급하던 도중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR.value()),
-    BANNER_NOT_FOUND("배너를 찾을 수 없습니다.", HttpStatus.NOT_FOUND.value());
+    BANNER_NOT_FOUND("배너를 찾을 수 없습니다.", HttpStatus.NOT_FOUND.value()),
+    DUPLICATE_NOTICE("중복된 공지사항입니다.", HttpStatus.CONTINUE.value()),
+    INVALID_TYPE("존재하지 않은 공지사항 타입입니다.", HttpStatus.NOT_FOUND.value());
 
     private final String message;
     private final int statusCode;
