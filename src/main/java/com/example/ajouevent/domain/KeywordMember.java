@@ -35,8 +35,8 @@ public class KeywordMember {
 	@JoinColumn(name = "member_id")
 	private Member member;
 
-	@Column(nullable = false)
-	private Boolean isRead;  // 해당 키워드의 새 공지사항 읽음 여부
+	@Column(nullable = false, columnDefinition = "TINYINT(1)")
+	private boolean isRead;  // 해당 키워드의 새 공지사항 읽음 여부
 
 	@Column(nullable = false)
 	private LocalDateTime lastReadAt;  // 마지막으로 읽은 시각

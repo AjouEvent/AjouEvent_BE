@@ -16,6 +16,7 @@ import com.example.ajouevent.domain.Keyword;
 import com.example.ajouevent.domain.KeywordMember;
 import com.example.ajouevent.dto.EventWithKeywordDto;
 import com.example.ajouevent.dto.MemberReadStatusDto;
+import com.example.ajouevent.logger.WebhookLogger;
 import com.example.ajouevent.repository.KeywordMemberRepository;
 import com.example.ajouevent.repository.KeywordRepository;
 import com.example.ajouevent.repository.TopicRepository;
@@ -92,6 +93,7 @@ public class EventService {
 	private final KeywordMemberRepository keywordMemberRepository;
 	private final JsonParsingUtil jsonParsingUtil;
 	private final CacheLogger cacheLogger;
+	private final WebhookLogger webhookLogger;
 	private final CookieService cookieService;
 	private final StringRedisTemplate stringRedisTemplate;
 	private final RedisService redisService;
@@ -187,7 +189,7 @@ public class EventService {
 
 				// 각 구독자의 읽음 상태를 '읽지 않음'으로 설정
 				for (KeywordMember keywordMember : keywordMembers) {
-					keywordMember.setIsRead(false);  // 읽음 상태를 읽지 않음으로 설정
+					keywordMember.setRead(false);  // 읽음 상태를 읽지 않음으로 설정
 					keywordMember.setLastReadAt(LocalDateTime.now());
 					keywordMemberRepository.save(keywordMember);
 
@@ -1170,8 +1172,8 @@ public class EventService {
 		// 사용자가 구독한 해당 키워드의 읽음 상태를 업데이트
 		KeywordMember keywordMember = keywordMemberRepository.findByKeywordAndMember(keyword, member)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.KEYWORD_NOT_FOUND));
-		if (keywordMember.getIsRead() == false) {
-			keywordMember.setIsRead(true);  // 읽음 상태로 업데이트
+		if (keywordMember.isRead() == false) {
+			keywordMember.setRead(true);  // 읽음 상태로 업데이트
 			keywordMember.setLastReadAt(LocalDateTime.now());  // 마지막으로 읽은 시간 설정
 			keywordMemberRepository.save(keywordMember);  // 업데이트된 읽음 상태 저장
 		}
@@ -1297,4 +1299,19 @@ public class EventService {
 		memberRepository.updateKeywordTabReadStatus(member, true);
 	}
 
+	@Transactional(readOnly = true)
+	public boolean isDuplicateNotice(String topic, String title, String url) {
+		Type type;
+		try {
+			type = Type.valueOf(topic.toUpperCase());
+		} catch (IllegalArgumentException e) {
+			String errorMessage = String.format("잘못된 공지사항 Type 값: '%s' - 존재하지 않는 Enum 값입니다.", topic);
+			webhookLogger.log(errorMessage);
+			throw new CustomException(CustomErrorCode.INVALID_TYPE);
+		}
+
+		List<ClubEvent> recentEvents = eventRepository.findTop10ByTypeOrderByCreatedAtDesc(type);
+		return recentEvents.stream()
+			.anyMatch(event -> event.getTitle().equals(title) && event.getUrl().equals(url));
+	}
 }

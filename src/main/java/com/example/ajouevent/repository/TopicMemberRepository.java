@@ -38,4 +38,6 @@ public interface TopicMemberRepository extends JpaRepository<TopicMember, Long> 
 
 	Optional<TopicMember> findByMemberAndTopic(Member member, Topic topic);
 
+	boolean existsByMemberAndIsReadFalse(Member member);
+
 }
