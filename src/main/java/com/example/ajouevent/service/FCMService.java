@@ -144,14 +144,24 @@ public class FCMService {
 			WebhookResponse webhookResponse = WebhookResponse.builder()
 				.result("Webhook 요청이 성공적으로 처리되었습니다.")
 				.topic(topicName)
+				.title(noticeDto.getTitle())
 				.eventId(eventId)
 				.build();
 			return ResponseEntity.ok().body(webhookResponse);
 		} catch (Exception e) {
-			log.error("공지사항 알림 전송 중 오류 발생", e);
+			String errorMessage = String.format(
+				"공지사항 알림 전송 중 오류 발생 - topic: %s, title: %s, error: %s",
+				noticeDto.getEnglishTopic(), noticeDto.getTitle(), e.getMessage()
+			);
+
+			webhookLogger.log(errorMessage); // webhookLogger로 로그 남김
+
 			return ResponseEntity.status(CustomErrorCode.TOPIC_NOTIFICATION_FAILED.getStatusCode()).body(
 				WebhookResponse.builder()
 					.result("Webhook 요청 처리 중 오류가 발생했습니다.")
+					.topic(noticeDto.getEnglishTopic())
+					.title(noticeDto.getTitle())
+					.eventId(eventId)
 					.build()
 			);
 		}
