@@ -1223,17 +1223,15 @@ public class EventService {
 	// 특정 사용자의 구독 토픽에 대한 읽음 상태를 업데이트하는 메서드
 	@Transactional
 	public void markTopicAsRead(Member member, Topic topic) {
-		TopicMember topicMember = topicMemberRepository.findByMemberAndTopic(member, topic)
-			.orElse(TopicMember.builder()
-				.member(member)
-				.topic(topic)
-				.isRead(true)
-				.lastReadAt(LocalDateTime.now())  // 읽음 처리 시, 현재 시간으로 설정
-				.build());
+		// 사용자가 구독한 토픽인지 먼저 확인
+		Optional<TopicMember> optionalTopicMember = topicMemberRepository.findByMemberAndTopic(member, topic);
 
-		topicMember.setRead(true);  // 읽음 상태로 설정
-		topicMember.setLastReadAt(LocalDateTime.now());  // 마지막으로 읽은 시각 업데이트
-		topicMemberRepository.save(topicMember);  // 변경사항 저장
+		if (optionalTopicMember.isPresent()) { // 사용자가 구독한 경우에만 읽음 상태 업데이트
+			TopicMember topicMember = optionalTopicMember.get();
+			topicMember.setRead(true); // 읽음 상태로 설정
+			topicMember.setLastReadAt(LocalDateTime.now());  // 마지막으로 읽은 시각 업데이트
+			topicMemberRepository.save(topicMember);
+		}
 	}
 
 	@Transactional(readOnly = true)
