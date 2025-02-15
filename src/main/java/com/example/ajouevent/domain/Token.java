@@ -41,4 +41,11 @@ public class Token {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "member_id")
 	private Member member;
+
+	@Column(nullable = false)
+	private boolean isDeleted = false;
+
+	public void markAsDeleted() {
+		this.isDeleted = true;
+	}
 }
