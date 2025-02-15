@@ -22,5 +22,8 @@ public interface TokenRepository extends JpaRepository<Token, Long> {
 	@Modifying
 	@Query("delete from Token t where t.id in :tokenIds")
 	void deleteAllByTokenIds(@Param("tokenIds") List<Long> tokenIds);
+
+	// isDeleted가 false인 토큰 조회
+	List<Token> findByisDeletedFalse();
 }
 
