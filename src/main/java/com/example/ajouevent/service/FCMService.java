@@ -21,14 +21,18 @@ import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.WebhookResponse;
 import com.example.ajouevent.logger.AlarmLogger;
+import com.example.ajouevent.logger.FcmTokenValidationLogger;
 import com.example.ajouevent.logger.KeywordLogger;
 import com.example.ajouevent.logger.TopicLogger;
 import com.example.ajouevent.logger.WebhookLogger;
 import com.example.ajouevent.repository.KeywordRepository;
 import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.TopicRepository;
+import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
+import com.google.firebase.messaging.MulticastMessage;
 import com.google.firebase.messaging.Notification;
 import com.google.firebase.messaging.TopicManagementResponse;
 
@@ -45,6 +49,7 @@ public class FCMService {
 	private final TopicLogger topicLogger;
 	private final KeywordLogger keywordLogger;
 	private final AlarmLogger alarmLogger;
+	private final FcmTokenValidationLogger fcmTokenValidationLogger;
 
 	private static final String DEFAULT_IMAGE_URL = "https://www.ajou.ac.kr/_res/ajou/kr/img/intro/img-symbol.png";
 	private static final String REDIRECTION_URL_PREFIX = "https://www.ajouevent.com/event/";
@@ -249,5 +254,60 @@ public class FCMService {
 
 	public void send(Message message) {
 		FirebaseMessaging.getInstance().sendAsync(message);
+	}
+
+	public List<String> validateTokens(List<String> tokenValues) {
+		if (tokenValues.isEmpty()) {
+			return List.of(); // 토큰이 없으면 빈 리스트 반환
+		}
+
+		MulticastMessage message = MulticastMessage.builder()
+			.addAllTokens(tokenValues)
+			.build();
+
+		List<String> invalidTokens = new ArrayList<>(); // 유효하지 않은 토큰 리스트
+		List<String> validTokens = new ArrayList<>(); // 유효한 토큰 리스트
+
+		try {
+			BatchResponse response = FirebaseMessaging.getInstance().sendEachForMulticast(message); // validate_only=true
+
+			// 응답 결과에서 성공/실패 토큰 분리
+			for (int i = 0; i < response.getResponses().size(); i++) {
+				if (response.getResponses().get(i).isSuccessful()) {
+					validTokens.add(tokenValues.get(i));
+				} else {
+					invalidTokens.add(tokenValues.get(i));
+				}
+			}
+
+			return invalidTokens; // 유효하지 않은 토큰만 반환
+		} catch (FirebaseMessagingException e) {
+			fcmTokenValidationLogger.log("FCM 토큰 유효성 검사 중 오류 발생" + e);
+
+			// 예외 발생 시 재시도 로직 추가
+			fcmTokenValidationLogger.log("예외 발생 - 재시도 로직 실행");
+			retryValidation(tokenValues, invalidTokens, validTokens);
+
+			fcmTokenValidationLogger.log("재시도 후 유효하지 않은 토큰 수: {}" + invalidTokens.size());
+			return invalidTokens; // 최종 유효하지 않은 토큰 반환
+		}
+	}
+
+	private void retryValidation(List<String> tokenValues, List<String> invalidTokens, List<String> validTokens) {
+		// 재시도 로직
+		for (String token : tokenValues) {
+			try {
+				// 단일 토큰에 대해 validate_only 요청
+				Message singleMessage = Message.builder()
+					.setToken(token)
+					.build();
+
+				FirebaseMessaging.getInstance().send(singleMessage); // validate_only=true
+				validTokens.add(token); // 유효한 토큰으로 추가
+			} catch (FirebaseMessagingException ex) {
+				fcmTokenValidationLogger.log("재시도 중 실패한 토큰: {}" + token);
+				invalidTokens.add(token); // 실패한 토큰은 무효로 처리
+			}
+		}
 	}
 }
