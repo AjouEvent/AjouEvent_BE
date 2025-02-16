@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum Type {
 
-    AIMOBILITYENGINEERING("AIMobilityEngineering", "AI모빌리티공학과"),
+    AIMOBILITYENGINEERING("AIMobilityEngineering", "미래모빌리티공학과"),
     AJOUNORMAL("AjouNormal", "아주대학교-일반"),
     AJOUSCHOLARSHIP("AjouScholarship", "아주대학교-장학"),
     APPLIEDARTIFICIALINTELLIGENCE("AppliedArtificialIntelligence", "인공지능융합학과"),
@@ -60,7 +60,11 @@ public enum Type {
     SPORTSLEISURESTUDIES("SportsLeisureStudies", "스포츠레저학과"),
     TRANSPORTATIONSYSTEMSENGINEERING("TransportationSystemsEngineering", "교통시스템공학과"),
     DORMITORY("Dormitory", "기숙사"),
-    TEST("Test", "테스트");
+    TEST("Test", "테스트"),
+    APPLIEDCHEMISTRY("AppliedChemistry", "응용화학과"),
+    ECONOMICPOLITICALANDSOCIALSTUDIES("EconomicPoliticalAndSocialStudies", "경제정치사회융합학부"),
+    FRONTIERSCIENCES("FrontierSciences", "프런티어과학학부"),
+    LIBERALSTUDIES("LiberalStudies", "자유전공학부");
 
 
     private final String englishTopic;
