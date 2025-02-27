@@ -3,7 +3,6 @@ package com.example.ajouevent.service;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -48,7 +47,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RequiredArgsConstructor
 public class TopicService {
-	private final FCMService fcmService;
 	private final TokenRepository tokenRepository;
 	private final MemberRepository memberRepository;
 	private final TopicRepository topicRepository;
@@ -69,7 +67,7 @@ public class TopicService {
 		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 		String topicName = topicRequest.getTopic();
 
-		Member member = memberRepository.findByEmailWithTokens(memberEmail)
+		Member member = memberRepository.findByEmailWithValidTokens(memberEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 		Topic topic = topicRepository.findByDepartment(topicName)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
@@ -98,12 +96,6 @@ public class TopicService {
 		topicTokenBulkRepository.saveAll(topicTokens);
 
 		memberRepository.updateTopicTabReadStatus(member, false);
-
-		// FCM 서비스를 사용하여 토픽에 대한 구독 진행
-		List<String> tokenValues = memberTokens.stream()
-			.map(Token::getTokenValue)
-			.collect(Collectors.toList());
-		fcmService.subscribeToTopic(topicName, tokenValues);
 	}
 
 	// 토픽 구독 취소 - 토픽 하나씩
@@ -122,10 +114,6 @@ public class TopicService {
 		topicLogger.log("멤버 이메일 : " + memberEmail);
 
 		List<Token> memberTokens = member.getTokens();
-		List<String> tokenValues = memberTokens.stream()
-			.map(Token::getTokenValue)
-			.collect(Collectors.toList());
-		fcmService.unsubscribeFromTopic(topicName, tokenValues);
 
 		// 사용자가 구독하고 있는 토픽에 대한 TopicToken만 삭제
 		topicTokenRepository.deleteByTopicAndTokens(topic, memberTokens);
@@ -155,6 +143,7 @@ public class TopicService {
 				.tokenValue(loginRequest.getFcmToken())
 				.member(member)
 				.expirationDate(LocalDate.now().plusWeeks(TOKEN_EXPIRATION_WEEKS))
+				.isDeleted(false)
 				.build();
 			log.info("DB에 저장하는 token : " + token.getTokenValue());
 			tokenRepository.save(token);
@@ -184,18 +173,6 @@ public class TopicService {
 				.map(keyword -> new KeywordToken(keyword, token))
 				.collect(Collectors.toList());
 			keywordTokenBulkRepository.saveAll(newKeywordSubscriptions);
-
-			// 각 토픽에 대해 새 토큰 구독 처리
-			for (Topic topic : subscribedTopics) {
-				fcmService.subscribeToTopic(topic.getDepartment(), Collections.singletonList(token.getTokenValue()));
-				log.info("새 토큰으로 " + topic.getDepartment() + " 토픽을 다시 구독합니다.");
-			}
-
-			// 각 키워드에 대해 새 토큰 구독 처리
-			for (Keyword keyword : subscribedKeywords) {
-				fcmService.subscribeToTopic(keyword.getEncodedKeyword(), Collections.singletonList(token.getTokenValue()));
-				log.info("새 토큰으로 " + keyword.getEncodedKeyword() + " 키워드를 다시 구독합니다.");
-			}
 		}
 	}
 
@@ -220,16 +197,6 @@ public class TopicService {
 			.map(Token::getTokenValue)
 			.collect(Collectors.toList());
 
-		// 각 TopicToken에 대해 구독 해지
-		topicTokens.forEach(topicToken -> {
-			fcmService.unsubscribeFromTopic(topicToken.getTopic().getDepartment(), tokenValues);
-		});
-
-		// 각 KeywordToken에 대해 구독 해지
-		keywordTokens.forEach(keywordToken -> {
-			fcmService.unsubscribeFromTopic(keywordToken.getKeyword().getEncodedKeyword(), tokenValues);
-		});
-
 		// 만료된 토큰 ID 리스트 추출
 		List<Long> expiredTokenIds = expiredTokens.stream()
 			.map(Token::getId)
@@ -250,15 +217,6 @@ public class TopicService {
 
 		List<TopicMember> topicMembers = topicMemberRepository.findByMemberWithTopic(member);
 		List<Token> tokens = member.getTokens();
-		List<String> tokenValues = tokens.stream()
-			.map(Token::getTokenValue)
-			.toList();
-
-		topicMembers.forEach(topicMember -> {
-			fcmService.unsubscribeFromTopic(topicMember.getTopic().getDepartment(), tokenValues);
-			topicLogger.log("Topic 구독 초기화 - Member: " + topicMember.getMember().getEmail() + ", Topic: "
-				+ topicMember.getTopic().getDepartment());
-		});
 
 		List<Long> tokenIds = tokens.stream()
 			.map(Token::getId)
