@@ -2,7 +2,10 @@ package com.example.ajouevent.service;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -66,6 +69,35 @@ public class RedisService {
 	public boolean isTokenValid(String key, String token) {
 		String storedToken = stringRedisTemplate.opsForValue().get(key);
 		return token.equals(storedToken);
+	}
+
+	// 수신, 클릭 수를 증가시킴
+	public void incrementField(Long pushClusterId, String field) {
+		String redisKey = "pushCluster:" + pushClusterId;
+		stringRedisTemplate.opsForHash().increment(redisKey, field, 1);
+	}
+
+	// 특정 PushCluster의 모든 데이터를 가져옴
+	public Map<String, Integer> getPushClusterData(Long pushClusterId) {
+		String redisKey = "pushCluster:" + pushClusterId;
+		return stringRedisTemplate.opsForHash()
+			.entries(redisKey)
+			.entrySet()
+			.stream()
+			.collect(Collectors.toMap(
+				entry -> (String) entry.getKey(),
+				entry -> Integer.valueOf((String) entry.getValue())
+			));
+	}
+
+	// Redis 키를 삭제
+	public void deletePushCluster(Long pushClusterId) {
+		String redisKey = "pushCluster:" + pushClusterId;
+		stringRedisTemplate.delete(redisKey);
+	}
+
+	public Set<String> getKeysByPattern(String pattern) {
+		return stringRedisTemplate.keys(pattern);
 	}
 
 
