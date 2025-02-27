@@ -33,8 +33,10 @@ bin/
 ### IntelliJ IDEA ###
 application.properties
 application.yml
+application-prod.yml
 application-dev.yml
 /src/main/resources/*.yml
+/src/test/resources/*.yml
 
 .idea
 *.iws
