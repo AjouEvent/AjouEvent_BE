@@ -172,7 +172,7 @@ public class FCMService {
 		for (List<PushClusterToken> batch : batches) {
 			batch.forEach(PushClusterToken::markAsSending);  // 각 배치 전송 전 상태 변경
 			pushClusterTokenBulkRepository.saveAll(batch);
-			List<Message> messages = clusterTokens.stream()
+			List<Message> messages = batch.stream()
 				.map(token -> buildMessage(pushCluster.getId(), token, title, body, imageUrl, clickUrl, unreadCountMap))
 				.collect(Collectors.toList());
 
@@ -182,11 +182,17 @@ public class FCMService {
 				try {
 					BatchResponse response = responseFuture.get();
 					processPushResult(pushCluster.getId(), batch, response);
-				} catch (InterruptedException | ExecutionException e) {
-					log.error("FCM 알림 비동기 처리 중 예외 발생", e);
-					// 실패처리와 동시에 시간 찍기
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();  // 인터럽트 복구
+					log.warn("FCM 알림 비동기 처리 중 인터럽트 발생", e);
 					batch.forEach(PushClusterToken::markAsFail);
-					updatePushClusterTokens(batch);  // 실패 처리된 애들도 기록
+					updatePushClusterTokens(batch);
+					webhookLogger.log("푸시 전송 중단 (인터럽트): pushClusterId=" + pushCluster.getId());
+				} catch (ExecutionException e) {
+					log.error("FCM 알림 비동기 처리 중 ExecutionException 발생", e);
+					batch.forEach(PushClusterToken::markAsFail);
+					updatePushClusterTokens(batch);
+					webhookLogger.log("푸시 전송 실패 (ExecutionException): pushClusterId=" + pushCluster.getId());
 				}
 			}, Runnable::run);
 		}
