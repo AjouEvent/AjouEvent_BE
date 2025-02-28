@@ -2,39 +2,45 @@ package com.example.ajouevent.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import com.example.ajouevent.domain.Keyword;
+import com.example.ajouevent.domain.PushCluster;
+import com.example.ajouevent.domain.PushClusterToken;
+import com.example.ajouevent.dto.UnreadNotificationCountDto;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.ajouevent.domain.Alarm;
 import com.example.ajouevent.domain.AlarmImage;
 import com.example.ajouevent.domain.Member;
 import com.example.ajouevent.domain.Token;
-import com.example.ajouevent.domain.Topic;
 import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.ResponseDto;
-import com.example.ajouevent.dto.WebhookResponse;
 import com.example.ajouevent.logger.AlarmLogger;
 import com.example.ajouevent.logger.FcmTokenValidationLogger;
-import com.example.ajouevent.logger.KeywordLogger;
-import com.example.ajouevent.logger.TopicLogger;
 import com.example.ajouevent.logger.WebhookLogger;
-import com.example.ajouevent.repository.KeywordRepository;
 import com.example.ajouevent.repository.MemberRepository;
-import com.example.ajouevent.repository.TopicRepository;
+import com.example.ajouevent.repository.PushClusterRepository;
+import com.example.ajouevent.repository.PushClusterTokenBulkRepository;
+import com.example.ajouevent.repository.PushClusterTokenRepository;
+import com.example.ajouevent.repository.PushNotificationRepository;
+import com.example.ajouevent.repository.TokenBulkRepository;
+
+import com.google.api.core.ApiFuture;
 import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MulticastMessage;
 import com.google.firebase.messaging.Notification;
-import com.google.firebase.messaging.TopicManagementResponse;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,16 +52,17 @@ public class FCMService {
 
 	private final MemberRepository memberRepository;
 	private final WebhookLogger webhookLogger;
-	private final TopicLogger topicLogger;
-	private final KeywordLogger keywordLogger;
 	private final AlarmLogger alarmLogger;
 	private final FcmTokenValidationLogger fcmTokenValidationLogger;
 
 	private static final String DEFAULT_IMAGE_URL = "https://www.ajou.ac.kr/_res/ajou/kr/img/intro/img-symbol.png";
 	private static final String REDIRECTION_URL_PREFIX = "https://www.ajouevent.com/event/";
 	private static final String DEFAULT_CLICK_ACTION_URL =  "https://www.ajouevent.com";
-	private final KeywordRepository keywordRepository;
-	private final TopicRepository topicRepository;
+	private final PushClusterTokenRepository pushClusterTokenRepository;
+	private final PushClusterTokenBulkRepository pushClusterTokenBulkRepository;
+	private final PushNotificationRepository pushNotificationRepository;
+	private final PushClusterRepository pushClusterRepository;
+	private final TokenBulkRepository tokenBulkRepository;
 
 	public void sendAlarm(String email, Alarm alarm) {
 		// 사용자 조회
@@ -111,64 +118,160 @@ public class FCMService {
 		);
 	}
 
-	public ResponseEntity<WebhookResponse> sendNoticeNotification(NoticeDto noticeDto, Long eventId) {
-		try {
-			// FCM 메시지 구성
-			String messageTitle = composeMessageTitle(noticeDto);
-			String topicName = noticeDto.getEnglishTopic();
-			String body = composeBody(noticeDto);
-			String imageUrl = getFirstImageUrl(noticeDto);
-			String url = getRedirectionUrl(noticeDto, eventId);
+	@Transactional
+	public void sendNoticeNotification(NoticeDto noticeDto, Long eventId, Long pushClusterId) {
+		PushCluster pushCluster = pushClusterRepository.findById(pushClusterId)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.PUSH_CLUSTER_NOT_FOUND));
 
-			// FCM 메시지 생성 - topic
-			Message message = createFcmMessage(topicName, messageTitle, body, imageUrl, url);
-			send(message);
+		List<PushClusterToken> clusterTokens = pushClusterTokenRepository.findAllByPushClusterWithTokenAndMember(pushCluster);
 
-			// 공지사항에 해당하는 토픽을 구독 중인 모든 키워드 찾기
-			Topic topic = topicRepository.findByDepartment(topicName)
-				.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
+		Map<Long, Long> unreadCountMap = pushNotificationRepository.countUnreadNotificationsForTopic(noticeDto.getKoreanTopic())
+			.stream()
+			.collect(Collectors.toMap(UnreadNotificationCountDto::getMemberId, UnreadNotificationCountDto::getUnreadNotificationCount));
 
-			List<Keyword> keywords = keywordRepository.findByTopic(topic);
+		sendPushClusterNotification(
+			clusterTokens,
+			pushCluster,
+			composeMessageTitle(noticeDto),
+			composeBody(noticeDto),
+			getFirstImageUrl(noticeDto),
+			getRedirectionUrl(noticeDto, eventId),
+			unreadCountMap
+		);
+	}
 
-			for (Keyword keyword : keywords) {
-				String koreanKeyword = keyword.getKoreanKeyword();
+	@Transactional
+	public void sendKeywordPushNotification(List<PushClusterToken> clusterTokens, PushCluster pushCluster, Keyword keyword, NoticeDto noticeDto, Long eventId) {
+		Map<Long, Long> unreadCountMap = pushNotificationRepository.countUnreadNotificationsForKeyword(keyword.getEncodedKeyword())
+			.stream()
+			.collect(Collectors.toMap(UnreadNotificationCountDto::getMemberId, UnreadNotificationCountDto::getUnreadNotificationCount));
 
-				// 공지사항의 제목이나 본문에 키워드가 포함되어 있는지 확인
-				if (noticeDto.getTitle().contains(koreanKeyword)) {
-					messageTitle = koreanKeyword + "-" + messageTitle;
-					String encodedKeyword = keyword.getEncodedKeyword();
-					// FCM 메시지 생성 - keyword
-					Message keywordMessage = createFcmMessage(encodedKeyword, messageTitle, body, imageUrl, url);
-					// 비동기적으로 알림 전송
-					send(keywordMessage);
+		sendPushClusterNotification(
+			clusterTokens,
+			pushCluster,
+			keyword.getKoreanKeyword() + "-" + composeMessageTitle(noticeDto),
+			composeBody(noticeDto),
+			getFirstImageUrl(noticeDto),
+			getRedirectionUrl(noticeDto, eventId),
+			unreadCountMap
+		);
+	}
 
-					keywordLogger.log("키워드 '영어 : " + encodedKeyword + " 한글 : " + koreanKeyword + "에 대한 공지사항이 전송되었습니다.");
+	public void sendPushClusterNotification(List<PushClusterToken> clusterTokens, PushCluster pushCluster, String title, String body, String imageUrl, String clickUrl, Map<Long, Long> unreadCountMap) {
+		if (clusterTokens.isEmpty()) {
+			webhookLogger.log("푸시 전송 스킵 - PushClusterID: " + pushCluster.getId() + " 알림 대상 토큰이 없습니다.");
+			pushCluster.updateCountsAndStatus(0, 0);  // 대상 없음 처리
+			pushClusterRepository.save(pushCluster);
+			return;
+		}
+
+		pushCluster.markAsInProgress();
+
+		List<List<PushClusterToken>> batches = splitIntoBatches(clusterTokens, 400);
+
+		for (List<PushClusterToken> batch : batches) {
+			batch.forEach(PushClusterToken::markAsSending);  // 각 배치 전송 전 상태 변경
+			pushClusterTokenBulkRepository.saveAll(batch);
+			List<Message> messages = clusterTokens.stream()
+				.map(token -> buildMessage(pushCluster.getId(), token, title, body, imageUrl, clickUrl, unreadCountMap))
+				.collect(Collectors.toList());
+
+			ApiFuture<BatchResponse> responseFuture = FirebaseMessaging.getInstance().sendEachAsync(messages);
+
+			responseFuture.addListener(() -> {
+				try {
+					BatchResponse response = responseFuture.get();
+					processPushResult(pushCluster.getId(), batch, response);
+				} catch (InterruptedException | ExecutionException e) {
+					log.error("FCM 알림 비동기 처리 중 예외 발생", e);
+					// 실패처리와 동시에 시간 찍기
+					batch.forEach(PushClusterToken::markAsFail);
+					updatePushClusterTokens(batch);  // 실패 처리된 애들도 기록
 				}
+			}, Runnable::run);
+		}
+	}
+
+	private Message buildMessage(Long pushClusterId, PushClusterToken token, String title, String body, String imageUrl, String clickUrl, Map<Long, Long> unreadCountMap) {
+		Long unreadCount = unreadCountMap.getOrDefault(token.getToken().getMember().getId(), 0L);
+
+		return Message.builder()
+			.setToken(token.getToken().getTokenValue())
+			.setNotification(Notification.builder()
+				.setTitle(title)
+				.setBody(body)
+				.setImage(imageUrl)
+				.build())
+			.putData("click_action", clickUrl)
+			.putData("push_cluster_id", String.valueOf(pushClusterId))
+			.putData("unread_count", String.valueOf(unreadCount))
+			.build();
+	}
+
+	@Transactional
+	public void processPushResult(Long pushClusterId, List<PushClusterToken> clusterTokens, BatchResponse response) {
+		PushCluster pushCluster = pushClusterRepository.findById(pushClusterId)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.PUSH_CLUSTER_NOT_FOUND));
+
+		int successCount = 0;
+		int failCount = 0;
+		List<Token> tokensToUpdate = new ArrayList<>();
+
+		for (int i = 0; i < clusterTokens.size(); i++) {
+			PushClusterToken pushClusterToken = clusterTokens.get(i);
+			if (response.getResponses().get(i).isSuccessful()) {
+				pushClusterToken.markAsSuccess();
+				successCount++;
+			} else {
+				pushClusterToken.markAsFail();
+				failCount++;
+				Token token = pushClusterToken.getToken();
+				token.markAsDeleted();
+				tokensToUpdate.add(token);
 			}
+		}
 
-			WebhookResponse webhookResponse = WebhookResponse.builder()
-				.result("Webhook 요청이 성공적으로 처리되었습니다.")
-				.topic(topicName)
-				.title(noticeDto.getTitle())
-				.eventId(eventId)
-				.build();
-			return ResponseEntity.ok().body(webhookResponse);
-		} catch (Exception e) {
-			String errorMessage = String.format(
-				"공지사항 알림 전송 중 오류 발생 - topic: %s, title: %s, error: %s",
-				noticeDto.getEnglishTopic(), noticeDto.getTitle(), e.getMessage()
-			);
+		updatePushClusterTokens(clusterTokens);
 
-			webhookLogger.log(errorMessage); // webhookLogger로 로그 남김
+		if (!tokensToUpdate.isEmpty()) {
+			tokenBulkRepository.updateTokens(tokensToUpdate);
+		}
 
-			return ResponseEntity.status(CustomErrorCode.TOPIC_NOTIFICATION_FAILED.getStatusCode()).body(
-				WebhookResponse.builder()
-					.result("Webhook 요청 처리 중 오류가 발생했습니다.")
-					.topic(noticeDto.getEnglishTopic())
-					.title(noticeDto.getTitle())
-					.eventId(eventId)
-					.build()
-			);
+		pushCluster.updateCountsAndStatus(successCount, failCount);
+		pushClusterRepository.save(pushCluster);
+		webhookLogger.log("푸시 완료 - PushClusterID: " + pushClusterId + " 성공: " + successCount + " 실패: " + failCount);
+	}
+
+	// pushClusterToken 목록을 일괄 업데이트
+	@Transactional
+	public void updatePushClusterTokens(List<PushClusterToken> clusterTokens) {
+		// ✅ 먼저 저장하여 ID가 생성되도록 함
+		pushClusterTokenRepository.saveAll(clusterTokens);
+		pushClusterTokenBulkRepository.updateAll(clusterTokens);
+	}
+
+	/**
+	 * 리스트를 배치 단위로 나눔
+	 */
+	private <T> List<List<T>> splitIntoBatches(List<T> items, int batchSize) {
+		List<List<T>> batches = new ArrayList<>();
+		for (int i = 0; i < items.size(); i += batchSize) {
+			int end = Math.min(i + batchSize, items.size());
+			batches.add(items.subList(i, end));
+		}
+		return batches;
+	}
+
+	private boolean processTokenResponse(PushClusterToken tokenEntity, boolean isSuccess, List<Token> tokensToUpdate) {
+		if (isSuccess) {
+			tokenEntity.markAsSuccess();
+			return true;
+		} else {
+			tokenEntity.markAsFail();
+			Token token = tokenEntity.getToken();
+			token.markAsDeleted();
+			tokensToUpdate.add(token);
+			return false;
 		}
 	}
 
@@ -198,58 +301,6 @@ public class FCMService {
 			.orElse(DEFAULT_CLICK_ACTION_URL);
 		webhookLogger.log("리다이렉션하는 URL: " + url);
 		return url;
-	}
-
-
-	private Message createFcmMessage(String englishTopic, String messageTitle, String body,
-		String imageUrl, String url) {
-		return Message.builder()
-			.setTopic(englishTopic)
-			.setNotification(Notification.builder()
-				.setTitle(messageTitle)
-				.setBody(body)
-				.setImage(imageUrl)
-				.build())
-			.putData("click_action", url) // 동아리, 학생회 이벤트는 post한 이벤트 상세 페이지로 redirection "https://ajou-event.shop/event/{eventId}
-			.build();
-	}
-
-
-	public void subscribeToTopic(String topicName, List<String> tokens) {
-		try {
-			TopicManagementResponse response = FirebaseMessaging.getInstance().subscribeToTopicAsync(tokens, topicName).get();
-			topicLogger.log("Subscribed to topic: " + topicName);
-			topicLogger.log(response.getSuccessCount() + " tokens were subscribed successfully");
-			if (response.getFailureCount() > 0) {
-				topicLogger.log(response.getFailureCount() + " tokens failed to subscribe");
-				response.getErrors().forEach(error -> {
-					String failedToken = tokens.get(error.getIndex());
-					topicLogger.log("Error for token at index " + error.getIndex() + ": " + error.getReason() + " (Token: " + failedToken + ")");
-				});
-			}
-		} catch (InterruptedException | ExecutionException e) {
-			// 구독에 실패한 경우에 대한 처리
-			throw new CustomException(CustomErrorCode.SUBSCRIBE_FAILED);
-
-		}
-	}
-
-	public void unsubscribeFromTopic(String topicName, List<String> tokens) {
-		try {
-			TopicManagementResponse response = FirebaseMessaging.getInstance().unsubscribeFromTopicAsync(tokens, topicName).get();
-			topicLogger.log("Unsubscribed to topic: " + topicName);
-			topicLogger.log(response.getSuccessCount() + " tokens were unsubscribed successfully");
-			if (response.getFailureCount() > 0) {
-				topicLogger.log(response.getFailureCount() + " tokens failed to unsubscribe");
-				response.getErrors().forEach(error -> {
-					String failedToken = tokens.get(error.getIndex());
-					topicLogger.log("Error for token at index " + error.getIndex() + ": " + error.getReason() + " (Token: " + failedToken + ")");
-				});
-			}
-		} catch (InterruptedException | ExecutionException e) {
-			// 구독 해지에 실패한 경우에 대한 처리
-			throw new CustomException(CustomErrorCode.SUBSCRIBE_CANCEL_FAILED);
-		}
 	}
 
 	public void send(Message message) {
