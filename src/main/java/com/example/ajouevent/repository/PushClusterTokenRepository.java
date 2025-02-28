@@ -15,4 +15,7 @@ public interface PushClusterTokenRepository extends JpaRepository<PushClusterTok
 
 	@Query("SELECT pct FROM PushClusterToken pct JOIN FETCH pct.token t WHERE pct.pushCluster = :pushCluster")
 	List<PushClusterToken> findAllByPushClusterWithToken(@Param("pushCluster") PushCluster pushCluster);
+
+	@Query("SELECT t FROM PushClusterToken t JOIN FETCH t.token tk JOIN FETCH tk.member WHERE t.pushCluster = :pushCluster")
+	List<PushClusterToken> findAllByPushClusterWithTokenAndMember(@Param("pushCluster") PushCluster pushCluster);
 }

@@ -47,6 +47,11 @@ public class PushClusterToken {
 	@Column(nullable = true)
 	private LocalDateTime processedTime; // 발송 처리 시간
 
+	public void markAsSending() {
+		this.jobStatus = JobStatus.IN_PROGRESS;
+		this.processedTime = LocalDateTime.now();
+	}
+
 	public void markAsSuccess() {
 		this.jobStatus = JobStatus.SUCCESS;
 		this.processedTime = LocalDateTime.now();

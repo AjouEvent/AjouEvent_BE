@@ -87,8 +87,8 @@ public class PushCluster {
 
 	// 성공, 실패 카운트와 작업 상태를 변경
 	public void updateCountsAndStatus(int successCount, int failCount) {
-		this.successCount = successCount;
-		this.failCount = failCount;
+		this.successCount += successCount; // 배치 처리라서 +로 (누적 처리)
+		this.failCount += failCount; // 배치 처리라서 +로 (누적 처리)
 		if (successCount == 0 && failCount == 0) {
 			this.jobStatus = JobStatus.NONE; // 보낼 대상이 없었음
 		} else if (failCount > 0) {
