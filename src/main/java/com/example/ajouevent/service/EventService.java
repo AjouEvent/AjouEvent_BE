@@ -173,7 +173,6 @@ public class EventService {
 		// 구독자들의 읽음 상태를 '읽지 않음'으로 설정
 		for (TopicMember topicMember : topicMembers) {
 			topicMember.setRead(false);  // 읽음 상태를 읽지 않음으로 설정
-			topicMember.setLastReadAt(LocalDateTime.now());
 		}
 
 		topicMemberBulkRepository.updateTopicMembers(topicMembers);
@@ -192,7 +191,6 @@ public class EventService {
 				// 각 구독자의 읽음 상태를 '읽지 않음'으로 설정
 				for (KeywordMember keywordMember : keywordMembers) {
 					keywordMember.setRead(false);  // 읽음 상태를 읽지 않음으로 설정
-					keywordMember.setLastReadAt(LocalDateTime.now());
 				}
 				keywordMemberBulkRepository.updateKeywordMembers(keywordMembers);
 			}
