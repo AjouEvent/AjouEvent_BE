@@ -17,8 +17,10 @@ import com.example.ajouevent.domain.KeywordMember;
 import com.example.ajouevent.dto.EventWithKeywordDto;
 import com.example.ajouevent.dto.MemberReadStatusDto;
 import com.example.ajouevent.logger.WebhookLogger;
+import com.example.ajouevent.repository.KeywordMemberBulkRepository;
 import com.example.ajouevent.repository.KeywordMemberRepository;
 import com.example.ajouevent.repository.KeywordRepository;
+import com.example.ajouevent.repository.TopicMemberBulkRepository;
 import com.example.ajouevent.repository.TopicRepository;
 import com.example.ajouevent.util.SecurityUtil;
 import com.example.ajouevent.util.JsonParsingUtil;
@@ -102,6 +104,8 @@ public class EventService {
 	final Long DEFAULT_LIKES_COUNT = 0L;
 	final Long DEFAULT_VIEW_COUNT = 0L;
 	private final TopicRepository topicRepository;
+	private final TopicMemberBulkRepository topicMemberBulkRepository;
+	private final KeywordMemberBulkRepository keywordMemberBulkRepository;
 
 	// 크롤링한 공지사항 DB에 저장
 	@Transactional
@@ -169,12 +173,9 @@ public class EventService {
 		// 구독자들의 읽음 상태를 '읽지 않음'으로 설정
 		for (TopicMember topicMember : topicMembers) {
 			topicMember.setRead(false);  // 읽음 상태를 읽지 않음으로 설정
-			topicMember.setLastReadAt(LocalDateTime.now());
-			topicMemberRepository.save(topicMember);  // 업데이트된 읽음 상태 저장
-
-			// Member의 구독탭 상태를 false로 업데이트
-			memberRepository.updateTopicTabReadStatus(topicMember.getMember(), false);
 		}
+
+		topicMemberBulkRepository.updateTopicMembers(topicMembers);
 
 		List<Keyword> keywords = keywordRepository.findByTopic(topic);
 
@@ -190,12 +191,8 @@ public class EventService {
 				// 각 구독자의 읽음 상태를 '읽지 않음'으로 설정
 				for (KeywordMember keywordMember : keywordMembers) {
 					keywordMember.setRead(false);  // 읽음 상태를 읽지 않음으로 설정
-					keywordMember.setLastReadAt(LocalDateTime.now());
-					keywordMemberRepository.save(keywordMember);
-
-					// Member의 키워드탭 상태를 false로 업데이트
-					memberRepository.updateKeywordTabReadStatus(keywordMember.getMember(), false);
 				}
+				keywordMemberBulkRepository.updateKeywordMembers(keywordMembers);
 			}
 		}
 

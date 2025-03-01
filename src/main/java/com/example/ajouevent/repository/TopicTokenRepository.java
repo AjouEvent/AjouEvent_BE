@@ -29,4 +29,7 @@ public interface TopicTokenRepository extends JpaRepository<TopicToken, Long> {
 	@Query("delete from TopicToken tt where tt.token.id in :tokenIds")
 	void deleteAllByTokenIds(@Param("tokenIds") List<Long> tokenIds);
 
+	@Query("SELECT tt FROM TopicToken tt JOIN FETCH tt.token t WHERE tt.topic = :topic AND t.isDeleted = false")
+	List<TopicToken> findByTopicWithValidTokens(@Param("topic") Topic topic);
+
 }

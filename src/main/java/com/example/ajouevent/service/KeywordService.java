@@ -40,7 +40,6 @@ import lombok.extern.slf4j.Slf4j;
 public class KeywordService {
 	private final TopicRepository topicRepository;
 	private final MemberRepository memberRepository;
-	private final FCMService fcmService;
 
 	private final KeywordLogger keywordLogger;
 
@@ -57,7 +56,7 @@ public class KeywordService {
 		String koreanKeyword = keywordRequest.getKoreanKeyword();
 		String topicName = keywordRequest.getTopicName();
 
-		Member member = memberRepository.findByEmailWithTokens(memberEmail)
+		Member member = memberRepository.findByEmailWithValidTokens(memberEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		// URL 인코딩과 Topic ID 결합하여 고유한 formattedKeyword 생성
@@ -103,12 +102,6 @@ public class KeywordService {
 
 		memberRepository.updateKeywordTabReadStatus(member, false);
 
-		// FCM 서비스를 사용하여 토픽에 대한 구독 진행
-		List<String> tokenValues = memberTokens.stream()
-			.map(Token::getTokenValue)
-			.collect(Collectors.toList());
-		fcmService.subscribeToTopic(formattedKeyword, tokenValues);
-
 		keywordLogger.log("키워드 구독 : " + keyword.getKoreanKeyword());
 	}
 
@@ -145,12 +138,6 @@ public class KeywordService {
 		// 해당 키워드에 관련된 토큰을 찾아서 삭제
 		List<Token> memberTokens = member.getTokens();
 		keywordTokenRepository.deleteByKeywordAndTokens(keyword, memberTokens);
-
-		// FCM 서비스를 사용하여 키워드에 대한 구독 취소 진행
-		List<String> tokenValues = memberTokens.stream()
-			.map(Token::getTokenValue)
-			.collect(Collectors.toList());
-		fcmService.unsubscribeFromTopic(encodedKeyword, tokenValues);
 		keywordLogger.log("키워드 구독 취소 : " + keyword.getKoreanKeyword());
 	}
 
@@ -184,15 +171,6 @@ public class KeywordService {
 
 		List<KeywordMember> keywordMembers = keywordMemberRepository.findByMemberWithKeyword(member);
 		List<Token> tokens = member.getTokens();
-		List<String> tokenValues = tokens.stream()
-			.map(Token::getTokenValue)
-			.toList();
-
-		keywordMembers.forEach(keywordMember -> {
-			fcmService.unsubscribeFromTopic(keywordMember.getKeyword().getEncodedKeyword(), tokenValues);
-			keywordLogger.log("Keyword 구독 초기화 - Member: " + keywordMember.getMember().getEmail() + ", Keyword: "
-				+ keywordMember.getKeyword().getKoreanKeyword() + " - " + keywordMember.getKeyword().getEncodedKeyword());
-		});
 
 		List<Long> tokenIds = tokens.stream()
 			.map(Token::getId)

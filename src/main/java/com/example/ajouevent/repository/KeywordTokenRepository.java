@@ -27,4 +27,6 @@ public interface KeywordTokenRepository extends JpaRepository<KeywordToken, Long
 	@Query("SELECT kt FROM KeywordToken kt JOIN FETCH kt.keyword WHERE kt.token IN :tokens")
 	List<KeywordToken> findKeywordTokensWithKeyword(@Param("tokens") List<Token> tokens);
 
+	@Query("SELECT kt FROM KeywordToken kt JOIN FETCH kt.token t WHERE kt.keyword = :keyword AND t.isDeleted = false")
+	List<KeywordToken> findKeywordTokensWithTokenByKeyword(@Param("keyword") Keyword keyword);
 }

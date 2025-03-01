@@ -10,6 +10,7 @@ import com.example.ajouevent.exception.CustomException;
 import com.example.ajouevent.logger.WebhookLogger;
 import com.example.ajouevent.service.EventService;
 import com.example.ajouevent.service.FCMService;
+import com.example.ajouevent.service.PushNotificationService;
 import com.example.ajouevent.service.RedisService;
 
 import jakarta.transaction.Transactional;
@@ -24,6 +25,7 @@ public class WebhookFacade {
 	private final RedisService redisService;
 	private final EventService eventService;
 	private final FCMService fcmService;
+	private final PushNotificationService pushNotificationService;
 	private final WebhookLogger webhookLogger;
 
 	@Transactional
@@ -50,8 +52,21 @@ public class WebhookFacade {
 			// 크롤링한 공지사항을 DB에 저장
 			Long eventId = eventService.postNotice(noticeDto);
 
-			// 공지사항 Topic을 구독하고 있는 사용자에게 FCM 메시지 전송
-			return fcmService.sendNoticeNotification(noticeDto, eventId);
+			// 알림을 구독자별로 PushNotifications에 미리 저장
+			Long pushClusterId = pushNotificationService.postPushNotification(noticeDto, eventId);
+
+			// 공지사항 Topic을 구독하고있는 사용자한테 FCM 메시지 전송
+			fcmService.sendNoticeNotification(noticeDto, eventId, pushClusterId);
+
+			pushNotificationService.handleKeywordPushNotification(noticeDto, eventId);
+
+			WebhookResponse response = WebhookResponse.builder()
+				.result("Webhook processed successfully.")
+				.eventId(eventId)
+				.topic(noticeDto.getEnglishTopic())
+				.title(noticeDto.getTitle())
+				.build();
+			return ResponseEntity.ok(response);
 
 		} catch (CustomException e) {
 			webhookLogger.log("Webhook 처리 중 오류 발생: " + e.getMessage());
