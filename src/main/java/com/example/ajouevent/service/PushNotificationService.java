@@ -364,4 +364,17 @@ public class PushNotificationService {
 			.build();
 	}
 
+	@Transactional
+	public void markAllNotificationsAsRead() {
+		Member member = getAuthenticatedMember();
+
+		List<PushNotification> notifications = pushNotificationRepository.findByMemberAndIsReadFalse(member);
+
+		if (notifications.isEmpty()) {
+			return;
+		}
+
+		pushNotificationBulkRepository.updateReadStatus(notifications);
+	}
+
 }
