@@ -40,4 +40,6 @@ public interface PushNotificationRepository extends JpaRepository<PushNotificati
 		"WHERE km.keyword.encodedKeyword = :encodedKeyword " +
 		"GROUP BY km.member.id")
 	List<UnreadNotificationCountDto> countUnreadNotificationsForKeyword(@Param("encodedKeyword") String encodedKeyword);
+
+	List<PushNotification> findByMemberAndIsReadFalse(Member member);
 }

@@ -62,4 +62,14 @@ public class PushNotificationController {
 	public UnreadNotificationCountResponse getUnreadNotificationCount(Principal principal) {
 		return pushNotificationService.getUnreadNotificationCount(principal);
 	}
+
+	@PreAuthorize("isAuthenticated()")
+	@PostMapping("/readAll")
+	public ResponseEntity<ResponseDto> markAllNotificationsAsRead() {
+		pushNotificationService.markAllNotificationsAsRead();
+		return ResponseEntity.ok(ResponseDto.builder()
+			.successStatus(HttpStatus.OK)
+			.successContent("모든 알림을 읽음 처리했습니다.")
+			.build());
+	}
 }
