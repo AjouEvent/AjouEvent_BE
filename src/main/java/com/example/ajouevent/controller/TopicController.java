@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.ajouevent.dto.NotificationPreferenceRequest;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.TopicDetailResponse;
 import com.example.ajouevent.dto.TopicRequest;
@@ -78,5 +79,16 @@ public class TopicController {
 	@GetMapping("/subscriptionsStatus")
 	public List<TopicStatus> getTopicWithUserSubscriptionsStatus(Principal principal) {
 		return topicService.getTopicWithUserSubscriptionsStatus(principal);
+	}
+
+	@PreAuthorize("isAuthenticated()")
+	@PostMapping("/subscriptions/notification")
+	public ResponseEntity<ResponseDto> updateNotificationPreference(@RequestBody NotificationPreferenceRequest request) {
+		topicService.updateNotificationPreference(request);
+		return ResponseEntity.ok().body(ResponseDto.builder()
+			.successStatus(HttpStatus.OK)
+			.successContent(request.getTopic() + " 알림 수신 설정이 " + request.isReceiveNotification() + "로 변경되었습니다.")
+			.build()
+		);
 	}
 }

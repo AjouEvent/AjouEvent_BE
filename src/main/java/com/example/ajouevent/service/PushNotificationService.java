@@ -87,11 +87,11 @@ public class PushNotificationService {
 		Topic topic = topicRepository.findByDepartment(noticeDto.getEnglishTopic())
 			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
 
-		// Topic을 구독 중인 TopicMember 조회
-		List<TopicMember> topicMembers = topicMemberRepository.findByTopic(topic);
+		// Topic을 구독 중이고, 알림을 수신 허용한 TopicMember 조회
+		List<TopicMember> topicMembers = topicMemberRepository.findByTopicWithNotificationEnabledAndTokens(topic);
 
 		// Topic을 구독 중인 TopicToken 조회 (isDeleted가 false)
-		List<TopicToken> topicTokens = topicTokenRepository.findByTopicWithValidTokens(topic);
+		List<TopicToken> topicTokens = topicTokenRepository.findByTopicWithValidTokensAndReceiveNotificationTrue(topic);
 
 		// ClubEvent 조회
 		ClubEvent clubEvent = eventRepository.findById(eventId)
