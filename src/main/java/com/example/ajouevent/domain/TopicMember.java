@@ -40,4 +40,7 @@ public class TopicMember {
 
 	@Column(nullable = false)
 	private LocalDateTime lastReadAt;
+
+	@Column(nullable = false, columnDefinition = "TINYINT(1)")
+	private boolean receiveNotification;
 }

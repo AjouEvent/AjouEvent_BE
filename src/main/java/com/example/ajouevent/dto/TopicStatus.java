@@ -16,4 +16,5 @@ public class TopicStatus {
 	private final String classification;
 	private final boolean subscribed;
 	private final Long koreanOrder;
+	private final boolean receiveNotification;
 }

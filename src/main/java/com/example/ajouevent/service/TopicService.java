@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -12,6 +13,7 @@ import java.util.stream.Collectors;
 import com.example.ajouevent.domain.Keyword;
 import com.example.ajouevent.domain.KeywordMember;
 import com.example.ajouevent.domain.KeywordToken;
+import com.example.ajouevent.dto.NotificationPreferenceRequest;
 import com.example.ajouevent.dto.TopicDetailResponse;
 import com.example.ajouevent.dto.TopicStatus;
 import com.example.ajouevent.exception.CustomErrorCode;
@@ -86,6 +88,7 @@ public class TopicService {
 			.member(member)
 			.isRead(false)
 			.lastReadAt(LocalDateTime.now())
+			.receiveNotification(true)
 			.build();
 		topicMemberRepository.save(topicMember);
 
@@ -263,9 +266,11 @@ public class TopicService {
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		List<TopicMember> subscriptions = topicMemberRepository.findByMember(member);
-		Set<Long> subscribedTopicIds = subscriptions.stream()
-			.map(subscription -> subscription.getTopic().getId())
-			.collect(Collectors.toSet());
+		Map<Long, Boolean> subscriptionMap = subscriptions.stream()
+			.collect(Collectors.toMap(
+				subscription -> subscription.getTopic().getId(),
+				TopicMember::isReceiveNotification
+			));
 
 		List<TopicStatus> topicStatusList = allTopics.stream()
 			.map(topic -> TopicStatus.builder()
@@ -273,7 +278,8 @@ public class TopicService {
 				.koreanTopic(topic.getKoreanTopic())
 				.englishTopic(topic.getDepartment())
 				.classification(topic.getClassification())
-				.subscribed(subscribedTopicIds.contains(topic.getId()))
+				.subscribed(subscriptionMap.containsKey(topic.getId()))
+				.receiveNotification(subscriptionMap.getOrDefault(topic.getId(), false))  // 구독 안 했으면 기본값 false
 				.koreanOrder(topic.getKoreanOrder())
 				.build())
 			.sorted(Comparator.comparingLong(TopicStatus::getKoreanOrder))
@@ -295,5 +301,20 @@ public class TopicService {
 			.sorted(Comparator.comparingLong(TopicDetailResponse::getKoreanOrder))
 			.toList();
 		return topicDetailResponseList;
+	}
+
+	@Transactional
+	public void updateNotificationPreference(NotificationPreferenceRequest request) {
+		String memberEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+		Member member = memberRepository.findByEmail(memberEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		Topic topic = topicRepository.findByDepartment(request.getTopic())
+			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
+
+		TopicMember topicMember = topicMemberRepository.findByMemberAndTopic(member, topic)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.SUBSCRIBE_FAILED));
+
+		topicMember.setReceiveNotification(request.isReceiveNotification());
 	}
 }
