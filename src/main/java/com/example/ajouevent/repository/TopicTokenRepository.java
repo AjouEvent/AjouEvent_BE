@@ -32,4 +32,15 @@ public interface TopicTokenRepository extends JpaRepository<TopicToken, Long> {
 	@Query("SELECT tt FROM TopicToken tt JOIN FETCH tt.token t WHERE tt.topic = :topic AND t.isDeleted = false")
 	List<TopicToken> findByTopicWithValidTokens(@Param("topic") Topic topic);
 
+	@Query("""
+	    SELECT tt FROM TopicToken tt
+	    JOIN FETCH tt.token t
+	    JOIN t.member m
+	    JOIN TopicMember tm ON tm.member = m AND tm.topic = :topic
+	    WHERE tt.topic = :topic
+	    AND t.isDeleted = false
+	    AND tm.receiveNotification = true
+	""")
+	List<TopicToken> findByTopicWithValidTokensAndReceiveNotificationTrue(@Param("topic") Topic topic);
+
 }

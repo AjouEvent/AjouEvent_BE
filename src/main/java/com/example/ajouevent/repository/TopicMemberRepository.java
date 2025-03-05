@@ -40,4 +40,10 @@ public interface TopicMemberRepository extends JpaRepository<TopicMember, Long> 
 
 	boolean existsByMemberAndIsReadFalse(Member member);
 
+	@Query("SELECT tm FROM TopicMember tm JOIN FETCH tm.member m JOIN FETCH m.tokens t WHERE tm.topic = :topic AND tm.receiveNotification = true ")
+	List<TopicMember> findByTopicWithNotificationEnabledAndTokens(@Param("topic") Topic topic);
+
+	@Query("SELECT tm.receiveNotification FROM TopicMember tm WHERE tm.member = :member AND tm.topic = :topic")
+	boolean findReceiveNotificationByMemberAndTopic(@Param("member") Member member, @Param("topic") Topic topic);
+
 }
