@@ -211,35 +211,4 @@ public class EventController {
 		@PageableDefault(size = 10, sort = "createdAt", direction = DESC) Pageable pageable) {
 		return eventService.getClubEventsByKeyword(searchKeyword, principal, pageable);
 	}
-
-	// 구독 상태 조회
-	@PreAuthorize("isAuthenticated()")
-	@GetMapping("/readStatus")
-	public ResponseEntity<MemberReadStatusDto> getMemberReadStatus(Principal principal) {
-		return ResponseEntity.ok(eventService.getMemberReadStatus(principal));
-	}
-
-	// 구독 알림 클릭 시 상태 업데이트
-	@PreAuthorize("isAuthenticated()")
-	@PostMapping("/updateTopicTabRead")
-	public ResponseEntity<ResponseDto> updateTopicTabRead(Principal principal) {
-		eventService.updateTopicTabReadStatus(principal);
-		return ResponseEntity.ok().body(ResponseDto.builder()
-			.successStatus(HttpStatus.OK)
-			.successContent("구독 알림 탭의 읽음 상태 업데이트 요청 완료.")
-			.build()
-		);
-	}
-
-	// 키워드 알림 클릭 시 상태 업데이트
-	@PreAuthorize("isAuthenticated()")
-	@PostMapping("/updateKeywordTabRead")
-	public ResponseEntity<ResponseDto> updateKeywordNotificationRead(Principal principal) {
-		eventService.updateKeywordTabReadStatus(principal);
-		return ResponseEntity.ok().body(ResponseDto.builder()
-			.successStatus(HttpStatus.OK)
-			.successContent("키워드 알림 탭의 읽음 상태 업데이트 요청 완료.")
-			.build()
-		);
-	}
 }

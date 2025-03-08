@@ -100,8 +100,6 @@ public class KeywordService {
 			.collect(Collectors.toList());
 		keywordTokenBulkRepository.saveAll(keywordTokens);
 
-		memberRepository.updateKeywordTabReadStatus(member, false);
-
 		keywordLogger.log("키워드 구독 : " + keyword.getKoreanKeyword());
 	}
 

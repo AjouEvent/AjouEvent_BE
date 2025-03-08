@@ -97,8 +97,6 @@ public class TopicService {
 			.map(token -> new TopicToken(topic, token))
 			.collect(Collectors.toList());
 		topicTokenBulkRepository.saveAll(topicTokens);
-
-		memberRepository.updateTopicTabReadStatus(member, false);
 	}
 
 	// 토픽 구독 취소 - 토픽 하나씩
