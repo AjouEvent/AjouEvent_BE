@@ -36,7 +36,7 @@ public enum Type {
     HISTORY("History", "사학과"),
     HUMANITIES("Humanities", "인문대학"),
     INDUSTRIALENGINEERING("IndustrialEngineering", "산업공학과"),
-    INFORMATIONTECHNOLOGY("InformationTechnology", "정보통신대학"),
+    INFORMATIONTECHNOLOGY("InformationTechnology", "첨단ICT융합대학"),
     INTEGRATIVESYSTEMSENGINEERING("IntegrativeSystemsEngineering", "융합시스템공학과"),
     INTELLIGENCESEMICONDUCTORENGINEERING("IntelligenceSemiconductorEngineering", "지능형반도체공학과"),
     INTERNATIONAL("International", "국제학부대학"),
@@ -64,7 +64,8 @@ public enum Type {
     APPLIEDCHEMISTRY("AppliedChemistry", "응용화학과"),
     ECONOMICPOLITICALANDSOCIALSTUDIES("EconomicPoliticalAndSocialStudies", "경제정치사회융합학부"),
     FRONTIERSCIENCES("FrontierSciences", "프런티어과학학부"),
-    LIBERALSTUDIES("LiberalStudies", "자유전공학부");
+    LIBERALSTUDIES("LiberalStudies", "자유전공학부"),
+    BIOCONVERGENCEENGINEERING("BioConvergenceEngineering", "첨단바이오융합대학");
 
 
     private final String englishTopic;
