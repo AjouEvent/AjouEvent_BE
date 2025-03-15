@@ -23,17 +23,13 @@ import com.example.ajouevent.repository.TopicMemberBulkRepository;
 import com.example.ajouevent.repository.TopicRepository;
 import com.example.ajouevent.util.SecurityUtil;
 import com.example.ajouevent.util.JsonParsingUtil;
-import com.example.ajouevent.domain.EventBanner;
 import com.example.ajouevent.domain.EventLike;
 import com.example.ajouevent.domain.Topic;
 import com.example.ajouevent.domain.TopicMember;
-import com.example.ajouevent.dto.EventBannerDto;
-import com.example.ajouevent.dto.EventBannerRequest;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import com.example.ajouevent.logger.CacheLogger;
-import com.example.ajouevent.repository.EventBannerRepository;
 import com.example.ajouevent.repository.EventLikeRepository;
 import com.example.ajouevent.repository.TopicMemberRepository;
 
@@ -89,7 +85,6 @@ public class EventService {
 	private final FileService fileService;
 	private final EventLikeRepository eventLikeRepository;
 	private final TopicMemberRepository topicMemberRepository;
-	private final EventBannerRepository eventBannerRepository;
 	private final KeywordRepository keywordRepository;
 	private final KeywordMemberRepository keywordMemberRepository;
 	private final JsonParsingUtil jsonParsingUtil;
@@ -964,61 +959,6 @@ public class EventService {
 		return clubEventList.stream()
 			.map(EventResponseDto::toDto)
 			.collect(Collectors.toList());
-	}
-
-	// 홈화면에 들어갈 이벤트 배너 추가
-	public void addEventBanner(EventBannerRequest eventBannerRequest) {
-		EventBanner eventBanner = EventBanner.builder()
-			.imgUrl(eventBannerRequest.getImgUrl())
-			.siteUrl(eventBannerRequest.getSiteUrl())
-			.bannerOrder(eventBannerRequest.getBannerOrder())
-			.startDate(eventBannerRequest.getStartDate())
-			.endDate(eventBannerRequest.getEndDate())
-			.build();
-		eventBannerRepository.save(eventBanner);
-
-		//캐시 초기화
-		jsonParsingUtil.clearCache("Banners");
-	}
-
-	// 이벤트 배너 삭제
-	public void deleteEventBanner(Long eventBannerId) {
-		EventBanner eventBanner = eventBannerRepository.findById(eventBannerId)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.BANNER_NOT_FOUND));
-		eventBannerRepository.delete(eventBanner);
-
-		//캐시 초기화
-		jsonParsingUtil.clearCache("Banners");
-	}
-
-	// 홈화면에 들어갈 이벤트 배너 불러오기
-	public List<EventBannerDto> getAllEventBanners() {
-		String cacheKey = "Banners";
-		Optional<List<EventBannerDto>> cachedData = jsonParsingUtil.getData(cacheKey, new TypeReference<List<EventBannerDto>>() {});
-
-		if (cachedData.isPresent()) {
-			List<EventBannerDto> response = cachedData.get();
-			return response;
-		}
-
-		List<EventBanner> eventBannerDtoList = eventBannerRepository.findAllByOrderByBannerOrderAsc();
-
-		jsonParsingUtil.saveData(cacheKey, eventBannerDtoList, 6, TimeUnit.HOURS);
-
-		return eventBannerDtoList.stream()
-			.map(EventBannerDto::toDto)
-			.collect(Collectors.toList());
-	}
-
-	// 기간 지난 배너 삭제
-	@Scheduled(cron = "0 0 1 * * ?")
-	@Transactional
-	public void deleteExpiredBanners() {
-		LocalDate now = LocalDate.now();
-		eventBannerRepository.deleteByEndDateBefore(now);
-
-		//캐시 초기화
-		jsonParsingUtil.clearCache("Banners");
 	}
 
 	// 랭킹 1시간마다 업데이트

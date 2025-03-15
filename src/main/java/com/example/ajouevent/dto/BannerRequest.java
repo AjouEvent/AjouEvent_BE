@@ -13,7 +13,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class EventBannerRequest {
+public class BannerRequest {
 	private Long bannerOrder;
 	private String imgUrl;
 	private String siteUrl;
