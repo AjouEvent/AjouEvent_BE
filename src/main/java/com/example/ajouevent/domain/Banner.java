@@ -5,8 +5,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Getter
 @Setter
@@ -14,10 +12,10 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 @Entity
-public class EventBanner {
+public class Banner {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long eventBannerId;
+	private Long bannerId;
 
 	@Column(nullable = false)
 	private Long bannerOrder;

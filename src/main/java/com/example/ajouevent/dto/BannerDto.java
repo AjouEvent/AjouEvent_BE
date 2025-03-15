@@ -1,8 +1,7 @@
 package com.example.ajouevent.dto;
 
 import java.time.LocalDate;
-import com.example.ajouevent.domain.EventBanner;
-
+import com.example.ajouevent.domain.Banner;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,20 +13,20 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class EventBannerDto {
+public class BannerDto {
 	private String imgUrl;
 	private String siteUrl;
 	private Long bannerOrder;
 	private LocalDate startDate;
 	private LocalDate endDate;
 
-	public static EventBannerDto toDto(EventBanner eventBanner) {
-		return EventBannerDto.builder()
-			.imgUrl(eventBanner.getImgUrl())
-			.siteUrl(eventBanner.getSiteUrl())
-			.bannerOrder(eventBanner.getBannerOrder())
-			.startDate(eventBanner.getStartDate())
-			.endDate(eventBanner.getEndDate())
+	public static BannerDto toDto(Banner banner) {
+		return BannerDto.builder()
+			.imgUrl(banner.getImgUrl())
+			.siteUrl(banner.getSiteUrl())
+			.bannerOrder(banner.getBannerOrder())
+			.startDate(banner.getStartDate())
+			.endDate(banner.getEndDate())
 			.build();
 	}
 }
