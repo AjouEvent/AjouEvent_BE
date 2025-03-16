@@ -24,6 +24,7 @@ import com.example.ajouevent.dto.SliceResponse;
 import com.example.ajouevent.dto.UpdateEventRequest;
 import com.example.ajouevent.service.EventCommandService;
 import com.example.ajouevent.service.EventFacadeService;
+import com.example.ajouevent.service.EventLikeService;
 import com.example.ajouevent.service.EventQueryService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,6 +40,7 @@ public class EventController {
 	private final EventFacadeService eventFacadeService;
 	private final EventQueryService eventQueryService;
 	private final EventCommandService eventCommandService;
+	private final EventLikeService eventLikeService;
 
 	// 게시글 생성 - S3 스프링부트에서 변환
 	@PostMapping("/new")
@@ -139,14 +141,14 @@ public class EventController {
 	@PreAuthorize("isAuthenticated()")
 	@PostMapping("/like/{eventId}")
 	public ResponseEntity<ResponseDto> likeEvent(@PathVariable("eventId") Long eventId, Principal principal) {
-		return eventCommandService.likeEvent(eventId, principal);
+		return eventLikeService.likeEvent(eventId, principal);
 	}
 
 	// 게시글 찜 취소
 	@PreAuthorize("isAuthenticated()")
 	@DeleteMapping("/like/{eventId}")
 	public ResponseEntity<ResponseDto> cancelLikeEvent(@PathVariable("eventId") Long eventId, Principal principal) {
-		return eventCommandService.cancelLikeEvent(eventId, principal);
+		return eventLikeService.cancelLikeEvent(eventId, principal);
 	}
 
 	// 찜한 게시글 불러오기

@@ -11,7 +11,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -36,7 +35,6 @@ import com.example.ajouevent.dto.EventWithKeywordDto;
 import com.example.ajouevent.dto.SliceResponse;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
-import com.example.ajouevent.repository.EventLikeRepository;
 import com.example.ajouevent.repository.EventRepository;
 import com.example.ajouevent.repository.KeywordMemberRepository;
 import com.example.ajouevent.repository.KeywordRepository;
@@ -53,9 +51,9 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class EventQueryService {
+	private final EventLikeService eventLikeService;
 	private final EventRepository eventRepository;
 	private final MemberRepository memberRepository;
-	private final EventLikeRepository eventLikeRepository;
 	private final TopicMemberRepository topicMemberRepository;
 	private final KeywordRepository keywordRepository;
 	private final KeywordMemberRepository keywordMemberRepository;
@@ -87,10 +85,7 @@ public class EventQueryService {
 			String userEmail = principal.getName();
 			Member member = memberRepository.findByEmail(userEmail)
 				.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
-			List<EventLike> likedEventSlice = eventLikeRepository.findByMember(member);
-			Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
-				.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+			Map<Long, Boolean> likedEventMap = eventLikeService.getLikedEventMap(member);
 
 			// 각 이벤트 DTO에 사용자의 찜 여부 설정
 			for (EventResponseDto dto : eventResponseDtoList) {
@@ -227,9 +222,7 @@ public class EventQueryService {
 		}
 
 		// 사용자가 찜한 게시글 목록 조회
-		List<EventLike> likedEventSlice = member.getEventLikeList();
-		Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
-			.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+		Map<Long, Boolean> likedEventMap = eventLikeService.getLikedEventMap(member);
 
 		// 이벤트를 이벤트 응답 DTO로 변환하여 반환
 		List<EventResponseDto> eventResponseDtoList = clubEventSlice.getContent().stream()
@@ -254,19 +247,17 @@ public class EventQueryService {
 	}
 
 	// 유저의 찜한 이벤트 목록 조회
-	@Transactional
+	@Transactional(readOnly = true)
 	public SliceResponse<EventResponseDto> getLikedEvents(String type, String keyword, Pageable pageable, Principal principal) {
 		// 사용자가 로그인하지 않은 경우
 		if (principal == null) {
 			throw new CustomException(CustomErrorCode.LOGIN_NEEDED);
 		}
 
-		String userEmail = principal.getName(); // 현재 로그인한 사용자의 이메일 가져오기
-
+		String userEmail = principal.getName();
 		Member member = memberRepository.findByEmail(userEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
-		List<EventLike> likedEvents = eventLikeRepository.findByMemberWithClubEvent(member);
+		List<EventLike> likedEvents = eventLikeService.getLikedEvents(member);
 
 		// EventLike 엔티티에서 ClubEvent의 ID 목록을 추출합니다.
 		List<Long> eventIds = likedEvents.stream()
@@ -384,11 +375,7 @@ public class EventQueryService {
 	private void updateLikeStatusForUser(List<EventResponseDto> eventResponseDtoList, String userEmail) {
 		Member member = memberRepository.findByEmail(userEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
-		// 사용자가 찜한 게시글 목록 조회
-		List<EventLike> likedEventSlice = member.getEventLikeList();
-		Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
-			.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+		Map<Long, Boolean> likedEventMap = eventLikeService.getLikedEventMap(member);
 
 		// 각 이벤트 DTO에 사용자의 찜 여부 설정
 		for (EventResponseDto dto : eventResponseDtoList) {
@@ -400,11 +387,7 @@ public class EventQueryService {
 	public void updateLikeStatusForUser(EventDetailResponseDto eventDetailResponseDto, String userEmail) {
 		Member member = memberRepository.findByEmail(userEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
-		// 사용자가 찜한 게시글 목록 조회
-		List<EventLike> likedEventSlice = member.getEventLikeList();
-		Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
-			.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+		Map<Long, Boolean> likedEventMap = eventLikeService.getLikedEventMap(member);
 
 		// 이벤트 DTO에 사용자의 찜 여부 설정
 		eventDetailResponseDto.setStar(likedEventMap.getOrDefault(eventDetailResponseDto.getEventId(), false));
@@ -469,9 +452,7 @@ public class EventQueryService {
 		}
 
 		// 사용자가 찜한 게시글 목록 조회
-		List<EventLike> likedEventSlice = member.getEventLikeList();
-		Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
-			.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+		Map<Long, Boolean> likedEventMap = eventLikeService.getLikedEventMap(member);
 
 		// 각 이벤트 DTO에 사용자의 찜 여부 설정
 		for (EventWithKeywordDto dto : eventWithKeywordDtos) {
@@ -531,9 +512,7 @@ public class EventQueryService {
 			.toList();
 
 		// 사용자가 찜한 게시글 목록 조회
-		List<EventLike> likedEventSlice = member.getEventLikeList();
-		Map<Long, Boolean> likedEventMap = likedEventSlice.stream()
-			.collect(Collectors.toMap(eventLike -> eventLike.getClubEvent().getEventId(), eventLike -> true));
+		Map<Long, Boolean> likedEventMap = eventLikeService.getLikedEventMap(member);
 
 		// 각 이벤트 DTO에 사용자의 찜 여부 설정
 		for (EventWithKeywordDto dto : eventWithKeywordDtos) {

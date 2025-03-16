@@ -1,7 +1,6 @@
 package com.example.ajouevent.service;
 
 import java.io.IOException;
-import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -12,18 +11,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.ajouevent.domain.ClubEvent;
 import com.example.ajouevent.domain.ClubEventImage;
-import com.example.ajouevent.domain.EventLike;
 import com.example.ajouevent.domain.Keyword;
 import com.example.ajouevent.domain.KeywordMember;
 import com.example.ajouevent.domain.Member;
@@ -32,13 +27,11 @@ import com.example.ajouevent.domain.TopicMember;
 import com.example.ajouevent.domain.Type;
 import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.PostEventDto;
-import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.UpdateEventRequest;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import com.example.ajouevent.logger.WebhookLogger;
 import com.example.ajouevent.repository.ClubEventImageRepository;
-import com.example.ajouevent.repository.EventLikeRepository;
 import com.example.ajouevent.repository.EventRepository;
 import com.example.ajouevent.repository.KeywordMemberBulkRepository;
 import com.example.ajouevent.repository.KeywordMemberRepository;
@@ -63,7 +56,6 @@ public class EventCommandService {
 	private final ClubEventImageRepository clubEventImageRepository;
 	private final S3Upload s3Upload;
 	private final FileService fileService;
-	private final EventLikeRepository eventLikeRepository;
 	private final TopicMemberRepository topicMemberRepository;
 	private final KeywordRepository keywordRepository;
 	private final KeywordMemberRepository keywordMemberRepository;
@@ -444,88 +436,6 @@ public class EventCommandService {
 
 		// 게시글 삭제 후 해당 타입의 캐시 초기화
 		jsonParsingUtil.clearCacheForType(clubEvent.getType().getEnglishTopic());
-	}
-
-	// 게시글 찜하기
-	@Transactional
-	public ResponseEntity<ResponseDto> likeEvent(Long eventId, Principal principal) {
-		// 사용자가 로그인하지 않은 경우
-		if (principal == null || SecurityContextHolder.getContext().getAuthentication() == null) {
-			throw new CustomException(CustomErrorCode.LOGIN_NEEDED);
-		}
-
-		String userEmail = principal.getName(); // 현재 로그인한 사용자의 이메일 가져오기
-
-		// 이벤트 조회
-		ClubEvent clubEvent = eventRepository.findById(eventId)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
-
-		// 사용자 조회
-		Member member = memberRepository.findByEmail(userEmail).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
-		// 이미 찜한 이벤튼지 확인
-		if (eventLikeRepository.existsByMemberAndClubEvent(member, clubEvent)) {
-			return ResponseEntity.ok().body(ResponseDto.builder()
-				.successStatus(HttpStatus.OK)
-				.successContent("이미 찜한 이벤트입니다.")
-				.build()
-			);
-		}
-
-		// 이벤트를 사용자의 찜 목록에 추가
-		EventLike eventLike = EventLike.builder()
-			.clubEvent(clubEvent)
-			.member(member)
-			.build();
-
-		// 게시글의 좋아요 수 증가
-		clubEvent.incrementLikes();
-
-		eventLikeRepository.save(eventLike);
-
-		return ResponseEntity.ok().body(ResponseDto.builder()
-			.successStatus(HttpStatus.CREATED)
-			.successContent("게시글을 찜했습니다.")
-			.build()
-		);
-
-	}
-
-	// 게시글 찜 취소 하기
-	@Transactional
-	public ResponseEntity<ResponseDto> cancelLikeEvent(Long eventId, Principal principal) {
-		// 사용자가 로그인하지 않은 경우
-		if (principal == null) {
-			throw new CustomException(CustomErrorCode.LOGIN_NEEDED);
-		}
-
-		String userEmail = principal.getName(); // 현재 로그인한 사용자의 이메일 가져오기
-
-		// 이벤트 조회
-		ClubEvent clubEvent = eventRepository.findById(eventId)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
-
-		// 사용자 조회
-		Member member = memberRepository.findByEmail(userEmail)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
-		// 찜한 이벤트인지 확인
-		EventLike eventLike = eventLikeRepository.findByClubEventAndMember(clubEvent, member).orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_LIKED));
-		if (eventLike == null) {
-			throw new CustomException(CustomErrorCode.EVENT_NOT_LIKED);
-		}
-
-		// 게시글의 저장수 감소
-		clubEvent.decreaseLikes();
-
-		// 이벤트 찜 취소
-		eventLikeRepository.delete(eventLike);
-
-		return ResponseEntity.ok().body(ResponseDto.builder()
-			.successStatus(HttpStatus.OK)
-			.successContent("게시글 찜하기를 취소했습니다.")
-			.build()
-		);
 	}
 
 	public void handleAnonymousUserWithCookieAndRedis(HttpServletRequest request, HttpServletResponse response, ClubEvent clubEvent) {
