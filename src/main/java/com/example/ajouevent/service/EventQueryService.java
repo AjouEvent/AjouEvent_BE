@@ -482,10 +482,6 @@ public class EventQueryService {
 	// 단일 키워드 대상 글 조회
 	@Transactional
 	public SliceResponse<EventWithKeywordDto> getClubEventsByKeyword(String searchKeyword, Principal principal, Pageable pageable) {
-		if (principal == null) {
-			throw new CustomException(CustomErrorCode.LOGIN_NEEDED);
-		}
-
 		String userEmail = principal.getName();
 		Member member = memberRepository.findByEmail(userEmail)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
@@ -493,17 +489,6 @@ public class EventQueryService {
 		Keyword keyword = keywordRepository.findBySearchKeyword(searchKeyword)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.KEYWORD_NOT_FOUND));
 
-		// 사용자가 구독한 해당 키워드의 읽음 상태를 업데이트
-		KeywordMember keywordMember = keywordMemberRepository.findByKeywordAndMember(keyword, member)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.KEYWORD_NOT_FOUND));
-		if (keywordMember.isRead() == false) {
-			keywordMember.setRead(true);  // 읽음 상태로 업데이트
-			keywordMember.setLastReadAt(LocalDateTime.now());  // 마지막으로 읽은 시간 설정
-			keywordMemberRepository.save(keywordMember);  // 업데이트된 읽음 상태 저장
-		}
-
-
-		// 키워드에 해당하는 이벤트 페이징 조회
 		Type type = keyword.getTopic().getType();
 		Slice<ClubEvent> clubEventSlice = eventRepository.findByTypeAndTitleContaining(type, keyword.getKoreanKeyword(), pageable);
 
@@ -511,20 +496,15 @@ public class EventQueryService {
 			.map(clubEvent -> EventWithKeywordDto.toDto(clubEvent, keyword.getKoreanKeyword()))
 			.toList();
 
-		// 사용자가 찜한 게시글 목록 조회
 		Map<Long, Boolean> likedEventMap = eventLikeService.getLikedEventMap(member);
-
-		// 각 이벤트 DTO에 사용자의 찜 여부 설정
 		for (EventWithKeywordDto dto : eventWithKeywordDtos) {
 			dto.setStar(likedEventMap.getOrDefault(dto.getEventId(), false));
 		}
 
-		// 정렬된 결과 반환
 		List<EventWithKeywordDto> sortedDtos = eventWithKeywordDtos.stream()
 			.sorted(Comparator.comparing(EventWithKeywordDto::getCreatedAt).reversed())
 			.toList();
 
-		// SliceResponse 변환
 		SliceResponse<EventWithKeywordDto> response = SliceResponse.<EventWithKeywordDto>builder()
 			.result(sortedDtos)
 			.hasPrevious(pageable.getPageNumber() > 0)

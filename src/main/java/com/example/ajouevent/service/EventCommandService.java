@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -21,7 +20,6 @@ import com.example.ajouevent.domain.ClubEvent;
 import com.example.ajouevent.domain.ClubEventImage;
 import com.example.ajouevent.domain.Keyword;
 import com.example.ajouevent.domain.KeywordMember;
-import com.example.ajouevent.domain.Member;
 import com.example.ajouevent.domain.Topic;
 import com.example.ajouevent.domain.TopicMember;
 import com.example.ajouevent.domain.Type;
@@ -36,7 +34,6 @@ import com.example.ajouevent.repository.EventRepository;
 import com.example.ajouevent.repository.KeywordMemberBulkRepository;
 import com.example.ajouevent.repository.KeywordMemberRepository;
 import com.example.ajouevent.repository.KeywordRepository;
-import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.TopicMemberBulkRepository;
 import com.example.ajouevent.repository.TopicMemberRepository;
 import com.example.ajouevent.repository.TopicRepository;
@@ -51,7 +48,6 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class EventCommandService {
-	private final MemberRepository memberRepository;
 	private final EventRepository eventRepository;
 	private final ClubEventImageRepository clubEventImageRepository;
 	private final S3Upload s3Upload;
@@ -489,23 +485,6 @@ public class EventCommandService {
 		if(Boolean.FALSE.equals(exist)){
 			stringRedisTemplate.opsForValue().increment(key);
 			stringRedisTemplate.expire(key,4L,TimeUnit.MINUTES);
-		}
-	}
-
-	@Transactional
-	public void markTopicAsRead(String type, String userEmail) {
-		Member member = memberRepository.findByEmail(userEmail)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
-		Topic topic = topicRepository.findByDepartment(type)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
-
-		Optional<TopicMember> optionalTopicMember = topicMemberRepository.findByMemberAndTopic(member, topic);
-		if (optionalTopicMember.isPresent()) {
-			TopicMember topicMember = optionalTopicMember.get();
-			topicMember.setRead(true);
-			topicMember.setLastReadAt(LocalDateTime.now());
-			topicMemberRepository.save(topicMember);
 		}
 	}
 

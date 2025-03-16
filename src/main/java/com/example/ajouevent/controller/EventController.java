@@ -183,6 +183,6 @@ public class EventController {
 	public SliceResponse<EventWithKeywordDto> getClubEventsByKeyword(@PathVariable("keyword") String searchKeyword,
 		Principal principal,
 		@PageableDefault(size = 10, sort = "createdAt", direction = DESC) Pageable pageable) {
-		return eventQueryService.getClubEventsByKeyword(searchKeyword, principal, pageable);
+		return eventFacadeService.getClubEventsByKeyword(searchKeyword, principal, pageable);
 	}
 }
