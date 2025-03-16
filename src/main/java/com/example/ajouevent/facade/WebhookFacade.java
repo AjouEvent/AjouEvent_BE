@@ -8,7 +8,7 @@ import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.WebhookResponse;
 import com.example.ajouevent.exception.CustomException;
 import com.example.ajouevent.logger.WebhookLogger;
-import com.example.ajouevent.service.EventService;
+import com.example.ajouevent.service.EventCommandService;
 import com.example.ajouevent.service.FCMService;
 import com.example.ajouevent.service.PushNotificationService;
 import com.example.ajouevent.service.RedisService;
@@ -23,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 public class WebhookFacade {
 
 	private final RedisService redisService;
-	private final EventService eventService;
+	private final EventCommandService eventCommandService;
 	private final FCMService fcmService;
 	private final PushNotificationService pushNotificationService;
 	private final WebhookLogger webhookLogger;
@@ -37,7 +37,7 @@ public class WebhookFacade {
 			}
 
 			// 공지사항 중복 여부 확인 - 공지사항 제목, 원래 공지사항 url 비교
-			boolean isDuplicate = eventService.isDuplicateNotice(noticeDto.getEnglishTopic(), noticeDto.getTitle(), noticeDto.getUrl());
+			boolean isDuplicate = eventCommandService.isDuplicateNotice(noticeDto.getEnglishTopic(), noticeDto.getTitle(), noticeDto.getUrl());
 			if (isDuplicate) {
 				webhookLogger.log(String.format("Duplicate notice detected: %s, %s", noticeDto.getKoreanTopic(), noticeDto.getTitle()));
 				return ResponseEntity.status(HttpStatus.CONFLICT).body(
@@ -50,7 +50,7 @@ public class WebhookFacade {
 			}
 
 			// 크롤링한 공지사항을 DB에 저장
-			Long eventId = eventService.postNotice(noticeDto);
+			Long eventId = eventCommandService.postNotice(noticeDto);
 
 			// 알림을 구독자별로 PushNotifications에 미리 저장
 			Long pushClusterId = pushNotificationService.postPushNotification(noticeDto, eventId);

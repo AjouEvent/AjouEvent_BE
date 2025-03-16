@@ -40,8 +40,9 @@ public class EventResponseDto { // 게시글 홈 화면 조회 시에 나오는 
 			.createdAt(clubEvent.getCreatedAt())
 			.likesCount(clubEvent.getLikesCount())
 			.viewCount(clubEvent.getViewCount())
-			.type(clubEvent.getType())
+			.star(false)
 			.subject(clubEvent.getType().getKoreanTopic())
+			.type(clubEvent.getType())
 			.writer(clubEvent.getWriter())
 			.build();
 	}
