@@ -7,7 +7,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.example.ajouevent.domain.Keyword;
@@ -314,5 +313,22 @@ public class TopicService {
 			.orElseThrow(() -> new CustomException(CustomErrorCode.SUBSCRIBE_FAILED));
 
 		topicMember.setReceiveNotification(request.isReceiveNotification());
+	}
+
+	@Transactional
+	public void markTopicAsRead(String type, String userEmail) {
+		Member member = memberRepository.findByEmail(userEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		Topic topic = topicRepository.findByDepartment(type)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
+
+		Optional<TopicMember> optionalTopicMember = topicMemberRepository.findByMemberAndTopic(member, topic);
+		if (optionalTopicMember.isPresent()) { // 사용자가 구독하고 있는 경우만 읽음 상태 갱신
+			TopicMember topicMember = optionalTopicMember.get();
+			topicMember.setRead(true);
+			topicMember.setLastReadAt(LocalDateTime.now());
+			topicMemberRepository.save(topicMember);
+		}
 	}
 }

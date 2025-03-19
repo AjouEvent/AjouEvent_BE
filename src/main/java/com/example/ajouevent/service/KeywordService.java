@@ -180,4 +180,21 @@ public class KeywordService {
 			.collect(Collectors.toList());
 		keywordMemberRepository.deleteAllByIds(keywordMemberIds);
 	}
+
+	@Transactional
+	public void markKeywordAsRead(String searchKeyword, String userEmail) {
+		Member member = memberRepository.findByEmail(userEmail)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
+
+		Keyword keyword = keywordRepository.findBySearchKeyword(searchKeyword)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.KEYWORD_NOT_FOUND));
+
+		KeywordMember keywordMember = keywordMemberRepository.findByKeywordAndMember(keyword, member)
+			.orElseThrow(() -> new CustomException(CustomErrorCode.KEYWORD_NOT_FOUND));
+		if (keywordMember.isRead() == false) {
+			keywordMember.setRead(true);
+			keywordMember.setLastReadAt(LocalDateTime.now());
+			keywordMemberRepository.save(keywordMember);
+		}
+	}
 }

@@ -22,7 +22,10 @@ import com.example.ajouevent.dto.PostEventDto;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.SliceResponse;
 import com.example.ajouevent.dto.UpdateEventRequest;
-import com.example.ajouevent.service.EventService;
+import com.example.ajouevent.service.EventCommandService;
+import com.example.ajouevent.service.EventFacadeService;
+import com.example.ajouevent.service.EventLikeService;
+import com.example.ajouevent.service.EventQueryService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -33,15 +36,17 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @RequestMapping("/api/event")
 public class EventController {
-
-	private final EventService eventService;
 	private final CalendarService calendarService;
+	private final EventFacadeService eventFacadeService;
+	private final EventQueryService eventQueryService;
+	private final EventCommandService eventCommandService;
+	private final EventLikeService eventLikeService;
 
 	// 게시글 생성 - S3 스프링부트에서 변환
 	@PostMapping("/new")
 	public ResponseEntity<ResponseDto> newEvent(@Valid @RequestPart(value = "data") PostEventDto postEventDto,
 		@RequestPart(value = "image", required = false) List<MultipartFile> images) throws IOException {
-		eventService.newEvent(postEventDto, images);
+		eventCommandService.newEvent(postEventDto, images);
 		return ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
 			.successContent("게시글이 성공적으로 업로드되었습니다.")
@@ -52,7 +57,7 @@ public class EventController {
 	// 게시글 생성 - S3 프론트에서 변환
 	@PostMapping("/post")
 	public ResponseEntity<ResponseDto> postEvent(@Valid @RequestBody PostEventDto postEventDto) {
-		eventService.postEvent(postEventDto);
+		eventCommandService.postEvent(postEventDto);
 		return ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
 			.successContent("게시글이 성공적으로 업로드되었습니다.")
@@ -64,7 +69,7 @@ public class EventController {
 	@PatchMapping("/{eventId}")
 	public ResponseEntity<ResponseDto> updateEventData(@PathVariable("eventId") Long eventId,
 		@RequestBody UpdateEventRequest request) {
-		eventService.updateEventData(eventId, request);
+		eventCommandService.updateEventData(eventId, request);
 		return ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
 			.successContent("게시글 데이터가 수정되었습니다.")
@@ -76,7 +81,7 @@ public class EventController {
 	@PatchMapping("/{eventId}/images")
 	public ResponseEntity<ResponseDto> updateEventImages(@PathVariable("eventId") Long eventId,
 		@RequestPart("image") List<MultipartFile> images) throws IOException {
-		eventService.updateEventImages(eventId, images);
+		eventCommandService.updateEventImages(eventId, images);
 		return ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
 			.successContent("게시글 이미지가 수정되었습니다.")
@@ -88,7 +93,7 @@ public class EventController {
 	@PreAuthorize("hasRole('ADMIN')")
 	@DeleteMapping("/{eventId}")
 	public ResponseEntity<ResponseDto> deleteEvent(@PathVariable("eventId") Long eventId) {
-		eventService.deleteEvent(eventId);
+		eventCommandService.deleteEvent(eventId);
 		return ResponseEntity.ok().body(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
 			.successContent("게시글이 삭제 되었습니다.")
@@ -100,28 +105,28 @@ public class EventController {
 	@PreAuthorize("permitAll()")
 	@GetMapping("/detail/{eventId}")
 	public EventDetailResponseDto detail(@PathVariable("eventId") Long eventId, Principal principal, HttpServletRequest request, HttpServletResponse response) {
-		return eventService.getEventDetail(eventId, principal, request, response);
+		return eventFacadeService.getEventDetail(eventId, principal, request, response);
 	}
 
 	// 전체 글 보기 페이지(홈) -> 일단 테스트용으로 올린거 전부
 	@PreAuthorize("permitAll()")
 	@GetMapping("/all")
 	public SliceResponse<EventResponseDto> getEventList(@RequestParam(required = false, defaultValue = "", name="keyword") String keyword, @PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
-		return eventService.getEventList(pageable, keyword, principal);
+		return eventQueryService.getEventList(pageable, keyword, principal);
 	}
 
 	// type별로 글 보기
 	@PreAuthorize("permitAll()")
 	@GetMapping("/{type}")
 	public SliceResponse<EventResponseDto> getEventTypeList(@PathVariable("type") String type, @RequestParam(required = false, defaultValue = "", name="keyword") String keyword, @PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
-		return eventService.getEventTypeList(type, keyword, pageable, principal);
+		return eventFacadeService.getEventTypeList(type, keyword, pageable, principal);
 	}
 
 	// 인기글 조회 로직
 	@PreAuthorize("permitAll()")
 	@GetMapping("/popular")
 	public List<EventResponseDto> getPopularEvents(Principal principal) {
-		return eventService.getTopPopularEvents(principal);
+		return eventQueryService.getTopPopularEvents(principal);
 	}
 
 	@PreAuthorize("isAuthenticated()")
@@ -129,21 +134,21 @@ public class EventController {
 	public SliceResponse<EventResponseDto> getSubscribedEvent(
 		@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable,
 		Principal principal, @RequestParam(value = "keyword", required = false) String keyword) {
-		return eventService.getSubscribedEvents(pageable, principal, keyword);
+		return eventQueryService.getSubscribedEvents(pageable, principal, keyword);
 	}
 
 	// 게시글 찜하기
 	@PreAuthorize("isAuthenticated()")
 	@PostMapping("/like/{eventId}")
 	public ResponseEntity<ResponseDto> likeEvent(@PathVariable("eventId") Long eventId, Principal principal) {
-		return eventService.likeEvent(eventId, principal);
+		return eventLikeService.likeEvent(eventId, principal);
 	}
 
 	// 게시글 찜 취소
 	@PreAuthorize("isAuthenticated()")
 	@DeleteMapping("/like/{eventId}")
 	public ResponseEntity<ResponseDto> cancelLikeEvent(@PathVariable("eventId") Long eventId, Principal principal) {
-		return eventService.cancelLikeEvent(eventId, principal);
+		return eventLikeService.cancelLikeEvent(eventId, principal);
 	}
 
 	// 찜한 게시글 불러오기
@@ -152,7 +157,7 @@ public class EventController {
 	public SliceResponse<EventResponseDto> getLikedEvents(@RequestParam(required = false, name = "type") String type,
 		@RequestParam(required = false, defaultValue = "", name="keyword") String keyword,
 		@PageableDefault(sort = "createdAt", direction = DESC) Pageable pageable, Principal principal) {
-		return eventService.getLikedEvents(type, keyword, pageable, principal);
+		return eventQueryService.getLikedEvents(type, keyword, pageable, principal);
 	}
 
 	@PreAuthorize("isAuthenticated()")
@@ -170,7 +175,7 @@ public class EventController {
 	@GetMapping("/getSubscribedPostsByKeyword")
 	public SliceResponse<EventWithKeywordDto> getAllClubEventsBySubscribedKeywords(Principal principal,
 		@PageableDefault(size = 10, sort = "createdAt", direction = DESC) Pageable pageable) {
-		return eventService.getAllClubEventsBySubscribedKeywords(principal, pageable);
+		return eventQueryService.getAllClubEventsBySubscribedKeywords(principal, pageable);
 	}
 
 	@PreAuthorize("isAuthenticated()")
@@ -178,6 +183,6 @@ public class EventController {
 	public SliceResponse<EventWithKeywordDto> getClubEventsByKeyword(@PathVariable("keyword") String searchKeyword,
 		Principal principal,
 		@PageableDefault(size = 10, sort = "createdAt", direction = DESC) Pageable pageable) {
-		return eventService.getClubEventsByKeyword(searchKeyword, principal, pageable);
+		return eventFacadeService.getClubEventsByKeyword(searchKeyword, principal, pageable);
 	}
 }

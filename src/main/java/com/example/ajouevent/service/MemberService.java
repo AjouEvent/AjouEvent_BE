@@ -12,9 +12,7 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-import com.example.ajouevent.domain.EventLike;
 import com.example.ajouevent.domain.Token;
-import com.example.ajouevent.repository.EventLikeRepository;
 import com.example.ajouevent.repository.TokenRepository;
 import com.example.ajouevent.util.JwtUtil;
 import com.example.ajouevent.auth.OAuth;
@@ -51,6 +49,7 @@ public class MemberService {
 	private final BCryptPasswordEncoder BCryptEncoder;
 	private final OAuth oAuth;
 	private final TopicService topicService;
+	private final EventLikeService eventLikeService;
 	private final DiscordMessageProvider discordMessageProvider;
 	private final JavaMailSender javaMailSender;
 	private final EmailCheckRedisRepository emailCheckRedisRepository;
@@ -58,7 +57,6 @@ public class MemberService {
 
 	private static final String REDIS_HASH = "EmailCheck";
 	private final TokenRepository tokenRepository;
-	private final EventLikeRepository eventLikeRepository;
 
 	@Transactional
 	public String register(RegisterRequest registerRequest) throws IOException {
@@ -191,12 +189,8 @@ public class MemberService {
 	public String deleteMember (Principal principal) {
 		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
-		// 해당 멤버의 찜한 게시글(EventLike) 목록 삭제
-		List<EventLike> eventLikes = eventLikeRepository.findByMember(member);
-		List<Long> eventLikeIds = eventLikes.stream()
-			.map(EventLike::getEventLikeId)
-			.toList();
-		eventLikeRepository.deleteAllByIds(eventLikeIds);
+		// // 해당 멤버의 찜한 게시글(EventLike) 목록 삭제
+		eventLikeService.deleteAllLikesByMember(member);
 
 		// 해당 멤버의 토큰 삭제
 		List<Token> memberTokens = tokenRepository.findByMember(member);
