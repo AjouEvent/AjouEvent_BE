@@ -48,7 +48,7 @@ public class MemberService {
 	private final JwtUtil jwtUtil;
 	private final BCryptPasswordEncoder BCryptEncoder;
 	private final OAuth oAuth;
-	private final TopicService topicService;
+	private final TokenService tokenService;
 	private final EventLikeService eventLikeService;
 	private final DiscordMessageProvider discordMessageProvider;
 	private final JavaMailSender javaMailSender;
@@ -251,7 +251,7 @@ public class MemberService {
 				.build();
 
 		if (loginRequest.getFcmToken() != null) {
-			topicService.saveFCMToken(loginRequest);
+			tokenService.registerTokenWithSubscriptions(loginRequest);
 		} else {
 			log.info("가져온 LoginRequest의 FcmToken이 null 입니다.");
 		}
