@@ -6,11 +6,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.http.ResponseCookie;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,8 +37,6 @@ import com.example.ajouevent.repository.TopicMemberRepository;
 import com.example.ajouevent.repository.TopicRepository;
 import com.example.ajouevent.util.JsonParsingUtil;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -432,60 +428,6 @@ public class EventCommandService {
 
 		// 게시글 삭제 후 해당 타입의 캐시 초기화
 		jsonParsingUtil.clearCacheForType(clubEvent.getType().getEnglishTopic());
-	}
-
-	public void handleAnonymousUserWithCookieAndRedis(HttpServletRequest request, HttpServletResponse response, ClubEvent clubEvent) {
-		String ipAddress = getClientIp(request);
-		String userAgent = request.getHeader("User-Agent");
-		String currentCookieValue = cookieService.getCookieValue(request, clubEvent);
-
-		// Redis 키 생성
-		String redisKey = "ClubEvent_View:" + clubEvent.getEventId() + ":" + ipAddress + ":" + userAgent;
-
-		// 쿠키가 없거나 조회된 적 없는 경우
-		if (!cookieService.isAlreadyViewed(currentCookieValue, clubEvent.getEventId())) {
-			ResponseCookie newCookie = cookieService.createOrUpdateCookie(currentCookieValue, clubEvent);
-			response.addHeader("Set-Cookie", newCookie.toString());
-
-			// 쿠키가 없으면 Redis에서 한 번 더 확인
-			if (Boolean.FALSE.equals(stringRedisTemplate.hasKey(redisKey))) {
-				stringRedisTemplate.opsForValue().set(redisKey, "0", 86400L, TimeUnit.SECONDS); // TTL과 함께 설정
-
-				// 조회수 증가
-				increaseViews(clubEvent);
-			}
-		}
-	}
-
-	public String getClientIp(HttpServletRequest request) {
-		String ip = request.getHeader("X-Forwarded-For");
-		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-			ip = request.getHeader("Proxy-Client-IP");
-		}
-		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-			ip = request.getHeader("WL-Proxy-Client-IP");
-		}
-		if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-			ip = request.getRemoteAddr();
-		}
-		return ip.split(",")[0].trim(); // X-Forwarded-For는 콤마로 구분된 여러 IP를 가질 수 있음
-	}
-
-	public void handleAuthenticatedUser(String userId, ClubEvent clubEvent) {
-		if (redisService.isFirstIpRequest(userId, clubEvent.getEventId(), clubEvent)) {
-			redisService.writeClientRequest(userId, clubEvent.getEventId(), clubEvent);
-			increaseViews(clubEvent);
-		}
-	}
-
-	public void increaseViews(ClubEvent clubEvent){
-		String key = "ClubEvent:views:" + clubEvent.getEventId();
-		Boolean exist = stringRedisTemplate.opsForValue().setIfAbsent(key, String.valueOf(clubEvent.getViewCount()+1),4L,
-			TimeUnit.MINUTES);
-		if(Boolean.FALSE.equals(exist)){
-			stringRedisTemplate.opsForValue().increment(key);
-			stringRedisTemplate.expire(key,4L,TimeUnit.MINUTES);
-		}
 	}
 
 	@Transactional(readOnly = true)
