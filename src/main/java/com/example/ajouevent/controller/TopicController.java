@@ -19,6 +19,7 @@ import com.example.ajouevent.dto.TopicDetailResponse;
 import com.example.ajouevent.dto.TopicRequest;
 import com.example.ajouevent.dto.TopicResponse;
 import com.example.ajouevent.dto.TopicStatus;
+import com.example.ajouevent.service.TopicQueryService;
 import com.example.ajouevent.service.TopicService;
 
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 public class TopicController {
 
 	private final TopicService topicService;
+	private final TopicQueryService topicQueryService;
 
 	@PreAuthorize("isAuthenticated()")
 	@PostMapping("/subscribe")
@@ -65,20 +67,20 @@ public class TopicController {
 
 	@GetMapping("/all")
 	public List<TopicDetailResponse> getAllTopics() {
-		return topicService.getAllTopics();
+		return topicQueryService.getAllTopics();
 	}
 
 	@PreAuthorize("isAuthenticated()")
 	@GetMapping("/subscriptions")
 	public List<TopicResponse> getUserSubscriptions() {
 		// 현재 사용자가 구독하고 있는 토픽 리스트 가져오기
-		return topicService.getSubscribedTopics();
+		return topicQueryService.getSubscribedTopics();
 	}
 
 	@PreAuthorize("isAuthenticated()")
 	@GetMapping("/subscriptionsStatus")
 	public List<TopicStatus> getTopicWithUserSubscriptionsStatus(Principal principal) {
-		return topicService.getTopicWithUserSubscriptionsStatus(principal);
+		return topicQueryService.getTopicWithUserSubscriptionsStatus(principal);
 	}
 
 	@PreAuthorize("isAuthenticated()")

@@ -18,6 +18,7 @@ import com.example.ajouevent.dto.KeywordResponse;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.dto.UnsubscribeKeywordRequest;
 import com.example.ajouevent.service.KeywordService;
+import com.example.ajouevent.service.KeywordQueryService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 public class KeywordController {
 
 	private final KeywordService keywordService;
+	private final KeywordQueryService keywordQueryService;
 
 	@PreAuthorize("isAuthenticated()")
 	@PostMapping("/subscribe")
@@ -53,7 +55,7 @@ public class KeywordController {
 	@PreAuthorize("isAuthenticated()")
 	@GetMapping("/userKeywords")
 	public List<KeywordResponse> getUserKeywordNotifications(Principal principal) {
-		return keywordService.getUserKeyword(principal);
+		return keywordQueryService.getUserKeyword(principal);
 	}
 
 	@PreAuthorize("isAuthenticated()")

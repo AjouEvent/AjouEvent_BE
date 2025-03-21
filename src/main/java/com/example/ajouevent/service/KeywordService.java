@@ -120,27 +120,6 @@ public class KeywordService {
 		keywordLogger.log("키워드 구독 취소 : " + keyword.getKoreanKeyword());
 	}
 
-	// 사용자가 설정한 키워드 조회
-	@Transactional(readOnly = true)
-	public List<KeywordResponse> getUserKeyword(Principal principal) {
-		String memberEmail = principal.getName();
-		Member member = memberRepository.findByEmail(memberEmail)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
-
-		List<KeywordMember> keywordMembers = keywordMemberRepository.findByMemberWithKeywordAndTopic(member);
-
-		return keywordMembers.stream()
-			.map(km -> KeywordResponse.builder()
-				.encodedKeyword(km.getKeyword().getEncodedKeyword())
-				.koreanKeyword(km.getKeyword().getKoreanKeyword())
-				.searchKeyword(km.getKeyword().getSearchKeyword())
-				.topicName(km.getKeyword().getTopic().getKoreanTopic())
-				.isRead(km.isRead())
-				.lastReadAt(km.getLastReadAt())
-				.build())
-			.collect(Collectors.toList());
-	}
-
 	// 사용자의 Keyword 구독 목록 초기화
 	@Transactional
 	public void resetAllSubscriptions() {
