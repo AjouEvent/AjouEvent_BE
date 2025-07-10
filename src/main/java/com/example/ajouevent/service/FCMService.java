@@ -3,14 +3,11 @@ package com.example.ajouevent.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-import com.example.ajouevent.domain.Keyword;
 import com.example.ajouevent.domain.PushCluster;
 import com.example.ajouevent.domain.PushClusterToken;
-import com.example.ajouevent.dto.UnreadNotificationCountDto;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
 import org.springframework.http.HttpStatus;
@@ -22,7 +19,6 @@ import com.example.ajouevent.domain.Alarm;
 import com.example.ajouevent.domain.AlarmImage;
 import com.example.ajouevent.domain.Member;
 import com.example.ajouevent.domain.Token;
-import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.ResponseDto;
 import com.example.ajouevent.logger.AlarmLogger;
 import com.example.ajouevent.logger.FcmTokenValidationLogger;
@@ -31,7 +27,6 @@ import com.example.ajouevent.repository.MemberRepository;
 import com.example.ajouevent.repository.PushClusterRepository;
 import com.example.ajouevent.repository.PushClusterTokenBulkRepository;
 import com.example.ajouevent.repository.PushClusterTokenRepository;
-import com.example.ajouevent.repository.PushNotificationRepository;
 import com.example.ajouevent.repository.TokenBulkRepository;
 
 import com.google.api.core.ApiFuture;
@@ -45,6 +40,8 @@ import com.google.firebase.messaging.Notification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -54,13 +51,8 @@ public class FCMService {
 	private final WebhookLogger webhookLogger;
 	private final AlarmLogger alarmLogger;
 	private final FcmTokenValidationLogger fcmTokenValidationLogger;
-
-	private static final String DEFAULT_IMAGE_URL = "https://www.ajou.ac.kr/_res/ajou/kr/img/intro/img-symbol.png";
-	private static final String REDIRECTION_URL_PREFIX = "https://www.ajouevent.com/event/";
-	private static final String DEFAULT_CLICK_ACTION_URL =  "https://www.ajouevent.com";
 	private final PushClusterTokenRepository pushClusterTokenRepository;
 	private final PushClusterTokenBulkRepository pushClusterTokenBulkRepository;
-	private final PushNotificationRepository pushNotificationRepository;
 	private final PushClusterRepository pushClusterRepository;
 	private final TokenBulkRepository tokenBulkRepository;
 
@@ -118,86 +110,6 @@ public class FCMService {
 		);
 	}
 
-	@Transactional
-	public void sendNoticeNotification(NoticeDto noticeDto, Long eventId, Long pushClusterId) {
-		PushCluster pushCluster = pushClusterRepository.findById(pushClusterId)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.PUSH_CLUSTER_NOT_FOUND));
-
-		List<PushClusterToken> clusterTokens = pushClusterTokenRepository.findAllByPushClusterWithTokenAndMember(pushCluster);
-
-		Map<Long, Long> unreadCountMap = pushNotificationRepository.countUnreadNotificationsForTopic(noticeDto.getKoreanTopic())
-			.stream()
-			.collect(Collectors.toMap(UnreadNotificationCountDto::getMemberId, UnreadNotificationCountDto::getUnreadNotificationCount));
-
-		sendPushClusterNotification(
-			clusterTokens,
-			pushCluster,
-			composeMessageTitle(noticeDto),
-			composeBody(noticeDto),
-			getFirstImageUrl(noticeDto),
-			getRedirectionUrl(noticeDto, eventId),
-			unreadCountMap
-		);
-	}
-
-	@Transactional
-	public void sendKeywordPushNotification(List<PushClusterToken> clusterTokens, PushCluster pushCluster, Keyword keyword, NoticeDto noticeDto, Long eventId) {
-		Map<Long, Long> unreadCountMap = pushNotificationRepository.countUnreadNotificationsForKeyword(keyword.getEncodedKeyword())
-			.stream()
-			.collect(Collectors.toMap(UnreadNotificationCountDto::getMemberId, UnreadNotificationCountDto::getUnreadNotificationCount));
-
-		sendPushClusterNotification(
-			clusterTokens,
-			pushCluster,
-			keyword.getKoreanKeyword() + "-" + composeMessageTitle(noticeDto),
-			composeBody(noticeDto),
-			getFirstImageUrl(noticeDto),
-			getRedirectionUrl(noticeDto, eventId),
-			unreadCountMap
-		);
-	}
-
-	public void sendPushClusterNotification(List<PushClusterToken> clusterTokens, PushCluster pushCluster, String title, String body, String imageUrl, String clickUrl, Map<Long, Long> unreadCountMap) {
-		if (clusterTokens.isEmpty()) {
-			webhookLogger.log("푸시 전송 스킵 - PushClusterID: " + pushCluster.getId() + " 알림 대상 토큰이 없습니다.");
-			pushCluster.updateCountsAndStatus(0, 0);  // 대상 없음 처리
-			pushClusterRepository.save(pushCluster);
-			return;
-		}
-
-		pushCluster.markAsInProgress();
-
-		List<List<PushClusterToken>> batches = splitIntoBatches(clusterTokens, 400);
-
-		for (List<PushClusterToken> batch : batches) {
-			batch.forEach(PushClusterToken::markAsSending);  // 각 배치 전송 전 상태 변경
-			pushClusterTokenBulkRepository.saveAll(batch);
-			List<Message> messages = batch.stream()
-				.map(token -> buildMessage(pushCluster.getId(), token, title, body, imageUrl, clickUrl, unreadCountMap))
-				.collect(Collectors.toList());
-
-			ApiFuture<BatchResponse> responseFuture = FirebaseMessaging.getInstance().sendEachAsync(messages);
-
-			responseFuture.addListener(() -> {
-				try {
-					BatchResponse response = responseFuture.get();
-					processPushResult(pushCluster.getId(), batch, response);
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();  // 인터럽트 복구
-					log.warn("FCM 알림 비동기 처리 중 인터럽트 발생", e);
-					batch.forEach(PushClusterToken::markAsFail);
-					updatePushClusterTokens(batch);
-					webhookLogger.log("푸시 전송 중단 (인터럽트): pushClusterId=" + pushCluster.getId());
-				} catch (ExecutionException e) {
-					log.error("FCM 알림 비동기 처리 중 ExecutionException 발생", e);
-					batch.forEach(PushClusterToken::markAsFail);
-					updatePushClusterTokens(batch);
-					webhookLogger.log("푸시 전송 실패 (ExecutionException): pushClusterId=" + pushCluster.getId());
-				}
-			}, Runnable::run);
-		}
-	}
-
 	private Message buildMessage(Long pushClusterId, PushClusterToken token, String title, String body, String imageUrl, String clickUrl, Map<Long, Long> unreadCountMap) {
 		Long unreadCount = unreadCountMap.getOrDefault(token.getToken().getMember().getId(), 0L);
 
@@ -214,7 +126,7 @@ public class FCMService {
 			.build();
 	}
 
-	@Transactional
+	@Transactional(propagation = REQUIRES_NEW)
 	public void processPushResult(Long pushClusterId, List<PushClusterToken> clusterTokens, BatchResponse response) {
 		PushCluster pushCluster = pushClusterRepository.findById(pushClusterId)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.PUSH_CLUSTER_NOT_FOUND));
@@ -245,14 +157,12 @@ public class FCMService {
 
 		pushCluster.updateCountsAndStatus(successCount, failCount);
 		pushClusterRepository.save(pushCluster);
-		webhookLogger.log("푸시 완료 - PushClusterID: " + pushClusterId + " 성공: " + successCount + " 실패: " + failCount);
+		webhookLogger.log("푸시 완료 - PushClusterID: " + pushCluster.getId() + " 성공: " + successCount + " 실패: " + failCount);
 	}
 
 	// pushClusterToken 목록을 일괄 업데이트
 	@Transactional
 	public void updatePushClusterTokens(List<PushClusterToken> clusterTokens) {
-		// ✅ 먼저 저장하여 ID가 생성되도록 함
-		pushClusterTokenRepository.saveAll(clusterTokens);
 		pushClusterTokenBulkRepository.updateAll(clusterTokens);
 	}
 
@@ -279,34 +189,6 @@ public class FCMService {
 			tokensToUpdate.add(token);
 			return false;
 		}
-	}
-
-	private String composeMessageTitle(NoticeDto noticeDto) {
-		return String.format("[%s]", noticeDto.getKoreanTopic());
-	}
-
-	private String composeBody(NoticeDto noticeDto) {
-		return noticeDto.getTitle();
-	}
-
-	private String getFirstImageUrl(NoticeDto noticeDto) {
-		List<String> images = Optional.ofNullable(noticeDto.getImages())
-			.filter(imgs -> !imgs.isEmpty())
-			.orElseGet(() -> {
-				List<String> defaultImages = new ArrayList<>();
-				defaultImages.add(DEFAULT_IMAGE_URL);
-				return defaultImages;
-			});
-		return images.get(0);
-	}
-
-	private String getRedirectionUrl(NoticeDto noticeDto, Long eventId) {
-		String url = Optional.ofNullable(noticeDto.getUrl())
-			.filter(u -> !u.isEmpty())
-			.map(u -> REDIRECTION_URL_PREFIX + eventId) // 크롤링 후 DB에 저장된, 우리 앱 상세페이지로 이동
-			.orElse(DEFAULT_CLICK_ACTION_URL);
-		webhookLogger.log("리다이렉션하는 URL: " + url);
-		return url;
 	}
 
 	public void send(Message message) {
@@ -366,5 +248,62 @@ public class FCMService {
 				invalidTokens.add(token); // 실패한 토큰은 무효로 처리
 			}
 		}
+	}
+
+	public void sendTopicPush(PushCluster cluster, Map<Long, Long> unreadCountMap) {
+		// pushCluster에 연결된 토큰(회원/토큰 정보 포함)을 모두 조회
+		List<PushClusterToken> tokens = pushClusterTokenRepository.findAllByPushClusterWithTokenAndMember(cluster);
+
+		log.info("푸시 전송 대상 토큰 수: {}", tokens.size());
+
+		// 클러스터 상태를 IN_PROGRESS 로 변경 (추후 통계에서 발송 상태 표시)
+		cluster.markAsInProgress();
+
+		// 400개씩 배치로 나누어 전송 (FCM sendEachAsync 권장 범위)
+		List<List<PushClusterToken>> batches = splitIntoBatches(tokens, 400);
+
+		for (List<PushClusterToken> batch : batches) {
+			// 전송 직전 상태를 SENDING 으로 표시
+			batch.forEach(PushClusterToken::markAsSending);  // 각 배치 전송 전 상태 변경
+
+			// 상태값 변경을 일괄 반영
+			pushClusterTokenBulkRepository.updateAll(batch);
+
+			// 실제 FCM 메시지 구성
+			List<Message> messages = batch.stream()
+					.map(token -> buildMessage(cluster.getId(), token, cluster.getTitle(), cluster.getBody(), cluster.getImageUrl(), cluster.getClickUrl(), unreadCountMap))
+					.collect(Collectors.toList());
+
+			// FCM 비동기 발송
+			ApiFuture<BatchResponse> responseFuture = FirebaseMessaging.getInstance().sendEachAsync(messages);
+
+			// 발송 결과를 리스너(콜백)로 처리
+			responseFuture.addListener(() -> {
+				try {
+					BatchResponse response = responseFuture.get();
+					processPushResult(cluster.getId(), batch, response);
+				} catch (InterruptedException e) {
+					// 인터럽트 발생 시 현재 쓰레드 복구
+					Thread.currentThread().interrupt();
+					log.warn("FCM 알림 비동기 처리 중 인터럽트 발생", e);
+
+					// 해당 배치를 모두 실패로 처리
+					batch.forEach(PushClusterToken::markAsFail);
+					updatePushClusterTokens(batch);
+					webhookLogger.log("푸시 전송 중단 (인터럽트): pushClusterId=" + cluster.getId());
+				} catch (ExecutionException e) {
+					log.error("FCM 알림 비동기 처리 중 ExecutionException 발생", e);
+
+					// 해당 배치를 모두 실패로 처리
+					batch.forEach(PushClusterToken::markAsFail);
+					updatePushClusterTokens(batch);
+					webhookLogger.log("푸시 전송 실패 (ExecutionException): pushClusterId=" + cluster.getId());
+				}
+			}, Runnable::run);
+		}
+	}
+
+	public void sendKeywordPush(PushCluster cluster, Map<Long, Long> unreadCountMap) {
+		sendTopicPush(cluster, unreadCountMap);
 	}
 }

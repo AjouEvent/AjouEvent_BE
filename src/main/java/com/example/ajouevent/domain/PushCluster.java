@@ -1,6 +1,7 @@
 package com.example.ajouevent.domain;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.persistence.CascadeType;
@@ -77,7 +78,15 @@ public class PushCluster {
 	private LocalDateTime endAt = LocalDateTime.now(); // 작업 종료 시간
 
 	@OneToMany(mappedBy = "pushCluster", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-	private List<PushClusterToken> tokens; // 발송 작업에 포함된 토큰들
+	private List<PushClusterToken> tokens = new ArrayList<>(); // 발송 작업에 포함된 토큰들
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "topic_id")
+	private Topic topic;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "keyword_id")
+	private Keyword keyword;
 
 	// 작업 시작 기록
 	public void markAsInProgress() {
