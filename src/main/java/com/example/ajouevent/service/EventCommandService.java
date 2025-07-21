@@ -74,17 +74,17 @@ public class EventCommandService {
 		Type type = Type.valueOf(noticeDto.getEnglishTopic().toUpperCase());
 		log.info("저장하는 타입 : " + type.getEnglishTopic());
 
-		ClubEvent clubEvent = ClubEvent.builder()
-			.title(noticeDto.getTitle())
-			.content(noticeDto.getContent())
-			.createdAt(LocalDateTime.now()) // 크롤링한 공지사항의 게시글 시간은 크롤링하는 당시 시간으로 설정
-			.url(noticeDto.getUrl())
-			.subject(noticeDto.getKoreanTopic())
-			.writer(noticeDto.getDepartment())
-			.type(type)
-			.likesCount(DEFAULT_LIKES_COUNT)
-			.viewCount(DEFAULT_VIEW_COUNT)
-			.build();
+		ClubEvent clubEvent = ClubEvent.create(
+			noticeDto.getTitle(),
+			noticeDto.getContent(),
+			noticeDto.getDepartment(),
+			LocalDateTime.now(),  // 크롤링한 공지사항의 게시글 시간은 크롤링하는 당시 시간으로 설정
+			noticeDto.getKoreanTopic(),
+			noticeDto.getUrl(),
+			type,
+			DEFAULT_LIKES_COUNT,
+			DEFAULT_VIEW_COUNT
+		);
 
 		log.info("크롤링한 공지사항 원래 url" + noticeDto.getUrl());
 
@@ -100,17 +100,11 @@ public class EventCommandService {
 		}
 
 		// -> payload에서 parsing에서 바로 가져올 수 있으면 좋음
-		List<ClubEventImage> clubEventImageList = new ArrayList<>();
-		for (String imageUrl : noticeDto.getImages()) {
-			ClubEventImage clubEventImage = ClubEventImage.builder()
-				.url(imageUrl)
-				.clubEvent(clubEvent)
-				.build();
-			clubEventImageList.add(clubEventImage);
-		}
+		List<ClubEventImage> clubEventImageList = noticeDto.getImages().stream()
+			.map(imageUrl -> ClubEventImage.create(imageUrl, clubEvent))
+			.toList();
 
-		clubEvent.setClubEventImageList(clubEventImageList);
-
+		clubEvent.assignImages(clubEventImageList);
 
 		// 각 업로드된 이미지의 URL을 사용하여 ClubEventImage를 생성하고, ClubEvent와 연관시킵니다.
 
@@ -133,7 +127,7 @@ public class EventCommandService {
 
 		// 구독자들의 읽음 상태를 '읽지 않음'으로 설정
 		for (TopicMember topicMember : topicMembers) {
-			topicMember.setRead(false);  // 읽음 상태를 읽지 않음으로 설정
+			topicMember.markAsUnread();
 		}
 
 		topicMemberBulkRepository.updateTopicMembers(topicMembers);
@@ -151,7 +145,7 @@ public class EventCommandService {
 
 				// 각 구독자의 읽음 상태를 '읽지 않음'으로 설정
 				for (KeywordMember keywordMember : keywordMembers) {
-					keywordMember.setRead(false);  // 읽음 상태를 읽지 않음으로 설정
+					keywordMember.markAsUnread();
 				}
 				keywordMemberBulkRepository.updateKeywordMembers(keywordMembers);
 			}
@@ -183,26 +177,22 @@ public class EventCommandService {
 			log.info("제공된 이미지가 없습니다.");
 		}
 
-		ClubEvent clubEvent = ClubEvent.builder()
-			.title(postEventDto.getTitle())
-			.content(postEventDto.getContent())
-			.url(postEventDto.getUrl())
-			.createdAt(LocalDateTime.now())
-			.writer(postEventDto.getWriter())
-			.subject(postEventDto.getSubject())
-			.type(postEventDto.getType())
-			.clubEventImageList(new ArrayList<>())
-			.likesCount(DEFAULT_LIKES_COUNT)
-			.viewCount(DEFAULT_VIEW_COUNT)
-			.build();
+		ClubEvent clubEvent = ClubEvent.create(
+			postEventDto.getTitle(),
+			postEventDto.getContent(),
+			postEventDto.getWriter(),
+			LocalDateTime.now(),
+			postEventDto.getSubject(),
+			postEventDto.getUrl(),
+			postEventDto.getType(),
+			DEFAULT_LIKES_COUNT,
+			DEFAULT_VIEW_COUNT
+		);
 
 		// 각 업로드된 이미지의 URL을 사용하여 ClubEventImage를 생성하고, ClubEvent와 연관시킵니다.
 		for (String postImage : postImages) {
 			log.info("S3에 올라간 이미지: " + postImage);
-			ClubEventImage clubEventImage = ClubEventImage.builder()
-				.url(postImage)
-				.clubEvent(clubEvent)
-				.build();
+			ClubEventImage clubEventImage = ClubEventImage.create(postImage, clubEvent);
 			clubEvent.getClubEventImageList().add(clubEventImage);
 		}
 
@@ -214,26 +204,22 @@ public class EventCommandService {
 	@Transactional
 	public void postEvent(PostEventDto postEventDto) {
 
-		ClubEvent clubEvent = ClubEvent.builder()
-			.title(postEventDto.getTitle())
-			.content(postEventDto.getContent())
-			.url(postEventDto.getUrl())
-			.createdAt(postEventDto.getEventDateTime())
-			.writer(postEventDto.getWriter())
-			.subject(postEventDto.getSubject())
-			.type(postEventDto.getType())
-			.clubEventImageList(new ArrayList<>())
-			.likesCount(DEFAULT_LIKES_COUNT)
-			.viewCount(DEFAULT_VIEW_COUNT)
-			.build();
+		ClubEvent clubEvent = ClubEvent.create(
+			postEventDto.getTitle(),
+			postEventDto.getContent(),
+			postEventDto.getWriter(),
+			postEventDto.getEventDateTime(),
+			postEventDto.getSubject(),
+			postEventDto.getUrl(),
+			postEventDto.getType(),
+			DEFAULT_LIKES_COUNT,
+			DEFAULT_VIEW_COUNT
+		);
 
 		// 프론트엔드에서 받은 이미지 URL 리스트를 처리
 		if (postEventDto.getImageUrls() != null) {
 			for (String imageUrl : postEventDto.getImageUrls()) {
-				ClubEventImage clubEventImage = ClubEventImage.builder()
-					.url(imageUrl)
-					.clubEvent(clubEvent)
-					.build();
+				ClubEventImage clubEventImage = ClubEventImage.create(imageUrl, clubEvent);
 				clubEvent.getClubEventImageList().add(clubEventImage);
 			}
 		}
@@ -355,10 +341,7 @@ public class EventCommandService {
 
 		// 새 이미지 추가
 		List<ClubEventImage> addedImages = toAddUrls.stream()
-			.map(url -> ClubEventImage.builder()
-				.url(url)
-				.clubEvent(clubEvent)
-				.build())
+			.map(url -> ClubEventImage.create(url, clubEvent))
 			.collect(Collectors.toList());
 
 		clubEventImageRepository.saveAll(addedImages);
@@ -407,11 +390,7 @@ public class EventCommandService {
 		if (images != null && !images.isEmpty()) {
 			for (MultipartFile image : images) {
 				String imageUrl = s3Upload.uploadFiles(image, "images");
-				ClubEventImage clubEventImage = ClubEventImage.builder()
-					.url(imageUrl)
-					.clubEvent(clubEvent)
-					.build();
-				updatedImages.add(clubEventImage);
+				updatedImages.add(ClubEventImage.create(imageUrl, clubEvent));
 			}
 			// Remove old images and add updated ones
 			clubEvent.getClubEventImageList().clear();

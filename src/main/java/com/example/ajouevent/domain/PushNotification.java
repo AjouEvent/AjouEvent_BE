@@ -12,19 +12,18 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import lombok.AllArgsConstructor;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Entity
 @Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-public class PushNotification {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Entity
+@Table(name = "push_notification")
+public class PushNotification extends BaseTimeEntity {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
@@ -69,6 +68,52 @@ public class PushNotification {
 
 	@Column(nullable = true)
 	private LocalDateTime notifiedAt; // 알림 전달 시간
+
+	@Builder
+	private PushNotification(PushCluster pushCluster, Topic topic, Keyword keyword, Member member,
+		NotificationType notificationType, String title, String body,
+		String imageUrl, String clickUrl, LocalDateTime notifiedAt) {
+		this.pushCluster = pushCluster;
+		this.topic = topic;
+		this.keyword = keyword;
+		this.member = member;
+		this.notificationType = notificationType;
+		this.title = title;
+		this.body = body;
+		this.imageUrl = imageUrl;
+		this.clickUrl = clickUrl;
+		this.isRead = false;
+		this.notifiedAt = notifiedAt;
+	}
+
+	public static PushNotification createForTopic(PushCluster cluster, Member member) {
+		return PushNotification.builder()
+			.pushCluster(cluster)
+			.member(member)
+			.topic(cluster.getTopic())
+			.title(cluster.getTitle())
+			.body(cluster.getBody())
+			.imageUrl(cluster.getImageUrl())
+			.clickUrl(cluster.getClickUrl())
+			.notificationType(NotificationType.TOPIC)
+			.notifiedAt(LocalDateTime.now())
+			.build();
+	}
+
+	public static PushNotification createForKeyword(PushCluster cluster, Member member) {
+		return PushNotification.builder()
+			.pushCluster(cluster)
+			.member(member)
+			.keyword(cluster.getKeyword())
+			.topic(cluster.getTopic())
+			.title(cluster.getTitle())
+			.body(cluster.getBody())
+			.imageUrl(cluster.getImageUrl())
+			.clickUrl(cluster.getClickUrl())
+			.notificationType(NotificationType.KEYWORD)
+			.notifiedAt(LocalDateTime.now())
+			.build();
+	}
 
 	public void markAsRead() {
 		this.isRead = true;

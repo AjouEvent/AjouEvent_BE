@@ -67,13 +67,10 @@ public class MemberService {
 
 		String password = BCryptEncoder.encode(registerRequest.getPassword());
 
-		Member newMember = Member.builder()
-				.email(registerRequest.getEmail())
-				.major(registerRequest.getMajor())
-				// .phone(registerRequest.getPhone())
-				.name(registerRequest.getName())
-				.password(password)
-				.build();
+		Member newMember = Member.register(
+			registerRequest.getEmail(),
+			registerRequest.getName()
+		);
 
 		memberRepository.save(newMember);
 
@@ -88,8 +85,9 @@ public class MemberService {
 		Member member = memberRepository.findByEmail(principal.getName())
 			.orElseThrow(() -> new CustomException(CustomErrorCode.LOGIN_FAILED));
 
-		if (registerMemberInfoRequest.getMajor() != null) member.setMajor(registerMemberInfoRequest.getMajor());
-
+		if (registerMemberInfoRequest.getMajor() != null) {
+			member.changeMajor(registerMemberInfoRequest.getMajor());
+		}
 
 		memberRepository.save(member);
 
@@ -146,12 +144,12 @@ public class MemberService {
 
 		Member member = memberRepository.findById(memberId).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
-			MemberDto.MemberInfoDto memberInfoDto = MemberDto.MemberInfoDto.builder()
-				.memberId(member.getId())
-				.email(member.getEmail())
-				.password(member.getPassword())
-				.role(member.getRole())
-				.build();
+		MemberDto.MemberInfoDto memberInfoDto = MemberDto.MemberInfoDto.builder()
+			.memberId(member.getId())
+			.email(member.getEmail())
+			.password(member.getPassword())
+			.role(member.getRole())
+			.build();
 
 		String accessToken = jwtUtil.createAccessToken(memberInfoDto);
 
@@ -178,9 +176,7 @@ public class MemberService {
 	public String updateMemberInfo (MemberUpdateDto memberUpdateDto, Principal principal) {
 		Member member = memberRepository.findByEmail(principal.getName()).orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
-		if (memberUpdateDto.getMajor() != null) member.setMajor(memberUpdateDto.getMajor());
-		if (memberUpdateDto.getName() != null) member.setName(memberUpdateDto.getName());
-		if (memberUpdateDto.getPhone() != null) member.setPhone(memberUpdateDto.getPhone());
+		member.updateProfile(memberUpdateDto.getName(), memberUpdateDto.getMajor(), memberUpdateDto.getPhone());
 		memberRepository.save(member);
 		return "수정 완료";
 	}
@@ -224,10 +220,10 @@ public class MemberService {
 		if (memberOptional.isPresent()) {
 			member = memberOptional.get();
 		} else {
-			member = Member.builder()
-				.email(userInfoGetDto.getEmail())
-				.name(userInfoGetDto.getName())
-				.build();
+			member = Member.register(
+				userInfoGetDto.getEmail(),
+				userInfoGetDto.getName()
+			);
 
 			memberRepository.save(member);
 			isNewMember = true; // 새로 가입한 회원으로 설정
@@ -384,7 +380,7 @@ public class MemberService {
 		}
 
 		String newPassword = BCryptEncoder.encode(passwordDto.getNewPassword());
-		member.setPassword(newPassword);
+		member.changePassword(newPassword);
 		memberRepository.save(member);
 		return "비밀번호 변경 완료";
 	}
@@ -395,7 +391,7 @@ public class MemberService {
 			.orElseThrow(() -> new CustomException(CustomErrorCode.USER_NOT_FOUND));
 
 		String newPassword = BCryptEncoder.encode(resetPasswordDto.getNewPassword());
-		member.setPassword(newPassword);
+		member.changePassword(newPassword);
 		memberRepository.save(member);
 		return "비밀번호 재설정 완료";
 	}
@@ -407,7 +403,8 @@ public class MemberService {
 		if (member == null)
 			throw new CustomException(CustomErrorCode.EVENT_NOT_FOUND);
 
-		member.setPassword(BCryptEncoder.encode(newPw));
+		String newPassword = BCryptEncoder.encode(newPw);
+		member.changePassword(newPassword);
 
 		try {
 			SMTPMsgDto smtpMsgDto = SMTPMsgDto.builder()

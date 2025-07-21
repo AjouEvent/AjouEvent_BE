@@ -2,27 +2,14 @@ package com.example.ajouevent.domain;
 
 import java.time.LocalDateTime;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.persistence.*;
+import lombok.*;
 
-@Entity
 @Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-public class TopicMember {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Entity
+@Table(name = "topic_member")
+public class TopicMember extends BaseTimeEntity {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
@@ -43,4 +30,41 @@ public class TopicMember {
 
 	@Column(nullable = false, columnDefinition = "TINYINT(1)")
 	private boolean receiveNotification;
+
+	@Builder
+	private TopicMember(Member member, Topic topic, boolean isRead,
+		LocalDateTime lastReadAt, boolean receiveNotification) {
+		this.member = member;
+		this.topic = topic;
+		this.isRead = isRead;
+		this.lastReadAt = lastReadAt;
+		this.receiveNotification = receiveNotification;
+	}
+
+	public static TopicMember create(Member member, Topic topic) {
+		return TopicMember.builder()
+			.member(member)
+			.topic(topic)
+			.isRead(false)
+			.lastReadAt(LocalDateTime.now())
+			.receiveNotification(true)
+			.build();
+	}
+
+	/** 알림을 읽지 않은 상태로 변경 */
+	public void markAsUnread() {
+		this.isRead = false;
+		this.lastReadAt = LocalDateTime.now();
+	}
+
+	/** 알림을 읽은 상태로 변경 */
+	public void markAsRead() {
+		this.isRead = true;
+		this.lastReadAt = LocalDateTime.now();
+	}
+
+	/** 알림 수신 여부 변경 */
+	public void changeReceiveNotification(boolean value) {
+		this.receiveNotification = value;
+	}
 }

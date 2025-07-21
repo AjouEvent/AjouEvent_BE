@@ -169,18 +169,8 @@ public class PushNotificationService {
 		List<TopicMember> topicMembers = topicMemberRepository.findByTopicWithNotificationEnabledAndTokens(cluster.getTopic());
 
 		List<PushNotification> notifications = topicMembers.stream()
-				.map(member -> PushNotification.builder()
-						.pushCluster(cluster)
-						.member(member.getMember())
-						.topic(cluster.getTopic())
-						.title(cluster.getTitle())
-						.body(cluster.getBody())
-						.imageUrl(cluster.getImageUrl())
-						.clickUrl(cluster.getClickUrl())
-						.notificationType(NotificationType.TOPIC)
-						.notifiedAt(LocalDateTime.now())
-						.build())
-				.toList();
+			.map(member -> PushNotification.createForTopic(cluster, member.getMember()))
+			.toList();
 		pushNotificationBulkRepository.saveAll(notifications);
 	}
 
@@ -189,19 +179,8 @@ public class PushNotificationService {
 		for (PushCluster cluster : clusters) {
 			List<KeywordMember> keywordMembers = keywordMemberRepository.findByKeyword(cluster.getKeyword());
 			List<PushNotification> notifications = keywordMembers.stream()
-					.map(member -> PushNotification.builder()
-							.pushCluster(cluster)
-							.member(member.getMember())
-							.keyword(cluster.getKeyword())
-							.topic(cluster.getTopic())
-							.title(cluster.getTitle())
-							.body(cluster.getBody())
-							.imageUrl(cluster.getImageUrl())
-							.clickUrl(cluster.getClickUrl())
-							.notificationType(NotificationType.KEYWORD)
-							.notifiedAt(LocalDateTime.now())
-							.build())
-					.toList();
+				.map(member -> PushNotification.createForKeyword(cluster, member.getMember()))
+				.toList();
 			pushNotificationBulkRepository.saveAll(notifications);
 		}
 	}

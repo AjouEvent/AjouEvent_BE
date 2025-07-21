@@ -3,12 +3,10 @@ package com.example.ajouevent.domain;
 import jakarta.persistence.*;
 import lombok.*;
 
-@Entity
 @Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Entity
+@Table(name = "club_event_image")
 public class ClubEventImage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,4 +19,17 @@ public class ClubEventImage {
     @JoinColumn (name = "club_event_id")
     @ToString.Exclude
     private ClubEvent clubEvent;
+
+    @Builder
+    private ClubEventImage(String url, ClubEvent clubEvent) {
+        this.url = url;
+        this.clubEvent = clubEvent;
+    }
+
+    public static ClubEventImage create(String url, ClubEvent clubEvent) {
+        return ClubEventImage.builder()
+            .url(url)
+            .clubEvent(clubEvent)
+            .build();
+    }
 }

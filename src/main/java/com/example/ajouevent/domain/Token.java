@@ -12,19 +12,18 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
-import lombok.AllArgsConstructor;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Entity
 @Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-public class Token {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Entity
+@Table(name = "token")
+public class Token extends BaseTimeEntity {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
@@ -45,7 +44,28 @@ public class Token {
 	@Column(nullable = false)
 	private boolean isDeleted = false;
 
+	@Builder
+	private Token(String tokenValue, LocalDate expirationDate, boolean isDeleted, Member member) {
+		this.tokenValue = tokenValue;
+		this.expirationDate = expirationDate;
+		this.isDeleted = isDeleted;
+		this.member = member;
+	}
+
+	public static Token create(String tokenValue, Member member, int validWeeks) {
+		return Token.builder()
+			.tokenValue(tokenValue)
+			.member(member)
+			.expirationDate(LocalDate.now().plusWeeks(validWeeks))
+			.isDeleted(false)
+			.build();
+	}
+
 	public void markAsDeleted() {
 		this.isDeleted = true;
+	}
+
+	public void extendExpiration(int weeks) {
+		this.expirationDate = LocalDate.now().plusWeeks(weeks);
 	}
 }

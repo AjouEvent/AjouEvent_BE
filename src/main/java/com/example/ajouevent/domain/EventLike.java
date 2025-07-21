@@ -1,8 +1,5 @@
 package com.example.ajouevent.domain;
 
-import com.google.firebase.database.annotations.NotNull;
-
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -11,21 +8,18 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
+import lombok.AccessLevel;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 
-@Entity
-@Setter
+
 @Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Entity
 @Table(name = "event_like_table")
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-public class EventLike {
+public class EventLike extends BaseTimeEntity {
 
 	@Id // pk 지정
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,5 +32,18 @@ public class EventLike {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "member_id")
 	private Member member;
+
+	@Builder
+	private EventLike(ClubEvent clubEvent, Member member) {
+		this.clubEvent = clubEvent;
+		this.member = member;
+	}
+
+	public static EventLike create(ClubEvent clubEvent, Member member) {
+		return EventLike.builder()
+			.clubEvent(clubEvent)
+			.member(member)
+			.build();
+	}
 
 }

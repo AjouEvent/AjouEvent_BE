@@ -28,13 +28,13 @@ public class BannerService {
 	private final JsonParsingUtil jsonParsingUtil;
 
 	public BannerDto addBanner(BannerRequest bannerRequest) {
-		Banner banner = Banner.builder()
-			.imgUrl(bannerRequest.getImgUrl())
-			.siteUrl(bannerRequest.getSiteUrl())
-			.bannerOrder(bannerRequest.getBannerOrder())
-			.startDate(bannerRequest.getStartDate())
-			.endDate(bannerRequest.getEndDate())
-			.build();
+		Banner banner = Banner.create(
+			bannerRequest.getImgUrl(),
+			bannerRequest.getSiteUrl(),
+			bannerRequest.getBannerOrder(),
+			bannerRequest.getStartDate(),
+			bannerRequest.getEndDate()
+		);
 		bannerRepository.save(banner);
 
 		jsonParsingUtil.clearCache("Banners");

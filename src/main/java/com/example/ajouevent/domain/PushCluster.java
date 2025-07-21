@@ -16,25 +16,24 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
-import lombok.AllArgsConstructor;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Entity
 @Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-public class PushCluster {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Entity
+@Table(name = "push_cluster")
+public class PushCluster extends BaseTimeEntity {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "club_event_id", nullable = true) // 연관된 이벤트
+	@JoinColumn(name = "club_event_id") // 연관된 이벤트
 	private ClubEvent clubEvent;
 
 	@Column(nullable = false)
@@ -88,6 +87,76 @@ public class PushCluster {
 	@JoinColumn(name = "keyword_id")
 	private Keyword keyword;
 
+	@Builder
+	private PushCluster(ClubEvent clubEvent, String title, String body, String imageUrl, String clickUrl,
+		JobStatus jobStatus, int totalCount, LocalDateTime registeredAt, int successCount, int failCount,
+		int receivedCount, int clickedCount, LocalDateTime startAt, LocalDateTime endAt,
+		Topic topic, Keyword keyword) {
+		this.clubEvent = clubEvent;
+		this.title = title;
+		this.body = body;
+		this.imageUrl = imageUrl;
+		this.clickUrl = clickUrl;
+		this.jobStatus = jobStatus;
+		this.totalCount = totalCount;
+		this.registeredAt = registeredAt;
+		this.successCount = successCount;
+		this.failCount = failCount;
+		this.receivedCount = receivedCount;
+		this.clickedCount = clickedCount;
+		this.startAt = startAt;
+		this.endAt = endAt;
+		this.topic = topic;
+		this.keyword = keyword;
+	}
+
+	// Topic 기반 푸시 클러스터 생성
+	public static PushCluster createForTopic(ClubEvent clubEvent, Topic topic,
+		String title, String body, String imageUrl, String clickUrl,
+		int totalCount, JobStatus jobStatus) {
+		return PushCluster.builder()
+			.clubEvent(clubEvent)
+			.topic(topic)
+			.title(title)
+			.body(body)
+			.imageUrl(imageUrl)
+			.clickUrl(clickUrl)
+			.totalCount(totalCount)
+			.jobStatus(jobStatus)
+			.registeredAt(LocalDateTime.now())
+			.startAt(LocalDateTime.now())
+			.endAt(LocalDateTime.now())
+			.successCount(0)
+			.failCount(0)
+			.receivedCount(0)
+			.clickedCount(0)
+			.build();
+	}
+
+	// Keyword 기반 푸시 클러스터 생성
+	public static PushCluster createForKeyword(ClubEvent clubEvent, Topic topic, Keyword keyword,
+		String title, String body, String imageUrl, String clickUrl,
+		int totalCount, JobStatus jobStatus) {
+		return PushCluster.builder()
+			.clubEvent(clubEvent)
+			.topic(topic)
+			.keyword(keyword)
+			.title(title)
+			.body(body)
+			.imageUrl(imageUrl)
+			.clickUrl(clickUrl)
+			.totalCount(totalCount)
+			.jobStatus(jobStatus)
+			.registeredAt(LocalDateTime.now())
+			.startAt(LocalDateTime.now())
+			.endAt(LocalDateTime.now())
+			.successCount(0)
+			.failCount(0)
+			.receivedCount(0)
+			.clickedCount(0)
+			.build();
+	}
+
 	// 작업 시작 기록
 	public void markAsInProgress() {
 		this.startAt = LocalDateTime.now();
@@ -107,5 +176,13 @@ public class PushCluster {
 		}
 
 		this.endAt = LocalDateTime.now();
+	}
+
+	public void addReceivedCount(int count) {
+		this.receivedCount += count;
+	}
+
+	public void addClickedCount(int count) {
+		this.clickedCount += count;
 	}
 }

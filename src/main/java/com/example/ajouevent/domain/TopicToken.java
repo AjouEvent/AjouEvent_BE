@@ -7,17 +7,18 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import lombok.AllArgsConstructor;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@Entity
 @Getter
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-public class TopicToken {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Entity
+@Table(name = "topic_token")
+public class TopicToken extends BaseTimeEntity {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
@@ -30,8 +31,16 @@ public class TopicToken {
 	@JoinColumn(name = "token_id")
 	private Token token;
 
-	public TopicToken(Topic topic, Token token) {
+	@Builder
+	private TopicToken(Topic topic, Token token) {
 		this.topic = topic;
 		this.token = token;
+	}
+
+	public static TopicToken create(Topic topic, Token token) {
+		return TopicToken.builder()
+			.topic(topic)
+			.token(token)
+			.build();
 	}
 }

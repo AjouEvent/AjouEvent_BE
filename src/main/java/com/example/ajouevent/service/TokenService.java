@@ -72,17 +72,12 @@ public class TokenService {
 		Optional<Token> existingToken = tokenRepository.findByTokenValueAndMember(loginRequest.getFcmToken(), member);
 		if (existingToken.isPresent()) {
 			Token token = existingToken.get();
-			token.setExpirationDate(LocalDate.now().plusWeeks(TOKEN_EXPIRATION_WEEKS));
+			token.extendExpiration(TOKEN_EXPIRATION_WEEKS);
 			tokenRepository.save(token);
 			return;
 		}
 
-		Token token = Token.builder()
-			.tokenValue(loginRequest.getFcmToken())
-			.member(member)
-			.expirationDate(LocalDate.now().plusWeeks(TOKEN_EXPIRATION_WEEKS))
-			.isDeleted(false)
-			.build();
+		Token token = Token.create(loginRequest.getFcmToken(), member, TOKEN_EXPIRATION_WEEKS);
 		tokenRepository.save(token);
 
 		List<Topic> subscribedTopics = topicQueryService.getSubscribedTopics(member);
