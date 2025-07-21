@@ -14,7 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -54,27 +53,12 @@ public class PushClusterService {
 
 		JobStatus initialStatus = topicTokens.isEmpty() ? JobStatus.NONE : JobStatus.PENDING;
 
-		PushCluster cluster = PushCluster.builder()
-				.clubEvent(clubEvent)
-				.title(title)
-				.body(body)
-				.imageUrl(imageUrl)
-				.clickUrl(clickUrl)
-				.totalCount(topicTokens.size())
-				.jobStatus(initialStatus)
-				.registeredAt(LocalDateTime.now())
-				.topic(topic)
-				.build();
+		PushCluster cluster = PushCluster.createForTopic(clubEvent, topic, title, body, imageUrl, clickUrl, topicTokens.size(), initialStatus);
 		pushClusterRepository.save(cluster);
 
 		List<PushClusterToken> clusterTokens = topicTokens.stream()
-				.map(token -> PushClusterToken.builder()
-						.pushCluster(cluster)
-						.token(token.getToken()) // TopicToken에 연결된 Token 가져오기
-						.jobStatus(JobStatus.PENDING) // 초기 상태: PENDING
-						.requestTime(LocalDateTime.now())
-						.build())
-				.toList();
+			.map(token -> PushClusterToken.create(cluster, token.getToken()))
+			.toList();
 		pushClusterTokenBulkRepository.saveAll(clusterTokens);
 
 		return cluster;
@@ -97,28 +81,12 @@ public class PushClusterService {
 			if (dto.getTitle().contains(keyword.getKoreanKeyword())) {
 				List<KeywordToken> keywordTokens = keywordTokenRepository.findKeywordTokensWithTokenByKeyword(keyword);
 				JobStatus initialStatus = keywordTokens.isEmpty() ? JobStatus.NONE : JobStatus.PENDING;
-				PushCluster cluster = PushCluster.builder()
-						.clubEvent(clubEvent)
-						.topic(topic)
-						.keyword(keyword)
-						.title(title)
-						.body(body)
-						.imageUrl(imageUrl)
-						.clickUrl(clickUrl)
-						.totalCount(keywordTokens.size())
-						.jobStatus(initialStatus)
-						.registeredAt(LocalDateTime.now())
-						.build();
+				PushCluster cluster = PushCluster.createForKeyword(clubEvent, topic, keyword, title, body, imageUrl, clickUrl, keywordTokens.size(), initialStatus);
 				pushClusterRepository.save(cluster);
 
 				List<PushClusterToken> clusterTokens = keywordTokens.stream()
-						.map(token -> PushClusterToken.builder()
-								.pushCluster(cluster)
-								.token(token.getToken()) // KeywordToken에 연결된 Token 가져오기
-								.jobStatus(JobStatus.PENDING) // 초기 상태: PENDING
-								.requestTime(LocalDateTime.now())
-								.build())
-						.toList();
+					.map(kt -> PushClusterToken.create(cluster, kt.getToken()))
+					.toList();
 				pushClusterTokenBulkRepository.saveAll(clusterTokens);
 
 				clusters.add(cluster);
@@ -225,8 +193,8 @@ public class PushClusterService {
 			int receivedCount = clusterData.getOrDefault("received", 0);
 			int clickedCount = clusterData.getOrDefault("clicked", 0);
 
-			pushCluster.setReceivedCount(pushCluster.getReceivedCount() + receivedCount);
-			pushCluster.setClickedCount(pushCluster.getClickedCount() + clickedCount);
+			pushCluster.addReceivedCount(receivedCount);
+			pushCluster.addClickedCount(clickedCount);
 
 			pushClustersToUpdate.add(pushCluster);
 

@@ -20,7 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 public class RedisService {
 	private static final Long clientAddressPostRequestWriteExpireDurationSec = 86400L;
 	private final StringRedisTemplate stringRedisTemplate;
-	private static final Long crawlingTokenExpireDurationSec = 90000L; // 토큰 TTL (1일+a)
+	private static final Long crawlingTokenExpireDurationSec = 315_360_000L; // 토큰 TTL (10년)
 
 	public boolean isFirstIpRequest(String clientAddress, Long eventId, Object reference) {
 		String key = generateKey(clientAddress, eventId, reference);

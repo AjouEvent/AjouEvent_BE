@@ -39,7 +39,7 @@ public class TokenSubscriptionService {
 	public void subscribeTokenToTopic(Member member, Topic topic) {
 		List<Token> tokens = getTokensForMember(member);
 		List<TopicToken> topicTokens = tokens.stream()
-			.map(token -> new TopicToken(topic, token))
+			.map(token -> TopicToken.create(topic, token))
 			.toList();
 		topicTokenBulkRepository.saveAll(topicTokens);
 	}
@@ -49,7 +49,7 @@ public class TokenSubscriptionService {
 	public void subscribeTokenToKeyword(Member member, Keyword keyword) {
 		List<Token> tokens = getTokensForMember(member);
 		List<KeywordToken> keywordTokens = tokens.stream()
-			.map(token -> new KeywordToken(keyword, token))
+			.map(token -> KeywordToken.create(keyword, token))
 			.toList();
 		keywordTokenBulkRepository.saveAll(keywordTokens);
 	}
@@ -72,7 +72,7 @@ public class TokenSubscriptionService {
 	@Transactional
 	public void subscribeTokensToTopics(List<Topic> topics, Token token) {
 		List<TopicToken> topicTokens = topics.stream()
-			.map(topic -> new TopicToken(topic, token))
+			.map(topic -> TopicToken.create(topic, token))
 			.toList();
 		topicTokenBulkRepository.saveAll(topicTokens);
 	}
@@ -81,7 +81,7 @@ public class TokenSubscriptionService {
 	@Transactional
 	public void subscribeTokensToKeywords(List<Keyword> keywords, Token token) {
 		List<KeywordToken> keywordTokens = keywords.stream()
-			.map(keyword -> new KeywordToken(keyword, token))
+			.map(keyword -> KeywordToken.create(keyword, token))
 			.toList();
 		keywordTokenBulkRepository.saveAll(keywordTokens);
 	}

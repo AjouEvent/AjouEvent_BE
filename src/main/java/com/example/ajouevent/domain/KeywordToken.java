@@ -7,17 +7,18 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import lombok.AllArgsConstructor;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@Entity
 @Getter
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-public class KeywordToken {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Entity
+@Table(name = "keyword_token")
+public class KeywordToken extends BaseTimeEntity {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
@@ -30,8 +31,16 @@ public class KeywordToken {
 	@JoinColumn(name = "token_id")
 	private Token token;
 
-	public KeywordToken(Keyword keyword, Token token) {
+	@Builder
+	private KeywordToken(Keyword keyword, Token token) {
 		this.keyword = keyword;
 		this.token = token;
+	}
+
+	public static KeywordToken create(Keyword keyword, Token token) {
+		return KeywordToken.builder()
+			.keyword(keyword)
+			.token(token)
+			.build();
 	}
 }

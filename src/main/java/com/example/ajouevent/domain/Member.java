@@ -6,10 +6,10 @@ import lombok.*;
 import java.util.List;
 
 @Getter
-@Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-public class Member {
+@Table(name = "member")
+public class Member extends BaseTimeEntity {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(nullable = false, unique = true)
@@ -55,12 +55,30 @@ public class Member {
 	private List<KeywordMember> keywordMembers;
 
 	@Builder
-	public Member(Long id, String email, String name, String password, String major, String phone) {
+	private Member(Long id, String email, String name) {
 		this.id = id;
 		this.email = email;
 		this.name = name;
-		this.password = password;
-		this.major = major;
-		this.phone = phone;
+	}
+
+	public static Member register(String email, String name) {
+		return Member.builder()
+			.email(email)
+			.name(name)
+			.build();
+	}
+
+	public void changePassword(String encodedPassword) {
+		this.password = encodedPassword;
+	}
+
+	public void changeMajor(String major) {
+		if (major != null) this.major = major;
+	}
+
+	public void updateProfile(String name, String major, String phone) {
+		if (name != null) this.name = name;
+		if (major != null) this.major = major;
+		if (phone != null) this.phone = phone;
 	}
 }

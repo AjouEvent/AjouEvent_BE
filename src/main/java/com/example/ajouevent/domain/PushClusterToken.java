@@ -12,19 +12,18 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import lombok.AllArgsConstructor;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Entity
 @Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-public class PushClusterToken {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Entity
+@Table(name = "push_cluster_token")
+public class PushClusterToken extends BaseTimeEntity {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
@@ -46,6 +45,25 @@ public class PushClusterToken {
 
 	@Column(nullable = true)
 	private LocalDateTime processedTime; // 발송 처리 시간
+
+	@Builder
+	private PushClusterToken(PushCluster pushCluster, Token token, JobStatus jobStatus,
+		LocalDateTime requestTime, LocalDateTime processedTime) {
+		this.pushCluster = pushCluster;
+		this.token = token;
+		this.jobStatus = jobStatus;
+		this.requestTime = requestTime;
+		this.processedTime = processedTime;
+	}
+
+	public static PushClusterToken create(PushCluster cluster, Token token) {
+		return PushClusterToken.builder()
+			.pushCluster(cluster)
+			.token(token)
+			.jobStatus(JobStatus.PENDING) // 초기 상태
+			.requestTime(LocalDateTime.now())
+			.build();
+	}
 
 	public void markAsSending() {
 		this.jobStatus = JobStatus.IN_PROGRESS;

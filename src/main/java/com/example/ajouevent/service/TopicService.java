@@ -53,13 +53,7 @@ public class TopicService {
 		topicLogger.log(topic.getDepartment() + "토픽 구독");
 		topicLogger.log("멤버 이메일 : " + memberEmail);
 
-		TopicMember topicMember = TopicMember.builder()
-			.topic(topic)
-			.member(member)
-			.isRead(false)
-			.lastReadAt(LocalDateTime.now())
-			.receiveNotification(true)
-			.build();
+		TopicMember topicMember = TopicMember.create(member, topic);
 		topicMemberRepository.save(topicMember);
 
 		//  SubscriptionService를 호출하여 Token과 Topic 매핑
@@ -121,7 +115,7 @@ public class TopicService {
 		TopicMember topicMember = topicMemberRepository.findByMemberAndTopic(member, topic)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.SUBSCRIBE_FAILED));
 
-		topicMember.setReceiveNotification(request.isReceiveNotification());
+		topicMember.changeReceiveNotification(request.isReceiveNotification());
 	}
 
 	@Transactional
@@ -135,8 +129,7 @@ public class TopicService {
 		Optional<TopicMember> optionalTopicMember = topicMemberRepository.findByMemberAndTopic(member, topic);
 		if (optionalTopicMember.isPresent()) { // 사용자가 구독하고 있는 경우만 읽음 상태 갱신
 			TopicMember topicMember = optionalTopicMember.get();
-			topicMember.setRead(true);
-			topicMember.setLastReadAt(LocalDateTime.now());
+			topicMember.markAsRead();
 			topicMemberRepository.save(topicMember);
 		}
 	}

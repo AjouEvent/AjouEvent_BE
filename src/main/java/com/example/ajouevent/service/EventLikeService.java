@@ -59,10 +59,7 @@ public class EventLikeService {
 		}
 
 		// 이벤트를 사용자의 찜 목록에 추가
-		EventLike eventLike = EventLike.builder()
-			.clubEvent(clubEvent)
-			.member(member)
-			.build();
+		EventLike eventLike = EventLike.create(clubEvent, member);
 
 		// 게시글의 좋아요 수 증가
 		clubEvent.incrementLikes();

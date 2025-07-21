@@ -10,19 +10,18 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import lombok.AllArgsConstructor;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Entity
 @Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-public class KeywordMember {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Entity
+@Table(name = "keyword_member")
+public class KeywordMember extends BaseTimeEntity {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
@@ -40,4 +39,31 @@ public class KeywordMember {
 
 	@Column(nullable = false)
 	private LocalDateTime lastReadAt;  // 마지막으로 읽은 시각
+
+	@Builder
+	private KeywordMember(Keyword keyword, Member member, boolean isRead, LocalDateTime lastReadAt) {
+		this.keyword = keyword;
+		this.member = member;
+		this.isRead = isRead;
+		this.lastReadAt = lastReadAt;
+	}
+
+	public static KeywordMember create(Keyword keyword, Member member) {
+		return KeywordMember.builder()
+			.keyword(keyword)
+			.member(member)
+			.isRead(false) // 구독 후, 기본 읽음 상태는 false
+			.lastReadAt(LocalDateTime.now())
+			.build();
+	}
+
+	public void markAsRead() {
+		this.isRead = true;
+		this.lastReadAt = LocalDateTime.now();
+	}
+
+	public void markAsUnread() {
+		this.isRead = false;
+		this.lastReadAt = LocalDateTime.now();
+	}
 }

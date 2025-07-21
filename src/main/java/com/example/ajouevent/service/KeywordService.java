@@ -74,12 +74,7 @@ public class KeywordService {
 			throw new CustomException(CustomErrorCode.MAX_KEYWORD_LIMIT_EXCEEDED);
 		}
 
-		KeywordMember keywordMember = KeywordMember.builder()
-			.keyword(keyword)
-			.member(member)
-			.isRead(false)
-			.lastReadAt(LocalDateTime.now())
-			.build();
+		KeywordMember keywordMember = KeywordMember.create(keyword, member);
 		keywordMemberRepository.save(keywordMember);
 
 		tokenSubscriptionService.subscribeTokenToKeyword(member, keyword);
@@ -90,12 +85,12 @@ public class KeywordService {
 	// 새로운 키워드 생성 메서드
 	private Keyword createNewTopic(KeywordRequest keywordRequest, String searchKeyword, String formattedKeyword, Topic topic) {
 		// 새로운 토픽 생성 로직
-		Keyword newKeyword = Keyword.builder()
-			.encodedKeyword(formattedKeyword)
-			.koreanKeyword(keywordRequest.getKoreanKeyword())
-			.searchKeyword(searchKeyword)
-			.topic(topic)
-			.build();
+		Keyword newKeyword = Keyword.create(
+			formattedKeyword,
+			keywordRequest.getKoreanKeyword(),
+			searchKeyword,
+			topic
+		);
 		keywordRepository.save(newKeyword);
 
 		keywordLogger.log("새로운 키워드 생성 : " + newKeyword.getKoreanKeyword());
@@ -152,8 +147,7 @@ public class KeywordService {
 		KeywordMember keywordMember = keywordMemberRepository.findByKeywordAndMember(keyword, member)
 			.orElseThrow(() -> new CustomException(CustomErrorCode.KEYWORD_NOT_FOUND));
 		if (keywordMember.isRead() == false) {
-			keywordMember.setRead(true);
-			keywordMember.setLastReadAt(LocalDateTime.now());
+			keywordMember.markAsRead();
 			keywordMemberRepository.save(keywordMember);
 		}
 	}
