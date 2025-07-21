@@ -1,5 +1,8 @@
 package com.example.ajouevent.facade;
 
+import com.example.ajouevent.domain.ClubEvent;
+import com.example.ajouevent.domain.PushCluster;
+import com.example.ajouevent.service.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -8,14 +11,12 @@ import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.WebhookResponse;
 import com.example.ajouevent.exception.CustomException;
 import com.example.ajouevent.logger.WebhookLogger;
-import com.example.ajouevent.service.EventCommandService;
-import com.example.ajouevent.service.FCMService;
-import com.example.ajouevent.service.PushNotificationService;
-import com.example.ajouevent.service.RedisService;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -26,16 +27,16 @@ public class WebhookFacade {
 	private final EventCommandService eventCommandService;
 	private final FCMService fcmService;
 	private final PushNotificationService pushNotificationService;
+	private final PushClusterService pushClusterService;
 	private final WebhookLogger webhookLogger;
 
-	@Transactional
 	public ResponseEntity<WebhookResponse> processWebhook(String token, NoticeDto noticeDto) {
-		try {
-			// 토큰 검증
-			if (!redisService.isTokenValid("crawling-token", token)) {
-				return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-			}
+		// 크롤링 인증 토큰 검증
+		if (!redisService.isTokenValid("crawling-token", token)) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+		}
 
+		try {
 			// 공지사항 중복 여부 확인 - 공지사항 제목, 원래 공지사항 url 비교
 			boolean isDuplicate = eventCommandService.isDuplicateNotice(noticeDto.getEnglishTopic(), noticeDto.getTitle(), noticeDto.getUrl());
 			if (isDuplicate) {
@@ -50,23 +51,41 @@ public class WebhookFacade {
 			}
 
 			// 크롤링한 공지사항을 DB에 저장
-			Long eventId = eventCommandService.postNotice(noticeDto);
+			ClubEvent clubEvent = eventCommandService.postNotice(noticeDto);
 
-			// 알림을 구독자별로 PushNotifications에 미리 저장
-			Long pushClusterId = pushNotificationService.postPushNotification(noticeDto, eventId);
+			// 토픽/키워드별 PushCluster 준비: 토픽 및 키워드별 푸시 알림 전송을 위한
+			PushCluster topicCluster = pushClusterService.prepareTopicCluster(noticeDto, clubEvent);
+			List<PushCluster> keywordClusters = pushClusterService.prepareKeywordClusters(noticeDto, clubEvent);
 
-			// 공지사항 Topic을 구독하고있는 사용자한테 FCM 메시지 전송
-			fcmService.sendNoticeNotification(noticeDto, eventId, pushClusterId);
+			// 사용자별 푸시 알림 미리 DB에 저장
+			pushNotificationService.saveTopicNotifications(topicCluster);
+			pushNotificationService.saveKeywordNotifications(keywordClusters);
 
-			pushNotificationService.handleKeywordPushNotification(noticeDto, eventId);
+			if (topicCluster.getTotalCount() > 0) {
+				// 사용자별 읽지 않은 알림 개수 조회
+				Map<Long, Long> unreadCountMap = pushNotificationService.getUnreadNotificationCountMapForTopic(topicCluster.getTopic().getKoreanTopic());
 
-			WebhookResponse response = WebhookResponse.builder()
-				.result("Webhook processed successfully.")
-				.eventId(eventId)
-				.topic(noticeDto.getEnglishTopic())
-				.title(noticeDto.getTitle())
-				.build();
-			return ResponseEntity.ok(response);
+				// FCM으로 토픽 알림 발송
+				fcmService.sendTopicPush(topicCluster, unreadCountMap);
+			}
+
+			for (PushCluster keywordCluster : keywordClusters) {
+				if (keywordCluster.getTotalCount() > 0) {
+					// 사용자별 읽지 않은 알림 개수 조회
+					Map<Long, Long> keywordUnreadCountMap = pushNotificationService.getUnreadNotificationCountMapForKeyword(keywordCluster.getKeyword().getEncodedKeyword());
+
+					// FCM으로 키워드 알림 발송
+					fcmService.sendKeywordPush(keywordCluster, keywordUnreadCountMap);
+				}
+			}
+
+			return ResponseEntity.ok(WebhookResponse.builder()
+							.result("Webhook processed successfully.")
+							.eventId(clubEvent.getEventId())
+							.topic(noticeDto.getEnglishTopic())
+							.title(noticeDto.getTitle())
+							.build()
+			);
 
 		} catch (CustomException e) {
 			webhookLogger.log("Webhook 처리 중 오류 발생: " + e.getMessage());

@@ -70,7 +70,7 @@ public class EventCommandService {
 
 	// 크롤링한 공지사항 DB에 저장
 	@Transactional
-	public Long postNotice(NoticeDto noticeDto) {
+	public ClubEvent postNotice(NoticeDto noticeDto) {
 		Type type = Type.valueOf(noticeDto.getEnglishTopic().toUpperCase());
 		log.info("저장하는 타입 : " + type.getEnglishTopic());
 
@@ -157,7 +157,7 @@ public class EventCommandService {
 			}
 		}
 
-		return clubEvent.getEventId();
+		return clubEvent;
 	}
 
 	// 게시글 생성 - S3 스프링부트에서 변환

@@ -1,12 +1,12 @@
 package com.example.ajouevent.service;
 
-import com.example.ajouevent.domain.PushCluster;
-import com.example.ajouevent.domain.PushNotification;
+import com.example.ajouevent.domain.*;
+import com.example.ajouevent.dto.NoticeDto;
 import com.example.ajouevent.dto.PushClusterStatsResponse;
+import com.example.ajouevent.exception.CustomErrorCode;
+import com.example.ajouevent.exception.CustomException;
 import com.example.ajouevent.logger.PushClusterLogger;
-import com.example.ajouevent.repository.PushClusterBulkRepository;
-import com.example.ajouevent.repository.PushClusterRepository;
-import com.example.ajouevent.repository.PushNotificationRepository;
+import com.example.ajouevent.repository.*;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -14,10 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,8 +26,127 @@ public class PushClusterService {
 	private final PushClusterRepository pushClusterRepository;
 	private final PushClusterBulkRepository pushClusterBulkRepository;
 	private final PushNotificationRepository pushNotificationRepository;
+	private final PushClusterTokenBulkRepository pushClusterTokenBulkRepository;
+	private final TopicRepository topicRepository;
+	private final TopicTokenRepository topicTokenRepository;
+	private final KeywordRepository keywordRepository;
+	private final KeywordTokenRepository keywordTokenRepository;
 	private final RedisService redisService;
 	private final PushClusterLogger pushClusterLogger;
+
+	private static final String DEFAULT_NOTIFICATION_IMAGE_URL = "https://www.ajou.ac.kr/_res/ajou/kr/img/intro/img-symbol.png";
+	private static final String CLICK_URL_PREFIX = "https://www.ajouevent.com/event/";
+	private static final String DEFAULT_CLICK_ACTION_URL =  "https://www.ajouevent.com";
+
+	@Transactional
+	public PushCluster prepareTopicCluster(NoticeDto dto, ClubEvent clubEvent) {
+		// 푸시 알림 메시지 구성
+		String title = composeMessageTitle(dto);
+		String body = composeBody(dto);
+		String imageUrl = getFirstImageUrl(dto);
+		String clickUrl = buildClickUrl(dto, clubEvent.getEventId());
+
+		Topic topic = topicRepository.findByDepartment(dto.getEnglishTopic())
+				.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
+
+		// Topic을 구독 중인 TopicToken 조회 (isDeleted가 false)
+		List<TopicToken> topicTokens = topicTokenRepository.findByTopicWithValidTokensAndReceiveNotificationTrue(topic);
+
+		JobStatus initialStatus = topicTokens.isEmpty() ? JobStatus.NONE : JobStatus.PENDING;
+
+		PushCluster cluster = PushCluster.builder()
+				.clubEvent(clubEvent)
+				.title(title)
+				.body(body)
+				.imageUrl(imageUrl)
+				.clickUrl(clickUrl)
+				.totalCount(topicTokens.size())
+				.jobStatus(initialStatus)
+				.registeredAt(LocalDateTime.now())
+				.topic(topic)
+				.build();
+		pushClusterRepository.save(cluster);
+
+		List<PushClusterToken> clusterTokens = topicTokens.stream()
+				.map(token -> PushClusterToken.builder()
+						.pushCluster(cluster)
+						.token(token.getToken()) // TopicToken에 연결된 Token 가져오기
+						.jobStatus(JobStatus.PENDING) // 초기 상태: PENDING
+						.requestTime(LocalDateTime.now())
+						.build())
+				.toList();
+		pushClusterTokenBulkRepository.saveAll(clusterTokens);
+
+		return cluster;
+	}
+
+	@Transactional
+	public List<PushCluster> prepareKeywordClusters(NoticeDto dto, ClubEvent clubEvent) {
+		List<PushCluster> clusters = new ArrayList<>();
+		Topic topic = topicRepository.findByDepartment(dto.getEnglishTopic())
+				.orElseThrow(() -> new CustomException(CustomErrorCode.TOPIC_NOT_FOUND));
+		List<Keyword> keywords = keywordRepository.findByTopic(topic);
+
+		for (Keyword keyword : keywords) {
+			// 푸시 알림 메시지 구성
+			String title = keyword.getKoreanKeyword() + "-" + composeMessageTitle(dto);
+			String body = composeBody(dto);
+			String imageUrl = getFirstImageUrl(dto);
+			String clickUrl = buildClickUrl(dto, clubEvent.getEventId());
+
+			if (dto.getTitle().contains(keyword.getKoreanKeyword())) {
+				List<KeywordToken> keywordTokens = keywordTokenRepository.findKeywordTokensWithTokenByKeyword(keyword);
+				JobStatus initialStatus = keywordTokens.isEmpty() ? JobStatus.NONE : JobStatus.PENDING;
+				PushCluster cluster = PushCluster.builder()
+						.clubEvent(clubEvent)
+						.topic(topic)
+						.keyword(keyword)
+						.title(title)
+						.body(body)
+						.imageUrl(imageUrl)
+						.clickUrl(clickUrl)
+						.totalCount(keywordTokens.size())
+						.jobStatus(initialStatus)
+						.registeredAt(LocalDateTime.now())
+						.build();
+				pushClusterRepository.save(cluster);
+
+				List<PushClusterToken> clusterTokens = keywordTokens.stream()
+						.map(token -> PushClusterToken.builder()
+								.pushCluster(cluster)
+								.token(token.getToken()) // KeywordToken에 연결된 Token 가져오기
+								.jobStatus(JobStatus.PENDING) // 초기 상태: PENDING
+								.requestTime(LocalDateTime.now())
+								.build())
+						.toList();
+				pushClusterTokenBulkRepository.saveAll(clusterTokens);
+
+				clusters.add(cluster);
+			}
+		}
+		return clusters;
+	}
+
+	private String getFirstImageUrl(NoticeDto dto) {
+		return (dto.getImages() != null && !dto.getImages().isEmpty())
+				? dto.getImages().get(0)
+				: DEFAULT_NOTIFICATION_IMAGE_URL;
+	}
+
+	private String buildClickUrl(NoticeDto noticeDto, Long eventId) {
+        return Optional.ofNullable(noticeDto.getUrl())
+				.filter(u -> !u.isEmpty())
+				.map(u -> CLICK_URL_PREFIX + eventId) // 알림 클릭시, 크롤링 후 DB에 저장된, 앱 상세페이지로 이동
+				.orElse(DEFAULT_CLICK_ACTION_URL);
+	}
+
+	private String composeMessageTitle(NoticeDto noticeDto) {
+		return String.format("[%s]", noticeDto.getKoreanTopic());
+	}
+
+	private String composeBody(NoticeDto noticeDto) {
+		return noticeDto.getTitle();
+	}
 
 	public List<PushClusterStatsResponse> calculateAllPushClusterStats() {
 		List<PushCluster> pushClusters = pushClusterRepository.findAll();
