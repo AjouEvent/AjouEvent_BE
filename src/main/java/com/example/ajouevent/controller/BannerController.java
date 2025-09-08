@@ -13,10 +13,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.ajouevent.dto.BannerDto;
 import com.example.ajouevent.dto.BannerRequest;
+import com.example.ajouevent.dto.BannerResponse;
 import com.example.ajouevent.dto.ResponseDto;
-import com.example.ajouevent.service.BannerService;
+import com.example.ajouevent.facade.BannerFacade;
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,23 +24,23 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @RequestMapping("/api/banners")
 public class BannerController {
-	private final BannerService bannerService;
+	private final BannerFacade bannerFacade;
 
 	@PreAuthorize("hasRole('ADMIN')")
 	@PostMapping("")
 	public ResponseEntity<ResponseDto> addBanner(@RequestBody BannerRequest request) {
-		BannerDto bannerDto = bannerService.addBanner(request);
+		BannerResponse bannerResponse = bannerFacade.addBanner(request);
 		return ResponseEntity.ok(ResponseDto.builder()
 			.successStatus(HttpStatus.CREATED)
 			.successContent("배너가 추가되었습니다.")
-			.Data(bannerDto)
+			.Data(bannerResponse)
 			.build());
 	}
 
 	@PreAuthorize("hasRole('ADMIN')")
 	@DeleteMapping("/{bannerId}")
 	public ResponseEntity<ResponseDto> deleteBanner(@PathVariable("bannerId") Long bannerId) {
-		bannerService.deleteBanner(bannerId);
+		bannerFacade.deleteBanner(bannerId);
 		return ResponseEntity.ok(ResponseDto.builder()
 			.successStatus(HttpStatus.OK)
 			.successContent("배너가 삭제되었습니다.")
@@ -48,7 +48,7 @@ public class BannerController {
 	}
 
 	@GetMapping("")
-	public List<BannerDto> getAllBanners() {
-		return bannerService.getAllBanners();
+	public List<BannerResponse> getAllBanners() {
+		return bannerFacade.getAllBanners();
 	}
 }
