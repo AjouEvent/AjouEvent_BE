@@ -34,8 +34,10 @@ import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
+import com.google.firebase.messaging.MessagingErrorCode;
 import com.google.firebase.messaging.MulticastMessage;
 import com.google.firebase.messaging.Notification;
+import com.google.firebase.messaging.SendResponse;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -137,15 +139,30 @@ public class FCMService {
 
 		for (int i = 0; i < clusterTokens.size(); i++) {
 			PushClusterToken pushClusterToken = clusterTokens.get(i);
-			if (response.getResponses().get(i).isSuccessful()) {
+			SendResponse sendResponse = response.getResponses().get(i);
+			if (sendResponse.isSuccessful()) {
 				pushClusterToken.markAsSuccess();
 				successCount++;
 			} else {
-				pushClusterToken.markAsFail();
+				MessagingErrorCode messagingErrorCode = sendResponse.getException().getMessagingErrorCode();
+				pushClusterToken.markAsFail(messagingErrorCode.name()); // 실패 사유 기록
 				failCount++;
-				Token token = pushClusterToken.getToken();
-				token.markAsDeleted();
-				tokensToUpdate.add(token);
+
+				switch (messagingErrorCode) {
+					case INTERNAL, UNAVAILABLE ->
+						log.error("FCM 서버 내부 오류 발생 - 재시도 필요 (토큰 ID: {}, 오류 코드: {})", pushClusterToken.getId(), messagingErrorCode);
+					case INVALID_ARGUMENT, UNREGISTERED -> {
+						log.error("무효한 토큰 또는 등록 해제된 토큰 감지 - 토큰 삭제 처리 필요 (토큰 ID: {}, 오류 코드: {})", pushClusterToken.getId(), messagingErrorCode);
+						Token token = pushClusterToken.getToken();
+						token.markAsDeleted();
+						tokensToUpdate.add(token);
+					}
+					case THIRD_PARTY_AUTH_ERROR, SENDER_ID_MISMATCH ->
+						log.error("서버 설정/인증서 문제 발생 - 서버 확인 필요 (토큰 ID: {}, 오류 코드: {})", pushClusterToken.getId(), messagingErrorCode);
+					case QUOTA_EXCEEDED ->
+						log.error("FCM 할당량 초과 (토큰 ID: {}, 오류 코드: {})", pushClusterToken.getId(), messagingErrorCode);
+					default -> log.error("기타 FCM 오류 발생: {} (토큰 ID: {})", messagingErrorCode, pushClusterToken.getId());
+				}
 			}
 		}
 
@@ -176,19 +193,6 @@ public class FCMService {
 			batches.add(items.subList(i, end));
 		}
 		return batches;
-	}
-
-	private boolean processTokenResponse(PushClusterToken tokenEntity, boolean isSuccess, List<Token> tokensToUpdate) {
-		if (isSuccess) {
-			tokenEntity.markAsSuccess();
-			return true;
-		} else {
-			tokenEntity.markAsFail();
-			Token token = tokenEntity.getToken();
-			token.markAsDeleted();
-			tokensToUpdate.add(token);
-			return false;
-		}
 	}
 
 	public void send(Message message) {
@@ -285,17 +289,17 @@ public class FCMService {
 				} catch (InterruptedException e) {
 					// 인터럽트 발생 시 현재 쓰레드 복구
 					Thread.currentThread().interrupt();
-					log.warn("FCM 알림 비동기 처리 중 인터럽트 발생", e);
+					log.error("FCM 알림 비동기 처리 중 인터럽트 발생", e);
 
 					// 해당 배치를 모두 실패로 처리
-					batch.forEach(PushClusterToken::markAsFail);
+					batch.forEach(token -> token.markAsFail("INTERRUPTED_EXCEPTION"));
 					updatePushClusterTokens(batch);
 					webhookLogger.log("푸시 전송 중단 (인터럽트): pushClusterId=" + cluster.getId());
 				} catch (ExecutionException e) {
 					log.error("FCM 알림 비동기 처리 중 ExecutionException 발생", e);
 
 					// 해당 배치를 모두 실패로 처리
-					batch.forEach(PushClusterToken::markAsFail);
+					batch.forEach(token -> token.markAsFail("EXECUTION_EXCEPTION"));
 					updatePushClusterTokens(batch);
 					webhookLogger.log("푸시 전송 실패 (ExecutionException): pushClusterId=" + cluster.getId());
 				}

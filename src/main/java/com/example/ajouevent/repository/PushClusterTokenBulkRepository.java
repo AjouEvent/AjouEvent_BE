@@ -53,7 +53,7 @@ public class PushClusterTokenBulkRepository {
 
 	public void updateAll(List<PushClusterToken> clusterTokens) {
 		String sql = "UPDATE push_cluster_token " +
-			"SET job_status = ?, processed_time = ?, push_cluster_id = ?, request_time = ?, token_id = ? WHERE id = ?";
+			"SET job_status = ?, processed_time = ?, push_cluster_id = ?, request_time = ?, token_id = ?, messaging_error_code = ? WHERE id = ?";
 
 		jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
 			@Override
@@ -64,7 +64,8 @@ public class PushClusterTokenBulkRepository {
 				ps.setLong(3, token.getPushCluster().getId()); // push_cluster_id
 				ps.setTimestamp(4, java.sql.Timestamp.valueOf(token.getRequestTime())); // request_time
 				ps.setLong(5, token.getToken().getId()); // token_id
-				ps.setLong(6, token.getId()); // id
+				ps.setString(6, token.getMessagingErrorCode()); // messaging_error_code
+				ps.setLong(7, token.getId()); // id
 			}
 
 			@Override

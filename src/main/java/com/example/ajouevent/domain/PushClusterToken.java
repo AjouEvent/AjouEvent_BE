@@ -46,14 +46,28 @@ public class PushClusterToken extends BaseTimeEntity {
 	@Column(nullable = true)
 	private LocalDateTime processedTime; // 발송 처리 시간
 
+	/*
+	 * Firebase Messaging Error Codes
+	 * THIRD_PARTY_AUTH_ERROR: 타사 인증 오류
+	 * INVALID_ARGUMENT: 잘못된 인수
+	 * INTERNAL: 내부 서버 오류
+	 * QUOTA_EXCEEDED: 할당량 초과
+	 * SENDER_ID_MISMATCH: 발신자 ID 불일치
+	 * UNAVAILABLE: 서비스 사용 불가
+	 * UNREGISTERED: 등록 취소됨
+	 */
+	@Column(nullable = true, name = "messaging_error_code")
+	private String messagingErrorCode;
+
 	@Builder
 	private PushClusterToken(PushCluster pushCluster, Token token, JobStatus jobStatus,
-		LocalDateTime requestTime, LocalDateTime processedTime) {
+		LocalDateTime requestTime, LocalDateTime processedTime, String messagingErrorCode) {
 		this.pushCluster = pushCluster;
 		this.token = token;
 		this.jobStatus = jobStatus;
 		this.requestTime = requestTime;
 		this.processedTime = processedTime;
+		this.messagingErrorCode = messagingErrorCode;
 	}
 
 	public static PushClusterToken create(PushCluster cluster, Token token) {
@@ -75,8 +89,9 @@ public class PushClusterToken extends BaseTimeEntity {
 		this.processedTime = LocalDateTime.now();
 	}
 
-	public void markAsFail() {
+	public void markAsFail(String errorCode) {
 		this.jobStatus = JobStatus.FAIL;
 		this.processedTime = LocalDateTime.now();
+		this.messagingErrorCode = errorCode;
 	}
 }
