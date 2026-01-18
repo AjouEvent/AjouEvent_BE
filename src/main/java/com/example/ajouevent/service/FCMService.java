@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 import com.example.ajouevent.domain.PushCluster;
@@ -57,6 +58,7 @@ public class FCMService {
 	private final PushClusterTokenBulkRepository pushClusterTokenBulkRepository;
 	private final PushClusterRepository pushClusterRepository;
 	private final TokenBulkRepository tokenBulkRepository;
+	private final Executor fcmCallbackExecutor;
 
 	public void sendAlarm(String email, Alarm alarm) {
 		// 사용자 조회
@@ -144,24 +146,31 @@ public class FCMService {
 				pushClusterToken.markAsSuccess();
 				successCount++;
 			} else {
-				MessagingErrorCode messagingErrorCode = sendResponse.getException().getMessagingErrorCode();
-				pushClusterToken.markAsFail(messagingErrorCode.name()); // 실패 사유 기록
+				FirebaseMessagingException exception = sendResponse.getException();
+				MessagingErrorCode messagingErrorCode = exception != null ? exception.getMessagingErrorCode() : null;
+
+				String errorReason = messagingErrorCode != null ? messagingErrorCode.name() : "UNKNOWN_ERROR";
+				pushClusterToken.markAsFail(errorReason); // 실패 사유 기록
 				failCount++;
 
-				switch (messagingErrorCode) {
-					case INTERNAL, UNAVAILABLE ->
-						log.error("FCM 서버 내부 오류 발생 - 재시도 필요 (토큰 ID: {}, 오류 코드: {})", pushClusterToken.getId(), messagingErrorCode);
-					case INVALID_ARGUMENT, UNREGISTERED -> {
-						log.error("무효한 토큰 또는 등록 해제된 토큰 감지 - 토큰 삭제 처리 필요 (토큰 ID: {}, 오류 코드: {})", pushClusterToken.getId(), messagingErrorCode);
-						Token token = pushClusterToken.getToken();
-						token.markAsDeleted();
-						tokensToUpdate.add(token);
+				if (messagingErrorCode == null) {
+					log.error("FCM 응답 - 에러 코드 없음 (토큰 ID: {}, 예외 메시지: {})", pushClusterToken.getId(), exception != null ? exception.getMessage() : "Unknown");
+				} else {
+					switch (messagingErrorCode) {
+						case INTERNAL, UNAVAILABLE ->
+							log.error("FCM 서버 내부 오류 발생 - 재시도 필요 (토큰 ID: {}, 오류 코드: {})", pushClusterToken.getId(), messagingErrorCode);
+						case INVALID_ARGUMENT, UNREGISTERED -> {
+							log.error("무효한 토큰 또는 등록 해제된 토큰 감지 - 토큰 삭제 처리 필요 (토큰 ID: {}, 오류 코드: {})", pushClusterToken.getId(), messagingErrorCode);
+							Token token = pushClusterToken.getToken();
+							token.markAsDeleted();
+							tokensToUpdate.add(token);
+						}
+						case THIRD_PARTY_AUTH_ERROR, SENDER_ID_MISMATCH ->
+							log.error("서버 설정/인증서 문제 발생 - 서버 확인 필요 (토큰 ID: {}, 오류 코드: {})", pushClusterToken.getId(), messagingErrorCode);
+						case QUOTA_EXCEEDED ->
+							log.error("FCM 할당량 초과 (토큰 ID: {}, 오류 코드: {})", pushClusterToken.getId(), messagingErrorCode);
+						default -> log.error("기타 FCM 오류 발생: {} (토큰 ID: {})", messagingErrorCode, pushClusterToken.getId());
 					}
-					case THIRD_PARTY_AUTH_ERROR, SENDER_ID_MISMATCH ->
-						log.error("서버 설정/인증서 문제 발생 - 서버 확인 필요 (토큰 ID: {}, 오류 코드: {})", pushClusterToken.getId(), messagingErrorCode);
-					case QUOTA_EXCEEDED ->
-						log.error("FCM 할당량 초과 (토큰 ID: {}, 오류 코드: {})", pushClusterToken.getId(), messagingErrorCode);
-					default -> log.error("기타 FCM 오류 발생: {} (토큰 ID: {})", messagingErrorCode, pushClusterToken.getId());
 				}
 			}
 		}
@@ -303,7 +312,7 @@ public class FCMService {
 					updatePushClusterTokens(batch);
 					webhookLogger.log("푸시 전송 실패 (ExecutionException): pushClusterId=" + cluster.getId());
 				}
-			}, Runnable::run);
+			}, fcmCallbackExecutor);
 		}
 	}
 
