@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
+import com.example.ajouevent.config.CustomFcmThreadManager;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
@@ -26,10 +27,12 @@ public class FCMInitializer {
 	public void initialize() {
 		try {
 			FirebaseOptions options = new FirebaseOptions.Builder()
-				.setCredentials(GoogleCredentials.fromStream(new ClassPathResource(firebaseConfigPath).getInputStream())).build();
+				.setCredentials(GoogleCredentials.fromStream(new ClassPathResource(firebaseConfigPath).getInputStream()))
+				.setThreadManager(new CustomFcmThreadManager())
+				.build();
 			if (FirebaseApp.getApps().isEmpty()) {
 				FirebaseApp.initializeApp(options);
-				logger.info("Firebase application has been initialized");
+				logger.info("Firebase application has been initialized with custom thread pool");
 			}
 		} catch (IOException e) {
 			logger.error(e.getMessage());
