@@ -6,14 +6,12 @@ import org.springframework.data.domain.Pageable;
 
 import org.springframework.stereotype.Service;
 
-import com.example.ajouevent.domain.ClubEvent;
 import com.example.ajouevent.dto.EventDetailResponseDto;
 import com.example.ajouevent.dto.EventResponseDto;
 import com.example.ajouevent.dto.EventWithKeywordDto;
 import com.example.ajouevent.dto.SliceResponse;
 import com.example.ajouevent.exception.CustomErrorCode;
 import com.example.ajouevent.exception.CustomException;
-import com.example.ajouevent.repository.EventRepository;
 import com.example.ajouevent.util.SecurityUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,22 +21,18 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class EventFacadeService {
 	private final EventQueryService eventQueryService;
-	private final EventCommandService eventCommandService;
-	private final EventRepository eventRepository;
+	private final EventViewService eventViewService;
 	private final TopicService topicService;
 	private final KeywordService keywordService;
 
 	// 이벤트 상세 조회 및 조회수 증가
 	public EventDetailResponseDto getEventDetail(Long eventId, Principal principal, HttpServletRequest request, HttpServletResponse response) {
-		ClubEvent clubEvent = eventRepository.findById(eventId)
-			.orElseThrow(() -> new CustomException(CustomErrorCode.EVENT_NOT_FOUND));
-
 		String userId = SecurityUtil.getCurrentMemberUsernameOrAnonymous();
 
 		if (isAnonymous(userId)) {
-			eventCommandService.handleAnonymousUserWithCookieAndRedis(request, response, clubEvent);
+			eventViewService.handleAnonymousUser(request, response, eventId);
 		} else {
-			eventCommandService.handleAuthenticatedUser(userId, clubEvent);
+			eventViewService.handleAuthenticatedUser(userId, eventId);
 		}
 
 		return eventQueryService.getEventDetail(eventId, principal);
