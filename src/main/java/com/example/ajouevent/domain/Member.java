@@ -38,10 +38,6 @@ public class Member extends BaseTimeEntity {
 		CascadeType.REMOVE}, orphanRemoval = true)
 	private List<Token> tokens;
 
-	@OneToMany(mappedBy = "member", fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.REMOVE}, orphanRemoval = true)
-	@ToString.Exclude
-	private List<Alarm> alarmList;
-
 	@OneToMany(mappedBy = "member", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST,
 		CascadeType.REMOVE}, orphanRemoval = true)
 	private List<EventLike> eventLikeList;

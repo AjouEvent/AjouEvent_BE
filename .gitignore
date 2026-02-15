@@ -60,7 +60,6 @@ out/
 **/tokens/
 /webhook_log.txt
 /topic_log.txt
-/alarm_log.txt
 /notification_log.txt
 /src/main/resources/docker-compose.yml
 /src/main/resources/prometheus.yml
