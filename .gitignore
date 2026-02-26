@@ -66,3 +66,6 @@ out/
 /src/main/resources/prometheus.yml
 
 /src/main/.DS_Store
+
+### Node.js ###
+node_modules/
