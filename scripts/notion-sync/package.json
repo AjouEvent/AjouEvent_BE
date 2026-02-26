@@ -1,0 +1,15 @@
+{
+  "name": "notion-sync",
+  "version": "1.0.0",
+  "description": "Sync GitHub Issues and PRs to Notion databases",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@notionhq/client": "^2.2.15"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

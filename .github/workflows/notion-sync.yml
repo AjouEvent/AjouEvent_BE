@@ -1,0 +1,39 @@
+name: Sync Issues and PRs to Notion
+
+on:
+  issues:
+    types: [opened, edited, labeled, unlabeled, assigned, unassigned, reopened, closed]
+  pull_request:
+    types: [opened, edited, labeled, unlabeled, assigned, unassigned, reopened, closed, synchronize]
+
+jobs:
+  sync-to-notion:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: scripts/notion-sync/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: scripts/notion-sync
+
+      - name: Sync to Notion
+        run: node index.js
+        working-directory: scripts/notion-sync
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_ISSUE_DB_ID: ${{ secrets.NOTION_ISSUE_DB_ID }}
+          NOTION_PR_DB_ID: ${{ secrets.NOTION_PR_DB_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
