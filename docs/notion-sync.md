@@ -19,32 +19,24 @@ Automatically syncs GitHub Issues and Pull Requests into Notion databases using 
 | Property name   | Type         | Notes                                      |
 |-----------------|--------------|--------------------------------------------|
 | Issue           | Title        | Issue title                                |
-| Repository      | Rich Text    | e.g. `AjouEvent/AjouEvent_BE`              |
-| Num             | Number       | Issue number                               |
+| Repository      | Select       | Option: `AjouEvent/AjouEvent_BE`           |
+| Num             | Rich Text    | Issue number (as text)                     |
 | Github Issue    | URL          | **Unique key** – used for upsert matching  |
-| Status          | Select       | Options: `Todo`, `In Progress`, `Done`     |
 | GitHub State    | Select       | Options: `open`, `closed`                  |
-| Labels          | Multi-select | Mirrors GitHub labels                      |
-| Assignees       | Multi-select | GitHub usernames of assignees              |
 | Author          | Rich Text    | GitHub username of the issue author        |
 | Created At      | Date         |                                            |
-| Updated At      | Date         |                                            |
 
 ### PR DB (title property: `Pull Request`)
 
 | Property name        | Type         | Notes                                               |
 |----------------------|--------------|-----------------------------------------------------|
 | Pull Request         | Title        | PR title                                            |
-| Repository           | Rich Text    | e.g. `AjouEvent/AjouEvent_BE`                       |
-| Num                  | Number       | PR number                                           |
+| Repository           | Select       | Option: `AjouEvent/AjouEvent_BE`                    |
+| Num                  | Rich Text    | PR number (as text)                                 |
 | Github Pull Request  | URL          | **Unique key** – used for upsert matching           |
-| Status               | Select       | Options: `Todo`, `In Progress`, `Done`              |
 | GitHub State         | Select       | Options: `open`, `closed`, `merged`                 |
-| Labels               | Multi-select | Mirrors GitHub labels                               |
-| Assignees            | Multi-select | GitHub usernames of assignees                       |
 | Author               | Rich Text    | GitHub username of the PR author                    |
 | Created At           | Date         |                                                     |
-| Updated At           | Date         |                                                     |
 | Related Issue        | Relation     | Relates to the **Issue DB**                         |
 
 ---
@@ -73,29 +65,25 @@ The `GITHUB_TOKEN` secret is provided automatically by GitHub Actions – no man
 
 Triggered by: `opened`, `edited`, `labeled`, `unlabeled`, `assigned`, `unassigned`, `reopened`, `closed`.
 
-| Situation               | Status field       | GitHub State field |
-|-------------------------|--------------------|--------------------|
-| New issue (not in DB)   | Set to **Todo**    | From GitHub        |
-| Existing issue updated  | **Not changed**    | From GitHub        |
-| Issue closed            | Set to **Done**    | `closed`           |
+All issue events update the Notion page with the latest issue title, state, author, and creation date.
 
 ### Pull Requests
 
 Triggered by: `opened`, `edited`, `labeled`, `unlabeled`, `assigned`, `unassigned`, `reopened`, `closed`, `synchronize`.
 
-| Situation                     | Status field            | GitHub State field |
-|-------------------------------|-------------------------|--------------------|
-| New PR (not in DB)            | Set to **In Progress**  | From GitHub        |
-| Existing PR updated           | **Not changed**         | From GitHub        |
-| PR closed **without** merge   | **Not changed**         | `closed`           |
-| PR closed **with** merge      | Set to **Done**         | `merged`           |
+All PR events update the Notion page with the latest PR title, state, author, and creation date.
 
 ### Related Issue Relation
 
-When a PR body contains closing keywords (`close`, `closes`, `closed`, `fix`, `fixes`, `fixed`, `resolve`, `resolves`, `resolved`) followed by `#NNN`, the sync script:
+The script resolves related issues from two sources and de-duplicates:
 
-1. Looks up the referenced issue in the Issue DB by its GitHub URL.
-2. If the issue is not yet in Notion, it fetches it from GitHub and creates the page.
+1. **PR title trailing reference** – a `#NNN` at the end of the PR title, optionally followed by punctuation (e.g., `"Fix login bug #42"` or `"Fix login bug #42."`).
+2. **PR body closing keywords** – `close`, `closes`, `closed`, `fix`, `fixes`, `fixed`, `resolve`, `resolves`, `resolved` followed by `#NNN`.
+
+For each referenced issue the script:
+
+1. Looks up the issue in the Issue DB by its GitHub URL.
+2. If the issue is not yet in Notion, fetches it from GitHub and creates the page.
 3. Sets the **Related Issue** relation on the PR page to point to all resolved issue pages.
 
 ---
