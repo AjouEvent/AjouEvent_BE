@@ -52,46 +52,27 @@ async function queryNotionByUrl(dbId, propName, url) {
 }
 
 // Build the Notion property object for an issue
-function buildIssueProperties(issue, statusValue) {
-  const props = {
+function buildIssueProperties(issue) {
+  return {
     Issue: { title: [{ text: { content: issue.title } }] },
-    Repository: { rich_text: [{ text: { content: REPO_NAME } }] },
-    Num: { number: issue.number },
+    Repository: { select: { name: REPO_NAME } },
+    Num: { rich_text: [{ text: { content: String(issue.number) } }] },
     'Github Issue': { url: issue.html_url },
     'GitHub State': { select: { name: issue.state } },
-    Labels: {
-      multi_select: (issue.labels || []).map((l) => ({ name: l.name })),
-    },
-    Assignees: {
-      multi_select: (issue.assignees || []).map((a) => ({ name: a.login })),
-    },
     Author: { rich_text: [{ text: { content: issue.user.login } }] },
     'Created At': { date: { start: issue.created_at } },
-    'Updated At': { date: { start: issue.updated_at } },
   };
-  if (statusValue !== undefined) {
-    props.Status = { select: { name: statusValue } };
-  }
-  return props;
 }
 
 // Upsert an issue into the Notion Issue DB
-async function upsertIssue(issue, action) {
+async function upsertIssue(issue) {
   const existing = await queryNotionByUrl(
     ISSUE_DB_ID,
     'Github Issue',
     issue.html_url
   );
 
-  let statusValue;
-  if (!existing) {
-    statusValue = 'Todo';
-  } else if (action === 'closed') {
-    statusValue = 'Done';
-  }
-  // statusValue remains undefined when updating without a status change
-
-  const properties = buildIssueProperties(issue, statusValue);
+  const properties = buildIssueProperties(issue);
 
   if (!existing) {
     const page = await notion.pages.create({
@@ -129,7 +110,7 @@ async function ensureIssueInNotion(issueNumber) {
     );
     return null;
   }
-  const properties = buildIssueProperties(issue, 'Todo');
+  const properties = buildIssueProperties(issue);
   page = await notion.pages.create({
     parent: { database_id: ISSUE_DB_ID },
     properties,
@@ -154,6 +135,13 @@ function parseReferencedIssues(body) {
   return [...nums];
 }
 
+// Parse a PR title for a trailing issue reference: e.g. "Fix bug #123" or "Fix bug #123."
+function parseTitleIssueRef(title) {
+  if (!title) return [];
+  const match = title.match(/#(\d+)\s*[.,!?;:]?\s*$/);
+  return match ? [parseInt(match[1], 10)] : [];
+}
+
 // Upsert a PR into the Notion PR DB
 async function syncPR(pr, action) {
   const existing = await queryNotionByUrl(
@@ -166,37 +154,23 @@ async function syncPR(pr, action) {
   const ghState =
     action === 'closed' && isMerged ? 'merged' : pr.state;
 
-  let statusValue;
-  if (!existing) {
-    statusValue = 'In Progress';
-  } else if (action === 'closed' && isMerged) {
-    statusValue = 'Done';
-  }
-  // statusValue stays undefined for updates that should not touch Status
-
   const properties = {
     'Pull Request': { title: [{ text: { content: pr.title } }] },
-    Repository: { rich_text: [{ text: { content: REPO_NAME } }] },
-    Num: { number: pr.number },
+    Repository: { select: { name: REPO_NAME } },
+    Num: { rich_text: [{ text: { content: String(pr.number) } }] },
     'Github Pull Request': { url: pr.html_url },
     'GitHub State': { select: { name: ghState } },
-    Labels: {
-      multi_select: (pr.labels || []).map((l) => ({ name: l.name })),
-    },
-    Assignees: {
-      multi_select: (pr.assignees || []).map((a) => ({ name: a.login })),
-    },
     Author: { rich_text: [{ text: { content: pr.user.login } }] },
     'Created At': { date: { start: pr.created_at } },
-    'Updated At': { date: { start: pr.updated_at } },
   };
 
-  if (statusValue !== undefined) {
-    properties.Status = { select: { name: statusValue } };
-  }
-
-  // Resolve related issue pages from closing keywords in the PR body
-  const refNums = parseReferencedIssues(pr.body);
+  // Resolve related issue pages from title trailing ref and body closing keywords
+  const refNums = [
+    ...new Set([
+      ...parseTitleIssueRef(pr.title),
+      ...parseReferencedIssues(pr.body),
+    ]),
+  ];
   const relatedPages = [];
   for (const num of refNums) {
     const page = await ensureIssueInNotion(num);
@@ -241,7 +215,7 @@ async function main() {
   const action = event.action;
 
   if (EVENT_NAME === 'issues') {
-    await upsertIssue(event.issue, action);
+    await upsertIssue(event.issue);
     console.log(`Issue #${event.issue.number} synced to Notion (action: ${action})`);
   } else if (EVENT_NAME === 'pull_request') {
     await syncPR(event.pull_request, action);
